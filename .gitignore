@@ -1,0 +1,65 @@
+# ==========================================
+# GITIGNORE BASE PARA PIPELINE DE F1 (ELT)
+# Tecnologias: Python, dbt, Supabase (PostgreSQL), Docker, IDEs
+# ==========================================
+
+# ------------------------------------------
+# 1. Credenciais, Configurações e Segredos (CRÍTICO)
+# ------------------------------------------
+# Nunca commitar senhas, chaves de API do Supabase/FastF1 e strings de conexão
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+*.cert
+
+# ------------------------------------------
+# 2. Python (Ingestão & FastF1)
+# ------------------------------------------
+# Byte-compiled / optimizados
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambientes virtuais locais
+.venv/
+venv/
+ENV/
+env/
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebooks (arquivos temporários e checkpoints)
+.ipynb_checkpoints
+
+# Logs de execução do Python / Bibliotecas
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ------------------------------------------
+# 3. dbt (Data Build Tool - Transformação)
+# ------------------------------------------
+# Pastas de build e compilação do dbt
+/target/
+/dbt_packages/
+/dbt_modules/
+
+# Logs de execução do dbt
+/logs/
+
+# Configuração local do dbt (se criado na raiz do projeto em vez do ~/.dbt/)
+profiles.yml
+
+# ------------------------------------------
+# 4. Docker
+# ------------------------------------------
+# Ignorar dados locais de containers ou volumes montados temporariamente
+.docker/
+docker-compose.override.yml
