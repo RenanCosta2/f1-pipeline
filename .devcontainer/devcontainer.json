@@ -1,0 +1,24 @@
+{
+  "name": "F1 Pipeline - Ingestion",
+  "dockerComposeFile": [
+    "../docker-compose.yml"
+  ],
+  "service": "ingestion",
+  "workspaceFolder": "/app",
+  "overrideCommand": true,
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvInTrigger": true
+      },
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter"
+      ]
+    }
+  },
+  // Opcional: Define se conecta como appuser ou root.
+  "remoteUser": "appuser"
+}

@@ -1,0 +1,20 @@
+services:
+  ingestion:
+    build: ./ingestion
+    container_name: f1-ingestion
+    ports:
+      - "8888:8888"
+    volumes:
+      # Volume persistente para evitar baixar dados da F1 repetidamente
+      - fastf1_cache:/app/cache
+      # Monta o diretório de dados gerados para visualização na máquina
+      - ./data:/app/data
+      # Monta o código local para desenvolvimento rápido
+      - ./ingestion:/app/ingestion
+    environment:
+      - FASTF1_CACHE_DIR=/app/cache
+      - DATA_OUTPUT_DIR=/app/data
+
+volumes:
+  fastf1_cache:
+    driver: local
