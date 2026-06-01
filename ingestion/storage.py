@@ -55,3 +55,25 @@ class S3Uploader:
         except Exception as e:
             logger.error(f"Error uploading file {file_path}: {e}")
             return False
+
+    def file_exists(self, key: str) -> bool:
+        """
+        Checks if a file exists in S3.
+
+        Args:
+            key (str): The key (name) of the file in S3.
+
+        Returns:
+            bool: True if the file exists, False otherwise.
+        """
+        logger.info(f"Checking if file {key} exists in S3")
+        try:
+            self.s3.head_object(Bucket=self.bucket_name, Key=key)
+            logger.info("File exists!")
+            return True
+        except Exception as e:
+            if e.response['Error']['Code'] == '404':
+                logger.warning(f"File {key} does not exist.")
+                return False
+            logger.error(f"Error checking file {key}: {e}")
+            return False
