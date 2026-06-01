@@ -41,6 +41,9 @@ build/
 # Arquivos gerados
 data/*
 
+# Scripts de testes locais
+ingestion/playground.py
+
 # Logs de execução do Python / Bibliotecas
 *.log
 pip-log.txt
