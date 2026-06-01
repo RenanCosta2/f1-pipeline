@@ -38,6 +38,9 @@ build/
 # Jupyter Notebooks (arquivos temporários e checkpoints)
 .ipynb_checkpoints
 
+# Arquivos gerados
+data/*
+
 # Logs de execução do Python / Bibliotecas
 *.log
 pip-log.txt
