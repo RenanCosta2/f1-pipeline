@@ -11,7 +11,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
-logger = logging.getLogger("f1_pipeline.ingestion")
+logger = logging.getLogger("f1_pipeline.ingestion.extractor")
 
 class FastF1Extractor:
     """
@@ -125,28 +125,3 @@ class FastF1Extractor:
             else:
                 logger.error(f"Error extracting laps: {e}")
                 return None
-
-f1_extractor = FastF1Extractor()
-# %%
-
-schedule = f1_extractor.get_schedule(2026)
-schedule
-
-# %%
-
-schedule = f1_extractor.get_schedule(2026)
-qtd_gps = (schedule[
-    (schedule['RoundNumber'] > 0) &
-    (schedule['EventDate'] < datetime.now())]
-    ['RoundNumber'].values
-)
-
-#%%
-
-for gp in qtd_gps:
-    for session in ['SQ', 'S', 'Q', 'R']:
-        session = f1_extractor.load_session(2026, gp, session)
-        if session is not None:
-            results = f1_extractor.extract_results()
-            laps = f1_extractor.extract_laps()
-
