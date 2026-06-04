@@ -56,6 +56,27 @@ class S3Uploader:
             logger.error(f"Error uploading file {file_path}: {e}")
             return False
 
+    def upload_fileobj(self, file_obj, key: str) -> bool:
+        """
+        Uploads a in-memory object to S3.
+
+        Args:
+            file_obj (str): The in-memory object to upload.
+            key (str): The key (name) of the file in S3.
+
+        Returns:
+            bool: True if the file was uploaded successfully, False otherwise.
+        """
+
+        logger.info(f"Uploading in-memory object to {key}")
+        try:
+            self.s3.upload_fileobj(file_obj, self.bucket_name, key)
+            logger.info("Object uploaded successfully!")
+            return True
+        except Exception as e:
+            logger.error(f"Error uploading object to {key}: {e}")
+            return False
+
     def file_exists(self, key: str) -> bool:
         """
         Checks if a file exists in S3.
