@@ -69,3 +69,13 @@ profiles.yml
 # Ignorar dados locais de containers ou volumes montados temporariamente
 .docker/
 docker-compose.override.yml
+
+# ------------------------------------------
+# 4. Airflow (Orquestração)
+# ------------------------------------------
+
+# Configurações do Airflow
+orchestration/config/airflow.cfg
+
+# Logs de execução do airflow
+orchestration/logs/
