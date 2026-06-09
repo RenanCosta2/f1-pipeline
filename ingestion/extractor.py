@@ -46,6 +46,9 @@ class FastF1Extractor:
         logger.info(f"Loading schedule for year {year}")
         try:    
             schedule = fastf1.get_event_schedule(year)
+
+            schedule['extracted_at'] = datetime.now()
+
             logger.info("Schedule loaded successfully!")
             return schedule
         except Exception as e:
@@ -91,11 +94,14 @@ class FastF1Extractor:
         logger.info("Extracting results...")
         try:
             results = pd.DataFrame(self.current_session.results)
-            logger.info(f"Extracted {len(results)} results.")
 
             if results.empty:
                 logger.warning("No results found.")
                 return None
+
+            logger.info(f"Extracted {len(results)} results.")
+            
+            results['extracted_at'] = datetime.now()
 
             return results
         except Exception as e:
@@ -117,6 +123,8 @@ class FastF1Extractor:
         try:
             laps = pd.DataFrame(self.current_session.laps)
             logger.info(f"Extracted {len(laps)} laps.")
+
+            laps['extracted_at'] = datetime.now()
 
             return laps
         except Exception as e:
