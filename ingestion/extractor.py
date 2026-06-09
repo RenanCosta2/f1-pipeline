@@ -53,7 +53,7 @@ class FastF1Extractor:
             return schedule
         except Exception as e:
             logger.error(f"Error loading schedule for year {year}: {e}")
-            return None
+            raise
 
     def load_session(self, year: int, event: int, session: str):
         """
@@ -80,7 +80,7 @@ class FastF1Extractor:
             return self
         except Exception as e:
             logger.error(f"Error loading session: {e}")
-            return None
+            raise
 
     def extract_results(self) -> pd.DataFrame:
         """
@@ -107,9 +107,10 @@ class FastF1Extractor:
         except Exception as e:
             if not self.current_session:
                 logger.error("No session loaded. Use load_session() first.")
+                raise
             else:
                 logger.error(f"Error extracting results: {e}")
-                return None
+                raise
 
     def extract_laps(self) -> pd.DataFrame:
         """
@@ -130,6 +131,7 @@ class FastF1Extractor:
         except Exception as e:
             if not self.current_session:
                 logger.error("No session loaded. Use load_session() first.")
+                raise
             else:
                 logger.error(f"Error extracting laps: {e}")
-                return None
+                raise
