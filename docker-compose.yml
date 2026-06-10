@@ -79,6 +79,8 @@ x-airflow-common:
     - ./orchestration/logs:/opt/airflow/logs
     - ./orchestration/config:/opt/airflow/config
     - ./orchestration/plugins:/opt/airflow/plugins
+    # Acesso ao arquivo de comunicação do Docker
+    - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     &airflow-common-depends-on
