@@ -1,4 +1,3 @@
-# %%
 import fastf1
 import pandas as pd
 import logging
@@ -30,7 +29,7 @@ class FastF1Extractor:
         Initializes the FastF1Extractor with an empty active session.
         """
         self.current_session = None
-        logger.info("FastF1Extractor initialized!")
+        logger.info("FastF1Extractor initialized successfully!")
 
     def get_schedule(self, year: int) -> pd.DataFrame:
         """
