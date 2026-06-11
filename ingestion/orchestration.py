@@ -46,6 +46,7 @@ def main():
     schedule_key = f"schedule/{args.year}.parquet"
     if not s3_uploader.file_exists(schedule_key):
         schedule = f1_extractor.get_schedule(args.year)
+        schedule['year'] = args.year
         schedule_buffer = io.BytesIO()
         upload_obj(s3_uploader, schedule, schedule_buffer, schedule_key)
         postgres.load_data(schedule, 'schedule', 'bronze')
@@ -64,6 +65,8 @@ def main():
         
         if not results_exists:
             results = f1_extractor.extract_results()
+            results['year'] = args.year
+            results['gp'] = args.gp
             results['session'] = args.session
             results_buffer = io.BytesIO()
             upload_obj(s3_uploader, results, results_buffer, results_key)
@@ -71,6 +74,8 @@ def main():
             
         if not laps_exists:
             laps = f1_extractor.extract_laps()
+            laps['year'] = args.year
+            laps['gp'] = args.gp
             laps['session'] = args.session
             laps_buffer = io.BytesIO()
             upload_obj(s3_uploader, laps, laps_buffer, laps_key)
