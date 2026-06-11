@@ -6,6 +6,7 @@ from datetime import datetime
 
 from extractor import FastF1Extractor
 from storage import S3Uploader
+from database import PostgresLoader
 
 def upload_obj(s3_uploader, df, buffer, key):
 
@@ -31,6 +32,8 @@ def main():
 
     # Initializing extractor instance
     f1_extractor = FastF1Extractor()
+    # Initializing Postgres uploader instance
+    postgres = PostgresLoader(connection_url=os.getenv("POSTGRES_CONNECTION_URL"))
 
     # Defining parsing arguments
     parser = argparse.ArgumentParser(description='F1 Ingestion Pipeline')
@@ -45,6 +48,7 @@ def main():
         schedule = f1_extractor.get_schedule(args.year)
         schedule_buffer = io.BytesIO()
         upload_obj(s3_uploader, schedule, schedule_buffer, schedule_key)
+        postgres.load_data(schedule, 'schedule', 'bronze')
 
     # Defining S3 keys for results and laps
     results_key = f"results/{args.year}/{args.gp}/{args.session}.parquet"
@@ -63,12 +67,14 @@ def main():
             results['session'] = args.session
             results_buffer = io.BytesIO()
             upload_obj(s3_uploader, results, results_buffer, results_key)
+            postgres.load_data(results, 'results', 'bronze')
             
         if not laps_exists:
             laps = f1_extractor.extract_laps()
             laps['session'] = args.session
             laps_buffer = io.BytesIO()
             upload_obj(s3_uploader, laps, laps_buffer, laps_key)
+            postgres.load_data(laps, 'laps', 'bronze')
 
 if __name__ == "__main__":
     main()
