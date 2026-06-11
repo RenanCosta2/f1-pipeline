@@ -60,11 +60,13 @@ def main():
         
         if not results_exists:
             results = f1_extractor.extract_results()
+            results['session'] = args.session
             results_buffer = io.BytesIO()
             upload_obj(s3_uploader, results, results_buffer, results_key)
             
         if not laps_exists:
             laps = f1_extractor.extract_laps()
+            laps['session'] = args.session
             laps_buffer = io.BytesIO()
             upload_obj(s3_uploader, laps, laps_buffer, laps_key)
 
