@@ -1,3 +1,4 @@
+import os
 import fastf1
 import pandas as pd
 import logging
@@ -26,9 +27,19 @@ class FastF1Extractor:
 
     def __init__(self):
         """
-        Initializes the FastF1Extractor with an empty active session.
+        Initializes the FastF1Extractor with an empty active session and enables caching.
         """
         self.current_session = None
+        
+        # Configure FastF1 cache using environment variable
+        cache_dir = os.getenv("FASTF1_CACHE_DIR")
+        if cache_dir:
+            os.makedirs(cache_dir, exist_ok=True)
+            fastf1.enable_cache(cache_dir)
+            logger.info(f"FastF1 cache enabled at: {cache_dir}")
+        else:
+            logger.warning("FASTF1_CACHE_DIR not set. Telemetry downloads will not be cached!")
+
         logger.info("FastF1Extractor initialized successfully!")
 
     def get_schedule(self, year: int) -> pd.DataFrame:
