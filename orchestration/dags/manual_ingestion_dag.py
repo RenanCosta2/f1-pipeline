@@ -1,5 +1,4 @@
 import os
-import logging
 from datetime import datetime
 from airflow.sdk import dag, task, Param
 from airflow.providers.docker.operators.docker import DockerOperator
@@ -17,7 +16,7 @@ from docker.types import Mount
         'gp_start': Param(1, type='integer', minimum=1, maximum=24, description='GP start number'),
         'gp_end': Param(1, type='integer', minimum=1, maximum=24, description='GP end number'),
         'sessions': Param(
-            ['R'], 
+            ['FP1', 'FP2', 'FP3', 'SQ', 'S', 'Q', 'R'], 
             type='array', 
             uniqueItems=True,
             items={
