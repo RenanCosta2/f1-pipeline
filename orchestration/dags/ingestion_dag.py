@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
@@ -63,6 +63,7 @@ def pipeline_ingestion():
         "AWS_REGION": os.getenv("AWS_REGION"),
         "S3_ENDPOINT_URL": os.getenv("S3_ENDPOINT_URL"),
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
+        "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
 
     gps_to_ingest = get_missing_gps()
@@ -83,6 +84,9 @@ def pipeline_ingestion():
         network_mode="f1-pipeline_default",
         mounts=[fastf1_cache_mount],
         environment=env_vars,
+        retries=3,
+        retry_delay=timedelta(minutes=5),
+        execution_timeout=timedelta(minutes=15)
     ).expand(command=commands)
 
 

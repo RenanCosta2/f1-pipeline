@@ -48,6 +48,7 @@ def manual_ingestion():
         "AWS_REGION": os.getenv("AWS_REGION"),
         "S3_ENDPOINT_URL": os.getenv("S3_ENDPOINT_URL"),
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
+        "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
 
     command_to_run = build_command()
