@@ -1,5 +1,6 @@
 import os
 import fastf1
+from fastf1 import Cache
 import pandas as pd
 import logging
 from datetime import datetime
@@ -35,7 +36,7 @@ class FastF1Extractor:
         cache_dir = os.getenv("FASTF1_CACHE_DIR")
         if cache_dir:
             os.makedirs(cache_dir, exist_ok=True)
-            fastf1.enable_cache(cache_dir)
+            Cache.enable_cache(cache_dir)
             logger.info(f"FastF1 cache enabled at: {cache_dir}")
         else:
             logger.warning("FASTF1_CACHE_DIR not set. Telemetry downloads will not be cached!")
