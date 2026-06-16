@@ -40,6 +40,7 @@ def main():
     parser.add_argument('--year', type=int, default=datetime.now().year)
     parser.add_argument('--gp', type=int, default=1)
     parser.add_argument('--session', type=str, default='R')
+    parser.add_argument('--force', action='store_true', help='Force re-ingestion, overwriting existing files and database rows')
     args = parser.parse_args()
 
     # Extracting F1 schedule
@@ -55,11 +56,11 @@ def main():
     results_key = f"results/{args.year}/{args.gp}/{args.session}.parquet"
     laps_key = f"laps/{args.year}/{args.gp}/{args.session}.parquet"
 
-    # Checking if files exists in S3
-    results_exists = s3_uploader.file_exists(results_key)
-    laps_exists = s3_uploader.file_exists(laps_key)
+    # Checking if files exists in S3 (bypass if force is True)
+    results_exists = s3_uploader.file_exists(results_key) if not args.force else False
+    laps_exists = s3_uploader.file_exists(laps_key) if not args.force else False
 
-    # Load session if either file does not exist in S3
+    # Load session if either file does not exist in S3 or if force is enabled
     if not results_exists or not laps_exists:
         loaded_session = f1_extractor.load_session(args.year, args.gp, args.session)
         
@@ -68,6 +69,10 @@ def main():
             results['year'] = args.year
             results['gp'] = args.gp
             results['session'] = args.session
+            
+            if args.force:
+                postgres.delete_session('results', 'bronze', args.year, args.gp, args.session)
+                
             results_buffer = io.BytesIO()
             upload_obj(s3_uploader, results, results_buffer, results_key)
             postgres.load_data(results, 'results', 'bronze')
@@ -77,6 +82,10 @@ def main():
             laps['year'] = args.year
             laps['gp'] = args.gp
             laps['session'] = args.session
+            
+            if args.force:
+                postgres.delete_session('laps', 'bronze', args.year, args.gp, args.session)
+                
             laps_buffer = io.BytesIO()
             upload_obj(s3_uploader, laps, laps_buffer, laps_key)
             postgres.load_data(laps, 'laps', 'bronze')

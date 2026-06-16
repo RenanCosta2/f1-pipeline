@@ -36,6 +36,30 @@ class PostgresLoader:
             logger.error(f"Engine configuration initialization failed: {e}")
             raise
 
+    def delete_session(self, table_name: str, schema_name: str, year: int, gp: int, session: str):
+        """Deletes existing records for a specific year, GP, and session to prevent duplicates.
+
+        Args:
+            table_name (str): The target table name.
+            schema_name (str): The target schema name (e.g., 'bronze').
+            year (int): The season year.
+            gp (int): The round number of the GP.
+            session (str): The session identifier (e.g., 'R').
+        """
+        logger.info(f"Deleting existing records in {schema_name}.{table_name} for Year: {year}, GP: {gp}, Session: {session}")
+        
+        query = text(f"""
+            DELETE FROM {schema_name}.{table_name}
+            WHERE "year" = :year AND "gp" = :gp AND "session" = :session;
+        """)
+        
+        try:
+            with self.engine.begin() as conn:
+                conn.execute(query, {"year": year, "gp": gp, "session": session})
+            logger.info("Existing records deleted successfully.")
+        except Exception as e:
+            logger.warning(f"Could not delete existing records (table may not exist yet): {e}")
+
     def load_data(self, df: pd.DataFrame, table_name: str, schema_name: str):
         """Loads a pandas DataFrame into a specified PostgreSQL schema and table.
 
