@@ -13,9 +13,19 @@ from docker.types import Mount
     catchup=False,
     tags=['ingestion', 'f1', 'manual'],
     params={
-        'year': Param(2026, type='integer', description='Season year'),
-        'gp': Param(1, type='integer', description='GP number'),
-        'session': Param('R', type='string', description='GP session (FP1, FP2, FP3, SQ, S, Q, R)'),
+        'year': Param(2026, type='integer', minimum=1950, maximum=2100, description='Season year'),
+        'gp_start': Param(1, type='integer', minimum=1, maximum=24, description='GP start number'),
+        'gp_end': Param(1, type='integer', minimum=1, maximum=24, description='GP end number'),
+        'sessions': Param(
+            ['R'], 
+            type='array', 
+            uniqueItems=True,
+            items={
+                'type': 'string',
+                'enum': ['FP1', 'FP2', 'FP3', 'SQ', 'S', 'Q', 'R']
+            },
+            description='GP sessions (FP1, FP2, FP3, SQ, S, Q, R)'
+            ),
         'force': Param(True, type='boolean', description='Force re-ingestion and overwrite existing S3 files and DB rows'),
     }
 )
@@ -26,14 +36,20 @@ def manual_ingestion():
     def build_command(params=None):
         # Build the command with parameters
         year = params['year']
-        gp = params['gp']
-        session = params['session']
+        gp_start = params['gp_start']
+        gp_end = params['gp_end']
+        sessions = params['sessions']
         force = params['force']
         
-        command = f'python ingestion/orchestration.py --year {year} --gp {gp} --session {session}'
-        if force:
-            command += ' --force'
-        return command
+        commands = []
+        for gp in range(gp_start, gp_end + 1):
+            for session in sessions:
+                cmd = f"python ingestion/orchestration.py --year {year} --gp {gp} --session {session}"
+                if force:
+                    cmd += " --force"
+                commands.append(cmd)
+        
+        return commands
 
 # Cache volume mapping
     fastf1_cache_mount = Mount(
@@ -51,19 +67,18 @@ def manual_ingestion():
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
 
-    command_to_run = build_command()
+    commands_to_run = build_command()
 
-    DockerOperator(
+    DockerOperator.partial(
         task_id='f1_manual_ingestion',
         map_index_template="f1_manual_ingestion_{{ task.command.split('python ingestion/orchestration.py ')[1].replace(' ', '_').replace('--', '') }}",
         image="f1-pipeline-ingestion:latest",
-        command=command_to_run,
         auto_remove="success",
         mount_tmp_dir=False,
         docker_url="unix://var/run/docker.sock",
         network_mode="f1-pipeline_default",
         mounts=[fastf1_cache_mount],
         environment=env_vars,
-    )
+    ).expand(command=commands_to_run)
 
 manual_ingestion()
