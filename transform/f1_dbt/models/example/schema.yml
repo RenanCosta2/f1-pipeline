@@ -1,21 +1,260 @@
-
 version: 2
 
-models:
-  - name: my_first_dbt_model
-    description: "A starter dbt model"
-    columns:
-      - name: id
-        description: "The primary key for this table"
-        data_tests:
-          - unique
-          - not_null
+sources:
+  - name: bronze
+    schema: bronze
+    description: "Raw F1 Data ingested from FastF1 API"
+    tables:
+      - name: schedule
+        description: "F1 Schedules"
+        columns: 
+          - name: '"RoundNumber"'
+            description: "Grand Prix number"
+            data_tests:
+              - not_null
+          - name: '"Country"'
+            description: "Country name of the Grand Prix event"
+            data_tests:
+              - not_null
+          - name: '"Location"'
+            description: "City name of the Grand Prix event"
+            data_tests:
+              - not_null
+          - name: '"OfficialEventName"'
+            description: "Official name of the Grand Prix event"
+            data_tests:
+              - not_null
+          - name: '"EventDate"'
+            description: "Date of the Grand Prix event"
+            data_tests:
+              - not_null
+          - name: '"EventName"'
+            description: "Name of the Grand Prix event"
+            data_tests:
+              - not_null
+          - name: '"EventFormat"'
+            description: "Format of the Grand Prix event (testing, conventional, sprint_qualifying)"
+            data_tests:
+              - not_null
+          - name: '"Session1"'
+            description: "First session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session1Date"'
+            description: "Date of the first session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session1DateUtc"'
+            description: "Date of the first session of the Grand Prix (UTC Format)"
+            data_tests:
+              - not_null
+          - name: '"Session2"'
+            description: "Second session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session2Date"'
+            description: "Date of the second session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session2DateUtc"'
+            description: "Date of the second session of the Grand Prix (UTC Format)"
+            data_tests:
+              - not_null
+          - name: '"Session3"'
+            description: "Third session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session3Date"'
+            description: "Date of the third session of the Grand Prix"
+            data_tests:
+              - not_null
+          - name: '"Session3DateUtc"'
+            description: "Date of the third session of the Grand Prix (UTC Format)"
+            data_tests:
+              - not_null
+          - name: '"Session4"'
+            description: "Fourth session of the Grand Prix"
+          - name: '"Session4Date"'
+            description: "Date of the fourth session of the Grand Prix"
+          - name: '"Session4DateUtc"'
+            description: "Date of the fourth session of the Grand Prix (UTC Format)"
+          - name: '"Session5"'
+            description: "Fifth session of the Grand Prix"
+          - name: '"Session5Date"'
+            description: "Date of the fifth session of the Grand Prix"
+          - name: '"Session5DateUtc"'
+            description: "Date of the fifth session of the Grand Prix (UTC Format)"
+          - name: '"F1ApiSupport"'
+            description: "Denotes whether this session is supported by the official F1 API"
+            data_tests:
+              - not_null
+          - name: '"extracted_at"'
+            description: "Data extraction date"
+            data_tests:
+              - not_null
+          - name: '"year"'
+            description: "Schedule year"
+            data_tests:
+              - not_null
 
-  - name: my_second_dbt_model
-    description: "A starter dbt model"
-    columns:
-      - name: id
-        description: "The primary key for this table"
-        data_tests:
-          - unique
-          - not_null
+      - name: results
+        description: "Driver results for all Formula 1 sessions" 
+        columns:
+          - name: '"DriverNumber"'
+            description: "Driver number used during the session"
+            data_tests:
+              - not_null
+          - name: '"BroadcastName"'
+            description: "Driver name on the broadcast (e.g. 'M VERSTAPPEN')"
+            data_tests:
+              - not_null
+          - name: '"Abbreviation"'
+            description: "Driver's name abbreviation (e.g. 'VER')"
+            data_tests:
+              - not_null
+          - name: '"DriverId"'
+            description: "Driver identifier"
+            data_tests:
+              - not_null
+          - name: '"TeamName"'
+            description: "Name of the Formula 1 Team driven by the driver during the session"
+            data_tests:
+              - not_null
+          - name: '"TeamColor"'
+            description: "Color of the Formula 1 Team driven by the driver during the session"
+            data_tests:
+              - not_null
+          - name: '"TeamId"'
+            description: "Identifier of the Formula 1 Team driven by the driver during the session"
+            data_tests:
+              - not_null
+          - name: '"FirstName"'
+            description: "Driver's first name"
+            data_tests:
+              - not_null
+          - name: '"LastName"'
+            description: "Driver's last name"
+            data_tests:
+              - not_null
+          - name: '"FullName"'
+            description: "Driver's full name (e.g. 'Max Verstappen')"
+            data_tests:
+              - not_null
+          - name: '"HeadshotUrl"'
+            description: "Driver headshot URL"
+          - name: '"CountryCode"'
+            description: "Country code of the driver's nationality (e.g. 'FRA')"
+            data_tests:
+              - not_null
+          - name: '"Position"'
+            description: "Driver's position at the end of the session (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying'). This additionally accounts for post-race penalties and disqualifications"
+          - name: '"ClassifiedPosition"'
+            description: "The official classification result for each driver. This is either an integer value if the driver is officially classified or one of 'R' (retired), 'D' (disqualified), 'E' (excluded), 'W' (withdrawn), 'F' (failed to qualify) or 'N' (not classified)"
+          - name: '"GridPosition"'
+            description: "Driver's position at the start of the session (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying')"
+          - name: '"Q1"'
+            description: "The driver's best Q1 time (valid values only in qualifying sessions)"
+          - name: '"Q2"'
+            description: "The driver's best Q2 time (valid values only in qualifying sessions)"
+          - name: '"Q3"'
+            description: "The driver's best Q3 time (valid values only in qualifying sessions)"
+          - name: '"Time"'
+            description: "The driver's total race time (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying' and the driver was not more than one lap behind the leader)"
+          - name: '"Status"'
+            description: "A status message to indicate if and how the driver finished the race or to indicate the cause of a DNF. Possible values include but are not limited to 'Finished', '+ 1 Lap', 'Crash', 'Gearbox', …"
+          - name: '"Points"'
+            description: "Points received by the driver for the finishing result"
+          - name: '"Laps"'
+            description: "The number of laps driven by the driver"
+
+      - name: laps
+        description: "Lap-by-lap data for each driver in every session"
+        columns:
+          - name: '"Time"'
+            description: "Session time when the lap was completed"
+            data_tests:
+              - not_null
+          - name: '"Driver"'
+            description: "Driver's name abbreviation (e.g. 'VER')"
+            data_tests:
+              - not_null
+          - name: '"DriverNumber"'
+            description: "Driver number used during the session"
+            data_tests:
+              - not_null
+          - name: '"LapTime"'
+            description: "Total lap time"
+          - name: '"LapNumber"'
+            description: "Lap number in the session"
+            data_tests:
+              - not_null
+          - name: '"Stint"'
+            description: "Stint in which each lap was completed (1, 2, 3, etc.)"
+            data_tests:
+              - not_null
+          - name: '"PitOutTime"'
+            description: "Session time when the car left the pit lane"
+          - name: '"PitInTime"'
+            description: "Session time when the car entered the pit lane"
+          - name: '"Sector1Time"'
+            description: "Lap Sector 1 time"
+          - name: '"Sector2Time"'
+            description: "Lap Sector 2 time"
+          - name: '"Sector3Time"'
+            description: "Lap Sector 3 time"
+          - name: '"Sector1SessionTime"'
+            description: "Session time when Sector 1 was completed"
+          - name: '"Sector2SessionTime"'
+            description: "Session time when Sector 2 was completed"
+          - name: '"Sector3SessionTime"'
+            description: "Session time when Sector 3 was completed"
+          - name: '"SpeedI1"'
+            description: "Speed at intermediate point 1 (km/h)"
+          - name: '"SpeedI2"'
+            description: "Speed at intermediate point 2 (km/h)"
+          - name: '"SpeedFL"'
+            description: "Speed at finish line (km/h)"
+          - name: '"SpeedST"'
+            description: "Speed at speed trap (km/h)"
+          - name: '"IsPersonalBest"'
+            description: "Whether this lap is the driver's personal best of the session"
+          - name: '"Compound"'
+            description: "Tire compound: 'SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'"
+            data_tests:
+              - not_null
+          - name: '"TyreLife"'
+            description: "Number of laps completed on this set of tires"
+            data_tests:
+              - not_null
+          - name: '"FreshTyre"'
+            description: "Whether the tires are new"
+            data_tests:
+              - not_null
+          - name: '"Team"'
+            description: "Name of the Formula 1 Team driven by the driver during the session"
+            data_tests:
+              - not_null
+          - name: '"LapStartTime"'
+            description: "Session time when the lap started"
+            data_tests:
+              - not_null
+          - name: '"TrackStatus"'
+            description: "Track status codes during the lap (e.g., '1' = green, '4' = yellow, '5' = red)"
+            data_tests:
+              - not_null
+          - name: '"Position"'
+            description: "Race position (for race/sprint sessions)"
+          - name: '"Deleted"'
+            description: "Whether the lap time was deleted (track limits, etc.)"
+            data_tests:
+              - not_null
+          - name: '"DeletedReason"'
+            description: "Reason the lap was deleted"
+          - name: '"FastF1Generated"'
+            description: "Whether FastF1 generated this lap (e.g., for crashes)"
+            data_tests:
+              - not_null
+          - name: '"IsAccurate"'
+            description: "Whether the lap timing is considered accurate"
+            data_tests:
+              - not_null
