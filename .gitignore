@@ -53,15 +53,16 @@ pip-delete-this-directory.txt
 # 3. dbt (Data Build Tool - Transformação)
 # ------------------------------------------
 # Pastas de build e compilação do dbt
-/target/
-/dbt_packages/
-/dbt_modules/
+transform/f1_dbt/target/
+transform/f1_dbt/dbt_packages/
+transform/f1_dbt/dbt_modules/
 
 # Logs de execução do dbt
-/logs/
+transform/f1_dbt/logs/
 
-# Configuração local do dbt (se criado na raiz do projeto em vez do ~/.dbt/)
+# Configuração local do dbt e arquivos de usuário do dbt
 profiles.yml
+.user.yml
 
 # ------------------------------------------
 # 4. Docker
