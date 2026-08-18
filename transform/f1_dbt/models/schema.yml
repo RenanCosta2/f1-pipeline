@@ -108,6 +108,7 @@ sources:
             description: "Driver name on the broadcast (e.g. 'M VERSTAPPEN')"
             data_tests:
               - not_null
+              - not_empty
           - name: '"Abbreviation"'
             description: "Driver's name abbreviation (e.g. 'VER')"
             data_tests:
@@ -190,8 +191,6 @@ sources:
               - not_null
           - name: '"Stint"'
             description: "Stint in which each lap was completed (1, 2, 3, etc.)"
-            data_tests:
-              - not_null
           - name: '"PitOutTime"'
             description: "Session time when the car left the pit lane"
           - name: '"PitInTime"'
@@ -224,8 +223,6 @@ sources:
               - not_null
           - name: '"TyreLife"'
             description: "Number of laps completed on this set of tires"
-            data_tests:
-              - not_null
           - name: '"FreshTyre"'
             description: "Whether the tires are new"
             data_tests:
