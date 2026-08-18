@@ -90,11 +90,11 @@ x-airflow-common:
 
 services:
   ingestion:
+    profiles: [tools]
     build: ./ingestion
     container_name: f1-ingestion
     ports:
       - "8888:8888"
-    command: tail -f /dev/null
     volumes:
       # Volume persistente para evitar baixar dados da F1 repetidamente
       - fastf1_cache:/app/cache
@@ -114,15 +114,15 @@ services:
       - TZ=America/Sao_Paulo
 
   dbt:
+    profiles: [tools]
     build: ./transform
     container_name: f1-dbt
-    entrypoint: ""
+    working_dir: /usr/app/dbt/f1_dbt
     volumes:
       - ./transform:/usr/app/dbt
     environment:
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - TZ=America/Sao_Paulo
-    command: tail -f /dev/null
 
   postgres:
     image: postgres:16
