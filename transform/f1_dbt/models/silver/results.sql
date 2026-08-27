@@ -75,7 +75,7 @@ typed_data AS (
         session_type::VARCHAR(3),
         driver_number::INT,
         broadcast_name::VARCHAR,
-        driver_abbreviation,
+        driver_abbreviation::VARCHAR(3),
         driver_id::VARCHAR,
         team_name::VARCHAR,
         team_color::VARCHAR,
