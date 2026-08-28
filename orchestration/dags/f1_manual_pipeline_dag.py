@@ -1,16 +1,16 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from airflow.sdk import dag, task, Param
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from docker.types import Mount
 
 @dag(
-    dag_id='f1_manual_ingestion_dag',
+    dag_id='f1_manual_pipeline_dag',
     start_date=datetime(2026, 1, 1),
     schedule=None,
     catchup=False,
-    tags=['ingestion', 'f1', 'manual'],
+    tags=['ingestion', 'f1', 'manual', 'dbt'],
     params={
         'year': Param(2026, type='integer', minimum=1950, maximum=2100, description='Season year'),
         'gp_start': Param(1, type='integer', minimum=1, maximum=24, description='GP start number'),
@@ -68,7 +68,7 @@ def manual_ingestion():
 
     commands_to_run = build_command()
 
-    DockerOperator.partial(
+    ingestion = DockerOperator.partial(
         task_id='f1_manual_ingestion',
         map_index_template="f1_manual_ingestion_{{ task.command.split('python ingestion/orchestration.py ')[1].replace(' ', '_').replace('--', '') }}",
         image="f1-pipeline-ingestion:latest",
@@ -78,6 +78,24 @@ def manual_ingestion():
         network_mode="f1-pipeline_default",
         mounts=[fastf1_cache_mount],
         environment=env_vars,
+        retries=3,
+        retry_delay=timedelta(minutes=5),
+        execution_timeout=timedelta(minutes=15)
     ).expand(command=commands_to_run)
+
+    # Running the dbt transformations
+    dbt_run = DockerOperator(
+        task_id="f1_dbt",
+        image="f1-pipeline-dbt:latest",
+        command="run --project-dir /usr/app/dbt/f1_dbt",
+        auto_remove="success",
+        docker_url="unix://var/run/docker.sock",
+        mount_tmp_dir=False,
+        network_mode="f1-pipeline_default",
+        retries=3,
+        retry_delay=timedelta(minutes=5),
+    )
+
+    ingestion >> dbt_run
 
 manual_ingestion()

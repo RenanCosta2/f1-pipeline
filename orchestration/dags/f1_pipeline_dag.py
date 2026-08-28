@@ -11,16 +11,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
-logger = logging.getLogger("f1_pipeline.ingestion")
+logger = logging.getLogger("f1_pipeline")
 
 @dag(
-    dag_id="f1_ingestion_dag",
+    dag_id="f1_pipeline_dag",
     start_date=datetime(2026, 1, 1),
     schedule="@daily",
     catchup=False,
-    tags=["ingestion", "f1"],
+    tags=["ingestion", "f1", "dbt"],
 )
-def pipeline_ingestion():
+def f1_pipeline_dag():
 
     @task
     def get_missing_gps(logical_date=None):
@@ -73,8 +73,8 @@ def pipeline_ingestion():
         lambda x: f"python ingestion/orchestration.py --year {x['year']} --gp {x['gp']} --session {x['session']}"
     )
 
-    # Running the pipeline for each GP
-    DockerOperator.partial(
+    # Running the ingestion for each GP
+    ingestion = DockerOperator.partial(
         task_id="f1_ingestion",
         map_index_template="f1_ingestion_{{ task.command.split('python ingestion/orchestration.py ')[1].replace(' ', '_').replace('--', '') }}",
         image="f1-pipeline-ingestion:latest",
@@ -89,5 +89,19 @@ def pipeline_ingestion():
         execution_timeout=timedelta(minutes=15)
     ).expand(command=commands)
 
+    # Running the dbt transformations
+    dbt_run = DockerOperator(
+        task_id="f1_dbt",
+        image="f1-pipeline-dbt:latest",
+        command="run --project-dir /usr/app/dbt/f1_dbt",
+        auto_remove="success",
+        docker_url="unix://var/run/docker.sock",
+        mount_tmp_dir=False,
+        network_mode="f1-pipeline_default",
+        retries=3,
+        retry_delay=timedelta(minutes=5),
+    )
 
-pipeline_ingestion()
+    ingestion >> dbt_run
+
+f1_pipeline_dag()

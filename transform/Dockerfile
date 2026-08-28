@@ -19,4 +19,6 @@ ENV DBT_PROFILES_DIR=/usr/app/dbt/
 RUN python -m pip install --upgrade pip setuptools wheel --no-cache-dir \
     && python -m pip install --no-cache-dir dbt-core dbt-postgres
 
+COPY . .
+
 ENTRYPOINT ["dbt"]
