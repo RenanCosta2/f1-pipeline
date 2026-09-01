@@ -35,13 +35,17 @@ renamed_columns AS (
         source
 ),
 
-cleaning_null_data AS (
+cleaning_data AS (
     SELECT
         year,
         round_number,
         country,
         location,
-        official_event_name,
+        REGEXP_REPLACE(
+            official_event_name,
+            '\s+\d{4}$',
+            ''
+        ) AS official_event_name,
         event_date,
         event_name,
         event_format,
@@ -99,7 +103,7 @@ typed_data AS (
         f1_api_support::BOOLEAN,
         extracted_at::TIMESTAMP
     FROM
-        cleaning_null_data  
+        cleaning_data  
 )
 
 SELECT * FROM typed_data
