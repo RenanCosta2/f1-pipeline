@@ -113,6 +113,20 @@ enriched_driver_id AS (
         normalized_driver_name
 ),
 
+enriched_team_id AS (
+    SELECT
+        *,
+        COALESCE(
+            FIRST_VALUE(team_id) OVER (
+                PARTITION BY team_name
+                ORDER BY (team_id IS NULL), season_year DESC, extracted_at DESC
+            ), 
+            LOWER(REGEXP_REPLACE(team_name, '\s+', '_', 'g'))
+        ) AS final_team_id
+    FROM
+        enriched_driver_id
+),
+
 standardized_data AS (
     SELECT
         season_year,
@@ -122,9 +136,18 @@ standardized_data AS (
         broadcast_name,
         driver_abbreviation,
         final_driver_id AS driver_id,
-        team_name,
-        team_color,
-        team_id,
+
+        FIRST_VALUE(team_name) OVER (
+            PARTITION BY final_team_id
+            ORDER BY (team_name IS NULL), season_year DESC, extracted_at DESC
+        ) AS team_name,
+        
+        FIRST_VALUE(team_color) OVER (
+            PARTITION BY final_team_id
+            ORDER BY (team_color IS NULL), season_year DESC, extracted_at DESC
+        ) AS team_color,
+
+        final_team_id AS team_id,
 
         FIRST_VALUE(driver_first_name) OVER (
             PARTITION BY final_driver_id
@@ -163,7 +186,7 @@ standardized_data AS (
         laps_completed,
         extracted_at
     FROM 
-        enriched_driver_id
+        enriched_team_id
 ),
 
 typed_data AS (
