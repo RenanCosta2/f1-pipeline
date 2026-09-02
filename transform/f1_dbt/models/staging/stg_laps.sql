@@ -46,7 +46,7 @@ renamed_columns AS (
         source
 ),
 
-cleaning_null_data AS (
+cleaning_data AS (
     SELECT
         season_year,
         round_number,
@@ -92,20 +92,20 @@ typed_data AS (
         season_year::INT,
         round_number::INT,
         session_type::VARCHAR(3),
-        session_time::BIGINT,
+        ROUND((session_time / 1000000000.0)::NUMERIC, 3) AS session_time_seconds,
         driver::VARCHAR(3),
         driver_number::INT,
-        lap_time::BIGINT,
+        ROUND((lap_time / 1000000000.0)::NUMERIC, 3) AS lap_time_seconds,
         lap_number::INT,
         stint::INT,
-        pit_out_time::BIGINT,
-        pit_in_time::BIGINT,
-        sector_1_time::BIGINT,
-        sector_2_time::BIGINT,
-        sector_3_time::BIGINT,
-        sector_1_session_time::BIGINT,
-        sector_2_session_time::BIGINT,
-        sector_3_session_time::BIGINT,
+        ROUND((pit_out_time / 1000000000.0)::NUMERIC, 3) AS pit_out_time_seconds,
+        ROUND((pit_in_time / 1000000000.0)::NUMERIC, 3) AS pit_in_time_seconds,
+        ROUND((sector_1_time / 1000000000.0)::NUMERIC, 3) AS sector_1_time_seconds,
+        ROUND((sector_2_time / 1000000000.0)::NUMERIC, 3) AS sector_2_time_seconds,
+        ROUND((sector_3_time / 1000000000.0)::NUMERIC, 3) AS sector_3_time_seconds,
+        ROUND((sector_1_session_time / 1000000000.0)::NUMERIC, 3) AS sector_1_session_time_seconds,
+        ROUND((sector_2_session_time / 1000000000.0)::NUMERIC, 3) AS sector_2_session_time_seconds,
+        ROUND((sector_3_session_time / 1000000000.0)::NUMERIC, 3) AS sector_3_session_time_seconds,
         speed_int_p1::DOUBLE PRECISION,
         speed_int_p2::DOUBLE PRECISION,
         speed_finish_line::DOUBLE PRECISION,
@@ -115,7 +115,7 @@ typed_data AS (
         tyre_life::INT,
         fresh_tyre::BOOLEAN,
         team::VARCHAR,
-        lap_start_time::BIGINT,
+        ROUND((lap_start_time / 1000000000.0)::NUMERIC, 3) AS lap_start_time_seconds,
         lap_start_datetime::TIMESTAMP,
         track_status::VARCHAR,
         position::INT,
@@ -125,7 +125,7 @@ typed_data AS (
         is_accurate::BOOLEAN,
         extracted_at::TIMESTAMP
     from
-        cleaning_null_data
+        cleaning_data
 )
 
 SELECT * FROM typed_data
