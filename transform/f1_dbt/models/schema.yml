@@ -150,9 +150,9 @@ sources:
           - name: '"Position"'
             description: "Driver's position at the end of the session (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying'). This additionally accounts for post-race penalties and disqualifications"
           - name: '"ClassifiedPosition"'
-            description: "The official classification result for each driver. This is either an integer value if the driver is officially classified or one of 'R' (retired), 'D' (disqualified), 'E' (excluded), 'W' (withdrawn), 'F' (failed to qualify) or 'N' (not classified)"
+            description: "The official classification result for each driver (values only given if session is 'Race' or 'Sprint'). This is either an integer value if the driver is officially classified or one of 'R' (retired), 'D' (disqualified), 'E' (excluded), 'W' (withdrawn), 'F' (failed to qualify) or 'N' (not classified)"
           - name: '"GridPosition"'
-            description: "Driver's position at the start of the session (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying')"
+            description: "Driver's position at the start of the session (values only given if session is 'Race' or 'Sprint')"
           - name: '"Q1"'
             description: "The driver's best Q1 time (valid values only in qualifying sessions)"
           - name: '"Q2"'
