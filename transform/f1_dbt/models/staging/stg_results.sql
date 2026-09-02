@@ -60,7 +60,7 @@ cleaning_data AS (
         {{ clean_null_string('driver_headshot_url') }},
         {{ clean_null_string('driver_nationality') }},
         finishing_position,
-        classified_position,
+        {{ clean_null_string('classified_position') }},
         grid_position,
         {{ clean_null_time('q1_time') }},
         {{ clean_null_time('q2_time') }},
@@ -176,6 +176,17 @@ standardized_data AS (
         
         finishing_position,
         classified_position,
+
+        CASE
+            WHEN classified_position ~ '^[0-9]+$' THEN 'Classified'
+            WHEN classified_position = 'R' THEN 'Retired'
+            WHEN classified_position = 'D' THEN 'Diqualified'
+            WHEN classified_position = 'E' THEN 'Exluded'
+            WHEN classified_position = 'W' THEN 'Withdrawn'
+            WHEN classified_position = 'F' THEN 'Failed to Qualify'
+            WHEN classified_position = 'N' THEN 'Not Classified'
+        END AS classification_status,
+
         grid_position,
         q1_time,
         q2_time,
@@ -208,6 +219,7 @@ typed_data AS (
         driver_nationality::VARCHAR,
         finishing_position::INT,
         classified_position::VARCHAR,
+        classification_status::VARCHAR,
         grid_position::INT,
         q1_time::BIGINT,
         q2_time::BIGINT,
