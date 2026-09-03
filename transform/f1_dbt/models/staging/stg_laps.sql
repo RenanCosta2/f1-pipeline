@@ -77,6 +77,27 @@ cleaning_data AS (
         {{ clean_null_time('lap_start_time') }},
         lap_start_datetime,
         track_status,
+        (track_status = '1') AS is_all_track_clear,
+        (track_status LIKE '%1%') AS is_track_clear,
+        (track_status LIKE '%2%') AS has_yellow_flag,
+        (track_status LIKE '%4%') AS has_safety_car,
+        (track_status LIKE '%5%') AS has_red_flag,
+        (track_status LIKE '%6%' OR track_status LIKE '%7%') AS has_vsc,
+         (
+            SELECT STRING_AGG(
+                CASE digit
+                    WHEN '1' THEN 'Track Clear'
+                    WHEN '2' THEN 'Yellow Flag'
+                    WHEN '4' THEN 'Safety Car'
+                    WHEN '5' THEN 'Red Flag'
+                    WHEN '6' THEN 'VSC Deployed'
+                    WHEN '7' THEN 'VSC Ending'
+                    ELSE digit
+                END,
+                ', '
+            )
+            FROM REGEXP_SPLIT_TO_TABLE(track_status, '') AS digit
+        ) AS track_status_description,
         position,
         deleted,
         {{ clean_null_string('deleted_reason') }},
@@ -118,6 +139,13 @@ typed_data AS (
         ROUND((lap_start_time / 1000000000.0)::NUMERIC, 3) AS lap_start_time_seconds,
         lap_start_datetime::TIMESTAMP,
         track_status::VARCHAR,
+        is_all_track_clear::BOOLEAN,
+        is_track_clear::BOOLEAN,
+        has_yellow_flag::BOOLEAN,
+        has_safety_car::BOOLEAN,
+        has_red_flag::BOOLEAN,
+        has_vsc::BOOLEAN,
+        track_status_description::VARCHAR,
         position::INT,
         deleted::BOOLEAN,
         deleted_reason::VARCHAR,

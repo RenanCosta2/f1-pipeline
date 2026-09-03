@@ -236,7 +236,16 @@ sources:
             data_tests:
               - not_null
           - name: '"TrackStatus"'
-            description: "Track status codes during the lap (e.g., '1' = green, '4' = yellow, '5' = red)"
+            description: |
+              Track status codes during the lap (FastF1):
+              - **'1'**: Track clear (All clear)
+              - **'2'**: Yellow flag
+              - **'4'**: Safety Car
+              - **'5'**: Red Flag
+              - **'6'**: Virtual Safety Car deployed
+              - **'7'**: Virtual Safety Car ending
+              
+              *Note: Multiple events can occur in the same lap (e.g. '24' to Yellow Flag + Safety Car).*
             data_tests:
               - not_null
           - name: '"Position"'
