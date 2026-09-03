@@ -4,15 +4,19 @@ WITH source AS (
     SELECT * FROM {{ source('bronze', 'schedule') }}
 ),
 
+circuit_overrides AS (
+    SELECT * FROM {{ ref('circuit_overrides') }}
+),
+
 renamed_columns AS (
     SELECT
         year,
         "RoundNumber" AS round_number,
-        "Country" AS country,
-        "Location" AS location,
+        COALESCE(overrides.canonical_country, "Country") AS country,
+        COALESCE(overrides.canonical_location, "Location") AS location,
         "OfficialEventName" AS official_event_name,
         "EventDate" AS event_date,
-        "EventName" AS event_name,
+        COALESCE(overrides.canonical_event_name, "EventName") AS event_name,
         "EventFormat" AS event_format,
         "Session1" AS session_1,
         "Session1Date" AS session_1_date,
@@ -33,6 +37,9 @@ renamed_columns AS (
         extracted_at
     FROM
         source
+    LEFT JOIN circuit_overrides AS overrides
+        ON  source."Country"  = overrides.raw_country
+        AND source."Location" = overrides.raw_location
 ),
 
 cleaning_data AS (
