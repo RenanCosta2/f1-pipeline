@@ -91,38 +91,92 @@ normalized_driver_name AS (
         cleaning_data
 ),
 
-enriched_driver_id AS (
-    SELECT
-        *,
+resolved_driver_ids AS (
+
+    SELECT DISTINCT
+        season_year,
+        driver_abbreviation,
+
         COALESCE(
+
             FIRST_VALUE(driver_id) OVER (
                 PARTITION BY clean_full_name
-                ORDER BY (driver_id IS NULL), season_year DESC, extracted_at DESC
+                ORDER BY
+                    (driver_id IS NULL),
+                    season_year DESC,
+                    extracted_at DESC
             ),
-            CASE 
-                WHEN clean_full_name = FIRST_VALUE(clean_full_name) OVER (
-                    PARTITION BY clean_last_name 
-                    ORDER BY season_year ASC, extracted_at ASC
+
+            CASE
+                WHEN MIN(clean_full_name) OVER (
+                    PARTITION BY clean_last_name
+                ) = MAX(clean_full_name) OVER (
+                    PARTITION BY clean_last_name
                 )
-                THEN LOWER(REGEXP_REPLACE(clean_last_name, '\s+', '_', 'g'))
-                
-                ELSE LOWER(REGEXP_REPLACE(clean_full_name, '\s+', '_', 'g'))
+                THEN LOWER(
+                    REGEXP_REPLACE(
+                        clean_last_name,
+                        '\s+',
+                        '_',
+                        'g'
+                    )
+                )
+
+                ELSE LOWER(
+                    REGEXP_REPLACE(
+                        clean_full_name,
+                        '\s+',
+                        '_',
+                        'g'
+                    )
+                )
             END
-        ) AS final_driver_id
-    FROM
+
+        ) AS resolved_driver_id
+
+    FROM 
         normalized_driver_name
+    WHERE 
+        clean_full_name IS NOT NULL
+
+),
+
+enriched_driver_id AS (
+
+    SELECT
+        drivers.*,
+
+        COALESCE(
+            drivers.driver_id,
+            resolved.resolved_driver_id
+        ) AS final_driver_id
+
+    FROM normalized_driver_name AS drivers
+    LEFT JOIN 
+        resolved_driver_ids AS resolved
+        ON drivers.season_year = resolved.season_year
+        AND drivers.driver_abbreviation = resolved.driver_abbreviation
+
 ),
 
 enriched_team_id AS (
     SELECT
         *,
-        COALESCE(
-            FIRST_VALUE(team_id) OVER (
-                PARTITION BY team_name
-                ORDER BY (team_id IS NULL), season_year DESC, extracted_at DESC
-            ), 
-            LOWER(REGEXP_REPLACE(team_name, '\s+', '_', 'g'))
-        ) AS final_team_id
+        
+        CASE 
+            WHEN team_id IS NULL AND team_name IS NULL THEN NULL
+        ELSE
+            COALESCE(
+                team_id,
+
+                FIRST_VALUE(team_id) OVER (
+                    PARTITION BY team_name
+                    ORDER BY (team_id IS NULL), season_year DESC, extracted_at DESC
+                ), 
+
+                LOWER(REGEXP_REPLACE(team_name, '\s+', '_', 'g'))
+            ) 
+        END AS final_team_id
     FROM
         enriched_driver_id
 ),
