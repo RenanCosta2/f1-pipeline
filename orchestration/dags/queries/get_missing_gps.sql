@@ -25,7 +25,7 @@ gp_sessions_formated AS (
             WHEN session = 'Practice 1' THEN 'FP1'
             WHEN session = 'Practice 2' THEN 'FP2'
             WHEN session = 'Practice 3' THEN 'FP3'
-            WHEN session = 'Sprint Qualifying' THEN 'SQ'
+            WHEN session IN ('Sprint Qualifying', 'Sprint Shootout') THEN 'SQ'
             WHEN session = 'Sprint' THEN 'S'
             WHEN session = 'Qualifying' THEN 'Q'
             WHEN session = 'Race' THEN 'R'
