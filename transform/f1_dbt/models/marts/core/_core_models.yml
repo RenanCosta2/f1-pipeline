@@ -1,0 +1,401 @@
+version: 2
+
+models:
+  - name: dim_circuits
+    description: "Circuit dimension containing standardized circuit metadata and geographical details"
+    columns:
+      - name: circuit_sk
+        description: "Surrogate primary key for the circuit"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: country
+        description: "Country name of the Grand Prix event"
+        data_tests:
+          - not_null
+
+      - name: location
+        description: "City name of the Grand Prix event"
+        data_tests:
+          - not_null
+
+      - name: event_name
+        description: "Name of the Grand Prix event"
+        data_tests:
+          - not_null
+
+
+  - name: dim_schedule
+    description: "Grand Prix schedule dimension containing event level information"
+    columns:
+      - name: event_sk
+        description: "Surrogate primary key for the Grand Prix event"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: year
+        description: "Schedule year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix number in the season"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official name of the Grand Prix event"
+        data_tests:
+          - not_null
+
+      - name: circuit_sk
+        description: "Foreign key reference to dim_circuits"
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_circuits')
+              field: circuit_sk
+
+      - name: event_date
+        description: "Date of the Grand Prix event"
+        data_tests:
+          - not_null
+
+      - name: event_format
+        description: "Format of the Grand Prix event (testing, conventional, sprint_qualifying)"
+        data_tests:
+          - not_null
+
+
+  - name: dim_sessions
+    description: "Session dimension containing individual session dates, names, and types for every Grand Prix"
+    columns:
+      - name: session_sk
+        description: "Surrogate primary key for the specific session"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: event_sk
+        description: "Foreign key reference to dim_schedule"
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_schedule')
+              field: event_sk
+
+      - name: session_number
+        description: "Session sequence number (1 to 5) in the event weekend"
+        data_tests:
+          - not_null
+
+      - name: session_name
+        description: "Session name (e.g. Practice 1, Qualifying, Sprint, Race)"
+        data_tests:
+          - not_null
+
+      - name: session_type
+        description: "Standardized session code (FP1, FP2, FP3, Q, S, SQ, R)"
+        data_tests:
+          - not_null
+
+      - name: session_date
+        description: "Local date and time of the session"
+        data_tests:
+          - not_null
+
+      - name: session_date_utc
+        description: "UTC date and time of the session"
+        data_tests:
+          - not_null
+
+      - name: session_date_brt
+        description: "BRT (America/Sao_Paulo) date and time of the session"
+        data_tests:
+          - not_null
+
+
+  - name: dim_drivers
+    description: "Driver dimension containing canonical driver profiles and details"
+    columns:
+      - name: driver_id
+        description: "Primary key for the driver"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: broadcast_name
+        description: "Driver name on the broadcast (e.g. 'M VERSTAPPEN')"
+        data_tests:
+          - not_null
+
+      - name: driver_abbreviation
+        description: "Driver's name abbreviation (e.g. 'VER')"
+        data_tests:
+          - not_null
+
+      - name: driver_first_name
+        description: "Driver's first name"
+
+      - name: driver_last_name
+        description: "Driver's last name"
+
+      - name: driver_full_name
+        description: "Driver's full name (e.g. 'Max Verstappen')"
+        data_tests:
+          - not_null
+
+      - name: driver_headshot_url
+        description: "Driver headshot URL"
+
+      - name: driver_nationality
+        description: "Country code of the driver's nationality (e.g. 'FRA')"
+
+
+  - name: dim_constructors
+    description: "Constructor dimension containing Formula 1 teams"
+    columns:
+      - name: team_id
+        description: "Primary key for the constructor / team"
+        data_tests:
+          - unique
+          - not_null
+
+      - name: team_name
+        description: "Name of the Formula 1 Team"
+        data_tests:
+          - not_null
+
+      - name: team_color
+        description: "Color of the Formula 1 Team driven by the driver during the session"
+
+
+  - name: fact_results
+    description: "Fact table containing session results and classifications for each driver"
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - session_sk
+            - driver_id
+    columns:
+      - name: session_sk
+        description: "Foreign key reference to dim_sessions"
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_sessions')
+              field: session_sk
+
+      - name: driver_id
+        description: "Foreign key reference to dim_drivers"
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_drivers')
+              field: driver_id
+
+      - name: team_id
+        description: "Foreign key reference to dim_constructors"
+        data_tests:
+          - relationships:
+              to: ref('dim_constructors')
+              field: team_id
+              config:
+                where: "team_id IS NOT NULL"
+
+      - name: driver_number
+        description: "Driver number used during the session"
+        data_tests:
+          - not_null
+
+      - name: q1_time_seconds
+        description: "The driver's best Q1 time in seconds (valid values only in qualifying sessions)"
+
+      - name: q2_time_seconds
+        description: "The driver's best Q2 time in seconds (valid values only in qualifying sessions)"
+
+      - name: q3_time_seconds
+        description: "The driver's best Q3 time in seconds (valid values only in qualifying sessions)"
+
+      - name: total_time_seconds
+        description: "The driver's total race time in seconds (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying' and the driver was not more than one lap behind the leader)"
+
+      - name: classified_position
+        description: "The official classification result for each driver (values only given if session is 'Race' or 'Sprint'). This is either an integer value if the driver is officially classified or one of 'R' (retired), 'D' (disqualified), 'E' (excluded), 'W' (withdrawn), 'F' (failed to qualify) or 'N' (not classified)"
+
+      - name: classification_status
+        description: "The official classification result status for each driver (Classified, Retired, Disqualified, etc.)"
+
+      - name: grid_position
+        description: "Driver's position at the start of the session (values only given if session is 'Race' or 'Sprint')"
+
+      - name: finishing_position
+        description: "Driver's position at the end of the session (values only given if session is 'Race', 'Qualifying', 'Sprint', or 'Sprint Qualifying'). This additionally accounts for post-race penalties and disqualifications"
+
+      - name: status
+        description: "A status message to indicate if and how the driver finished the race or to indicate the cause of a DNF. Possible values include but are not limited to 'Finished', '+ 1 Lap', 'Crash', 'Gearbox', …"
+
+      - name: points
+        description: "Points received by the driver for the finishing result"
+
+      - name: laps_completed
+        description: "The number of laps driven by the driver"
+
+
+  - name: fact_laps
+    description: "Fact table containing lap-by-lap telemetry data and timings"
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - session_sk
+            - driver_number
+            - lap_number
+    columns:
+      - name: session_sk
+        description: "Foreign key reference to dim_sessions"
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('dim_sessions')
+              field: session_sk
+
+      - name: driver_id
+        description: "Foreign key reference to dim_drivers"
+        data_tests:
+          - relationships:
+              to: ref('dim_drivers')
+              field: driver_id
+              config:
+                where: "driver_id IS NOT NULL"
+
+      - name: team_id
+        description: "Foreign key reference to dim_constructors"
+        data_tests:
+          - relationships:
+              to: ref('dim_constructors')
+              field: team_id
+              config:
+                where: "team_id IS NOT NULL"
+
+      - name: driver_number
+        description: "Driver car number used during the lap"
+        data_tests:
+          - not_null
+
+      - name: session_time_seconds
+        description: "Session time when the lap was completed (in seconds)"
+
+      - name: lap_time_seconds
+        description: "Total lap time (in seconds)"
+
+      - name: lap_number
+        description: "Lap number in the session"
+        data_tests:
+          - not_null
+
+      - name: stint
+        description: "Stint in which each lap was completed (1, 2, 3, etc.)"
+
+      - name: pit_out_time_seconds
+        description: "Session time when the car left the pit lane (in seconds)"
+
+      - name: pit_in_time_seconds
+        description: "Session time when the car entered the pit lane (in seconds)"
+
+      - name: sector_1_time_seconds
+        description: "Lap Sector 1 time (in seconds)"
+
+      - name: sector_2_time_seconds
+        description: "Lap Sector 2 time (in seconds)"
+
+      - name: sector_3_time_seconds
+        description: "Lap Sector 3 time (in seconds)"
+
+      - name: sector_1_session_time_seconds
+        description: "Session time when Sector 1 was completed (in seconds)"
+
+      - name: sector_2_session_time_seconds
+        description: "Session time when Sector 2 was completed (in seconds)"
+
+      - name: sector_3_session_time_seconds
+        description: "Session time when Sector 3 was completed (in seconds)"
+
+      - name: speed_int_p1
+        description: "Speed at intermediate point 1 (km/h)"
+
+      - name: speed_int_p2
+        description: "Speed at intermediate point 2 (km/h)"
+
+      - name: speed_finish_line
+        description: "Speed at finish line (km/h)"
+
+      - name: speed_strap
+        description: "Speed at speed trap (km/h)"
+
+      - name: is_personal_best
+        description: "Whether this lap is the driver's personal best of the session"
+
+      - name: compound
+        description: "Tire compound: 'SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET'"
+
+      - name: tyre_life
+        description: "Number of laps completed on this set of tires"
+
+      - name: fresh_tyre
+        description: "Whether the tires are new"
+
+      - name: lap_start_time_seconds
+        description: "Session time when the lap started (in seconds)"
+
+      - name: lap_start_datetime
+        description: "Timestamp when the lap started"
+
+      - name: track_status
+        description: |
+          Track status codes during the lap (FastF1):
+          - **'1'**: Track clear (All clear)
+          - **'2'**: Yellow flag
+          - **'4'**: Safety Car
+          - **'5'**: Red Flag
+          - **'6'**: Virtual Safety Car deployed
+          - **'7'**: Virtual Safety Car ending
+          
+          *Note: Multiple events can occur in the same lap (e.g. '24' to Yellow Flag + Safety Car).*
+
+      - name: is_all_track_clear
+        description: "Whether this lap was completed entirely under clear track (Track status = '1')"
+
+      - name: is_track_clear
+        description: "Whether track clear status occurred during this lap"
+
+      - name: has_yellow_flag
+        description: "Whether yellow flag status occurred during this lap"
+
+      - name: has_safety_car
+        description: "Whether safety car was deployed during this lap"
+
+      - name: has_red_flag
+        description: "Whether red flag status occurred during this lap"
+
+      - name: has_vsc
+        description: "Whether virtual safety car was deployed during this lap"
+
+      - name: track_status_description
+        description: "Human-readable comma-separated description of all track statuses occurring during the lap"
+
+      - name: position
+        description: "Race position (for race/sprint sessions)"
+
+      - name: deleted
+        description: "Whether the lap time was deleted (track limits, etc.)"
+
+      - name: deleted_reason
+        description: "Reason the lap was deleted"
+
+      - name: fast_f1_generated
+        description: "Whether FastF1 generated this lap (e.g., for crashes)"
+
+      - name: is_accurate
+        description: "Whether the lap timing is considered accurate"
