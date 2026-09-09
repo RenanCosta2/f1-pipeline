@@ -3,8 +3,9 @@
 SELECT
     *
 FROM
-    {{model}}
+    {{ model }}
 WHERE
-    TRIM({{ column_name }}) = ''
+    TRIM({{ column_name }}::TEXT) = ''
+    OR LOWER(TRIM({{ column_name }}::TEXT)) IN ('nan', 'none', 'none none', 'null')
 
 {% endtest %}
