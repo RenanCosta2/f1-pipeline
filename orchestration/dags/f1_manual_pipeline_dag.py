@@ -84,10 +84,10 @@ def manual_ingestion():
     ).expand(command=commands_to_run)
 
     # Running the dbt transformations
-    dbt_run = DockerOperator(
+    dbt_build = DockerOperator(
         task_id="f1_dbt",
         image="f1-pipeline-dbt:latest",
-        command="run --project-dir /usr/app/dbt/f1_dbt",
+        command="build --project-dir /usr/app/dbt/f1_dbt",
         auto_remove="success",
         docker_url="unix://var/run/docker.sock",
         mount_tmp_dir=False,
@@ -96,6 +96,6 @@ def manual_ingestion():
         retry_delay=timedelta(minutes=5),
     )
 
-    ingestion >> dbt_run
+    ingestion >> dbt_build
 
 manual_ingestion()
