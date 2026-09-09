@@ -187,7 +187,12 @@ standardized_data AS (
         round_number,
         session_type,
         driver_number,
-        broadcast_name,
+
+        FIRST_VALUE(broadcast_name) OVER (
+            PARTITION BY final_driver_id
+            ORDER BY (broadcast_name IS NULL), season_year DESC, extracted_at DESC
+        ) AS broadcast_name,
+
         driver_abbreviation,
         final_driver_id AS driver_id,
 
