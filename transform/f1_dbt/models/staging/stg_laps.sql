@@ -50,7 +50,10 @@ cleaning_data AS (
     SELECT
         season_year,
         round_number,
-        session_type,
+        CASE
+            WHEN session_type = 'SS' THEN 'SQ'
+            ELSE session_type
+        END AS session_type,
         {{ clean_null_time('session_time') }},
         driver,
         driver_number,
