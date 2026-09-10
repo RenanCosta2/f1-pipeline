@@ -8,6 +8,15 @@ from extractor import FastF1Extractor
 from storage import S3Uploader
 from database import PostgresLoader
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger("f1_pipeline.ingestion.orchestration")
+
 def upload_obj(s3_uploader, df, buffer, key):
 
     df.to_parquet(buffer, index=False)
@@ -42,15 +51,6 @@ def main():
     parser.add_argument('--session', type=str, default='R')
     parser.add_argument('--force', action='store_true', help='Force re-ingestion, overwriting existing files and database rows')
     args = parser.parse_args()
-
-    # Extracting F1 schedule
-    schedule_key = f"schedule/{args.year}.parquet"
-    if not s3_uploader.file_exists(schedule_key):
-        schedule = f1_extractor.get_schedule(args.year)
-        schedule['year'] = args.year
-        schedule_buffer = io.BytesIO()
-        upload_obj(s3_uploader, schedule, schedule_buffer, schedule_key)
-        postgres.load_data(schedule, 'schedule', 'bronze')
 
     # Defining S3 keys for results and laps
     results_key = f"results/{args.year}/{args.gp}/{args.session}.parquet"

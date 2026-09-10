@@ -68,6 +68,24 @@ def manual_ingestion():
 
     commands_to_run = build_command()
 
+    # Ingesting the season schedule ONCE before parallel session tasks
+    # This prevents race conditions where multiple parallel tasks would
+    # simultaneously detect the schedule as missing and insert it N times.
+    ingest_schedule = DockerOperator(
+        task_id="f1_ingest_schedule",
+        image="f1-pipeline-ingestion:latest",
+        command="python ingestion/orchestration_schedule.py --year {{ params.year }}",
+        auto_remove="success",
+        mount_tmp_dir=False,
+        docker_url="unix://var/run/docker.sock",
+        network_mode="f1-pipeline_default",
+        mounts=[fastf1_cache_mount],
+        environment=env_vars,
+        retries=3,
+        retry_delay=timedelta(minutes=2),
+        execution_timeout=timedelta(minutes=5)
+    )
+
     ingestion = DockerOperator.partial(
         task_id='f1_manual_ingestion',
         map_index_template="f1_manual_ingestion_{{ task.command.split('python ingestion/orchestration.py ')[1].replace(' ', '_').replace('--', '') }}",
@@ -96,6 +114,6 @@ def manual_ingestion():
         retry_delay=timedelta(minutes=5),
     )
 
-    ingestion >> dbt_build
+    ingest_schedule >> commands_to_run >> ingestion >> dbt_build
 
 manual_ingestion()

@@ -24,7 +24,6 @@ def f1_pipeline_dag():
 
     @task
     def get_missing_gps(logical_date=None):
-        year = logical_date.year
 
         pg_hook = PostgresHook(postgres_conn_id="supabase_postgres")
 
@@ -33,7 +32,7 @@ def f1_pipeline_dag():
         try:
             with open(query_path, "r", encoding="utf-8") as f:
                 sql_template = f.read()
-            sql_query = sql_template.format(year=year)
+            sql_query = sql_template
         except Exception as e:
             logger.error(f"Error reading SQL file: {e}")
             sql_query = ""
@@ -41,14 +40,14 @@ def f1_pipeline_dag():
         try:
             # Retrieving missing GPs in the database
             records = pg_hook.get_records(sql_query)
-            missing_gps = [[row[0], row[1]] for row in records]
+            missing_gps = [[row[0], row[1], row[2]] for row in records]
             return [
                 {"year": year, "gp": gp, "session": session}
-                for gp, session in missing_gps
+                for year, gp, session in missing_gps
             ]
         except Exception as e:
             logger.error(f"Error querying database, falling back to GP 1: {e}")
-            return [{"year": year, "gp": 1, "session": "R"}]
+            return [{"year": logical_date.year, "gp": 1, "session": "R"}]
 
     # Cache volume mapping
     fastf1_cache_mount = Mount(
@@ -67,6 +66,24 @@ def f1_pipeline_dag():
     }
 
     gps_to_ingest = get_missing_gps()
+
+    # Ingesting the season schedule ONCE before parallel session tasks
+    # This prevents race conditions where multiple parallel tasks would
+    # simultaneously detect the schedule as missing and insert it N times.
+    ingest_schedule = DockerOperator(
+        task_id="f1_ingest_schedule",
+        image="f1-pipeline-ingestion:latest",
+        command=f"python ingestion/orchestration_schedule.py --year {{{{ macros.ds_format(ds, '%Y-%m-%d', '%Y') }}}}",
+        auto_remove="success",
+        mount_tmp_dir=False,
+        docker_url="unix://var/run/docker.sock",
+        network_mode="f1-pipeline_default",
+        mounts=[fastf1_cache_mount],
+        environment=env_vars,
+        retries=3,
+        retry_delay=timedelta(minutes=2),
+        execution_timeout=timedelta(minutes=5)
+    )
 
     # Mounting the command for each GP
     commands = gps_to_ingest.map(
@@ -102,6 +119,6 @@ def f1_pipeline_dag():
         retry_delay=timedelta(minutes=5),
     )
 
-    ingestion >> dbt_build
+    ingest_schedule >> gps_to_ingest >> ingestion >> dbt_build
 
 f1_pipeline_dag()
