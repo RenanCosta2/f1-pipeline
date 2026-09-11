@@ -1,6 +1,6 @@
 WITH gp_sessions AS (
     SELECT
-        schedule."RoundNumber",
+        schedule."RoundNumber" AS gp,
         x.session,
         x.session_date,
         schedule.year
@@ -13,28 +13,27 @@ WITH gp_sessions AS (
             (schedule."Session4", schedule."Session4Date"),
             (schedule."Session5", schedule."Session5Date")
     ) x(session, session_date)
-    WHERE
-        schedule."RoundNumber" > 0
+    WHERE schedule."RoundNumber" > 0
 ),
 
 gp_sessions_formated AS (
     SELECT
-        "RoundNumber" AS gp,
-        CASE
-            WHEN session = 'Practice 1' THEN 'FP1'
-            WHEN session = 'Practice 2' THEN 'FP2'
-            WHEN session = 'Practice 3' THEN 'FP3'
-            WHEN session = 'Sprint Qualifying' THEN 'SQ'
-            WHEN session = 'Sprint Shootout' THEN 'SS'
-            WHEN session = 'Sprint' THEN 'S'
-            WHEN session = 'Qualifying' THEN 'Q'
-            WHEN session = 'Race' THEN 'R'
+        gp,
+        CASE session
+            WHEN 'Practice 1' THEN 'FP1'
+            WHEN 'Practice 2' THEN 'FP2'
+            WHEN 'Practice 3' THEN 'FP3'
+            WHEN 'Sprint Qualifying' THEN 'SQ'
+            WHEN 'Sprint Shootout' THEN 'SS'
+            WHEN 'Sprint' THEN 'S'
+            WHEN 'Qualifying' THEN 'Q'
+            WHEN 'Race' THEN 'R'
             ELSE UPPER(regexp_replace(session, '(\w)\w*\s*', '\1', 'g'))
         END AS session,
         session_date,
         year
-    FROM
-        gp_sessions
+    FROM gp_sessions
+    WHERE session_date <= CURRENT_DATE - 1
 )
 
 SELECT 
@@ -42,24 +41,18 @@ SELECT
     sessions.gp,
     sessions.session
 FROM 
-    gp_sessions_formated AS sessions
+  gp_sessions_formated AS sessions
+LEFT JOIN 
+  (
+    SELECT DISTINCT year, gp, session 
+    FROM bronze.results
+  ) results
+  ON results.year = sessions.year AND results.gp = sessions.gp AND results.session = sessions.session
+LEFT JOIN 
+  (
+    SELECT DISTINCT year, gp, session 
+    FROM bronze.laps
+  ) laps
+  ON laps.year = sessions.year AND laps.gp = sessions.gp AND laps.session = sessions.session
 WHERE 
-    sessions.session_date < CURRENT_TIMESTAMP
-    AND 
-    (
-        NOT EXISTS (
-            SELECT 1
-            FROM bronze.results r
-            WHERE r.gp = sessions.gp
-            AND r.session = sessions.session
-            AND r.year = sessions.year
-        )
-        OR
-        NOT EXISTS (
-            SELECT 1
-            FROM bronze.laps l
-            WHERE l.gp = sessions.gp
-            AND l.session = sessions.session
-            AND l.year = sessions.year
-        )
-    )
+  results.year IS NULL OR laps.year IS NULL;
