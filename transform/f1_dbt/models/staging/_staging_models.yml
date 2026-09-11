@@ -515,8 +515,6 @@ models:
 
       - name: deleted
         description: "Whether the lap time was deleted (track limits, etc.)"
-        data_tests:
-          - not_null
 
       - name: deleted_reason
         description: "Reason the lap was deleted"

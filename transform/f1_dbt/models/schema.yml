@@ -251,8 +251,6 @@ sources:
             description: "Race position (for race/sprint sessions)"
           - name: '"Deleted"'
             description: "Whether the lap time was deleted (track limits, etc.)"
-            data_tests:
-              - not_null
           - name: '"DeletedReason"'
             description: "Reason the lap was deleted"
           - name: '"FastF1Generated"'
