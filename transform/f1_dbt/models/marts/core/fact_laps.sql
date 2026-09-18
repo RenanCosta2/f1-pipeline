@@ -20,7 +20,7 @@ SELECT
     laps.speed_int_p1,
     laps.speed_int_p2,
     laps.speed_finish_line,
-    laps.speed_strap,
+    laps.speed_trap,
     laps.is_personal_best,
     laps.compound,
     laps.tyre_life,
@@ -38,7 +38,6 @@ SELECT
     laps.position,
     laps.deleted,
     laps.deleted_reason,
-    laps.fast_f1_generated,
     laps.is_accurate
 FROM
     {{ ref('stg_laps') }} AS laps
