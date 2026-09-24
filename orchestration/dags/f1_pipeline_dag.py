@@ -2,6 +2,7 @@ import os
 import logging
 from datetime import datetime, timedelta
 from airflow.sdk import dag, task
+from airflow.exceptions import AirflowSkipException
 from airflow.providers.docker.operators.docker import DockerOperator
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from docker.types import Mount
@@ -16,7 +17,7 @@ logger = logging.getLogger("f1_pipeline")
 @dag(
     dag_id="f1_pipeline_dag",
     start_date=datetime(2026, 1, 1),
-    schedule="@daily",
+    schedule="0 * * * 4,5,6,0", 
     catchup=False,
     tags=["ingestion", "f1", "dbt"],
 )
@@ -41,13 +42,19 @@ def f1_pipeline_dag():
             # Retrieving missing GPs in the database
             records = pg_hook.get_records(sql_query)
             missing_gps = [[row[0], row[1], row[2]] for row in records]
+            if not missing_gps:
+                logger.info("No pending sessions for ingestion. Terminating execution early.")
+                raise AirflowSkipException("No missing sessions found to ingest.")
+
             return [
                 {"year": year, "gp": gp, "session": session}
                 for year, gp, session in missing_gps
             ]
+        except AirflowSkipException:
+            raise
         except Exception as e:
-            logger.error(f"Error querying database, falling back to GP 1: {e}")
-            return [{"year": logical_date.year, "gp": 1, "session": "R"}]
+            logger.error(f"Error querying database: {e}")
+            raise e
 
     # Cache volume mapping
     fastf1_cache_mount = Mount(
@@ -119,6 +126,6 @@ def f1_pipeline_dag():
         retry_delay=timedelta(minutes=5),
     )
 
-    ingest_schedule >> gps_to_ingest >> ingestion >> dbt_build
+    gps_to_ingest >> ingest_schedule >> ingestion >> dbt_build
 
 f1_pipeline_dag()
