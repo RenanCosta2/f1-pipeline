@@ -33,7 +33,7 @@ gp_sessions_formated AS (
         session_date,
         year
     FROM gp_sessions
-    WHERE session_date <= CURRENT_DATE - 1
+    WHERE session_date <= CURRENT_TIMESTAMP - INTERVAL '3 hour'
 )
 
 SELECT 
