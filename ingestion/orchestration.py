@@ -65,30 +65,36 @@ def main():
         loaded_session = f1_extractor.load_session(args.year, args.gp, args.session)
         
         if not results_exists:
+
             results = f1_extractor.extract_results()
-            results['year'] = args.year
-            results['gp'] = args.gp
-            results['session'] = args.session
-            
-            if args.force:
-                postgres.delete_session('results', 'bronze', args.year, args.gp, args.session)
+
+            if results is not None and not results.empty:
+                results['year'] = args.year
+                results['gp'] = args.gp
+                results['session'] = args.session
                 
-            results_buffer = io.BytesIO()
-            upload_obj(s3_uploader, results, results_buffer, results_key)
-            postgres.load_data(results, 'results', 'bronze')
+                if args.force:
+                    postgres.delete_session('results', 'bronze', args.year, args.gp, args.session)
+                    
+                results_buffer = io.BytesIO()
+                upload_obj(s3_uploader, results, results_buffer, results_key)
+                postgres.load_data(results, 'results', 'bronze')
             
         if not laps_exists:
+
             laps = f1_extractor.extract_laps()
-            laps['year'] = args.year
-            laps['gp'] = args.gp
-            laps['session'] = args.session
-            
-            if args.force:
-                postgres.delete_session('laps', 'bronze', args.year, args.gp, args.session)
+
+            if laps is not None and not laps.empty:
+                laps['year'] = args.year
+                laps['gp'] = args.gp
+                laps['session'] = args.session
                 
-            laps_buffer = io.BytesIO()
-            upload_obj(s3_uploader, laps, laps_buffer, laps_key)
-            postgres.load_data(laps, 'laps', 'bronze')
+                if args.force:
+                    postgres.delete_session('laps', 'bronze', args.year, args.gp, args.session)
+                    
+                laps_buffer = io.BytesIO()
+                upload_obj(s3_uploader, laps, laps_buffer, laps_key)
+                postgres.load_data(laps, 'laps', 'bronze')
 
 if __name__ == "__main__":
     main()

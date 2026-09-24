@@ -55,4 +55,15 @@ LEFT JOIN
   ) laps
   ON laps.year = sessions.year AND laps.gp = sessions.gp AND laps.session = sessions.session
 WHERE 
-  results.year IS NULL OR laps.year IS NULL;
+  results.year IS NULL 
+  OR (
+    laps.year IS NULL 
+    AND NOT EXISTS (
+      SELECT 1 
+      FROM bronze.results r 
+      WHERE r.year = sessions.year 
+        AND r.gp = sessions.gp 
+        AND r.session = sessions.session
+        AND (r."Laps" IS NULL OR r."Laps" = 0)
+    )
+  );

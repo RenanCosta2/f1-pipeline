@@ -1,5 +1,6 @@
 import os
 import fastf1
+from fastf1.exceptions import DataNotLoadedError
 from fastf1 import Cache
 import pandas as pd
 import logging
@@ -115,6 +116,11 @@ class FastF1Extractor:
             results['extracted_at'] = datetime.now()
 
             return results
+
+        except DataNotLoadedError:
+            logger.warning("Results data not loaded for this session.")
+            return pd.DataFrame()
+
         except Exception as e:
             if not self.current_session:
                 logger.error("No session loaded. Use load_session() first.")
@@ -139,6 +145,11 @@ class FastF1Extractor:
             laps['extracted_at'] = datetime.now()
 
             return laps
+        
+        except DataNotLoadedError:
+            logger.warning("Laps data not loaded for this session.")
+            return pd.DataFrame()
+        
         except Exception as e:
             if not self.current_session:
                 logger.error("No session loaded. Use load_session() first.")
