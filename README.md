@@ -44,3 +44,12 @@ O pipeline segue o modelo **ELT (Extract, Load, Transform)** e é totalmente orq
      - 🥉 **Bronze (Raw Data)**: Dados em seu formato original bruto de extração.
      - 🥈 **Silver (Clean Data)**: Processamento e limpeza dos dados. Nesta camada, os dados são limpos, tipados e estruturados.
      - 🥇 **Gold (Metrics)**: Tabelas finais agregadas e enriquecidas com métricas de performance prontas para consumo e visualização.
+
+
+## 📚 Documentação do Projeto
+
+Para instruções detalhadas de configuração, modelagem e arquitetura, consulte os guias dedicados:
+
+- 🚀 **[Guia de Setup e Execução Local](docs/setup.md)**: Pré-requisitos, configuração das credenciais do Supabase, inicialização dos containers Docker, Airflow e comandos do dia a dia.
+- 🏛️ **[Detalhes da Arquitetura](docs/architecture_details.md)**: Decisões de engenharia, especificidades do fluxo ELT e armazenamento.
+- 📊 **[Modelagem de Dados](docs/data_modeling.md)**: Arquitetura Medalhão, dicionário das tabelas e regras das views analíticas.
