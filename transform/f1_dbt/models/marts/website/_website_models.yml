@@ -1,0 +1,562 @@
+version: 2
+
+models:
+  - name: v_sessions_summary
+    description: "Analytical mart containing the comprehensive results of every session (Practice, Qualifying, Sprint, Race), including calculated gaps to leader, intervals to car ahead, pit stops, and position deltas."
+    columns:
+      - name: session_sk
+        description: "Surrogate key referencing the session in dim_sessions"
+        data_tests:
+          - not_null
+
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number in the championship"
+        data_tests:
+          - not_null
+
+      - name: session_name
+        description: "Session designation (Practice 1, Practice 2, Practice 3, Qualifying, Sprint, Race)"
+        data_tests:
+          - not_null
+
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+
+      - name: driver_number
+        description: "Permanent or allocated racing number of the driver"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: driver_headshot_url
+        description: "Official Formula 1 driver headshot image URL"
+
+      - name: team_name
+        description: "Full constructor team name"
+        data_tests:
+          - not_null
+
+      - name: team_color
+        description: "Official team color in hexadecimal format (e.g., #E80020)"
+
+      - name: finishing_position
+        description: "Classified finishing position in the session"
+
+      - name: grid_position
+        description: "Starting position on the grid"
+
+      - name: delta_position
+        description: "Net position change between grid and finish (positive indicates positions gained)"
+
+      - name: points
+        description: "Championship points scored in the session"
+
+      - name: stops
+        description: "Calculated number of pit stops based on session stints"
+
+      - name: gap_to_leader
+        description: "Formatted time gap or status relative to session leader (e.g. 'Leader', '+1.234s', '+1 Lap(s)', 'DNF')"
+
+      - name: interval_to_car_ahead
+        description: "Formatted time interval relative to the car immediately ahead"
+
+      - name: best_lap
+        description: "Driver's fastest lap time in the session (formatted as MM:SS.mmm)"
+
+      - name: status
+        description: "Official classification status (Finished, +1 Lap, Collision, Engine, etc.)"
+
+      - name: laps_completed
+        description: "Total number of laps completed by the driver"
+
+
+  - name: v_driver_standings
+    description: "Championship drivers' standings aggregating cumulative points, wins, and podiums across Race and Sprint sessions for each season."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: driver_headshot_url
+        description: "Official driver portrait URL"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: driver_nationality
+        description: "Driver's nationality country code (e.g. GBR, NED, BRA)"
+
+      - name: sprint_wins
+        description: "Total number of Sprint race victories in the season"
+
+      - name: race_wins
+        description: "Total number of Grand Prix main race victories in the season"
+
+      - name: total_wins
+        description: "Combined total victories (Grand Prix + Sprint)"
+
+      - name: sprint_podiums
+        description: "Total number of top-3 finishes in Sprint sessions"
+
+      - name: race_podiums
+        description: "Total number of top-3 podium finishes in Grand Prix races"
+
+      - name: total_podiums
+        description: "Combined total podium finishes (Grand Prix + Sprint)"
+
+      - name: sprint_points
+        description: "Total points earned exclusively in Sprint sessions"
+
+      - name: race_points
+        description: "Total points earned in Grand Prix main races"
+
+      - name: total_points
+        description: "Cumulative championship points scored across the full season"
+        data_tests:
+          - not_null
+
+      - name: championship_position
+        description: "Official drivers' championship standing position (ranked by points, wins, and podiums)"
+        data_tests:
+          - not_null
+
+
+  - name: v_constructor_standings
+    description: "Championship constructors' standings aggregating cumulative points, race/sprint wins, and podiums per team."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Full constructor team name"
+        data_tests:
+          - not_null
+
+      - name: team_color
+        description: "Official hexadecimal hex color code of the team"
+
+      - name: sprint_wins
+        description: "Total Sprint race victories won by the team's drivers"
+
+      - name: race_wins
+        description: "Total Grand Prix race victories won by the team's drivers"
+
+      - name: total_wins
+        description: "Combined victories (Grand Prix + Sprint)"
+
+      - name: sprint_podiums
+        description: "Total Sprint podium finishes achieved by the team"
+
+      - name: race_podiums
+        description: "Total Grand Prix podium finishes achieved by the team"
+
+      - name: total_podiums
+        description: "Combined podium finishes across the season"
+
+      - name: sprint_points
+        description: "Total points earned by the constructor in Sprint sessions"
+
+      - name: race_points
+        description: "Total points earned by the constructor in Grand Prix races"
+
+      - name: total_points
+        description: "Cumulative championship points scored by the constructor"
+        data_tests:
+          - not_null
+
+      - name: championship_position
+        description: "Official constructors' championship standing position"
+        data_tests:
+          - not_null
+
+
+  - name: v_cumulative_drivers_points
+    description: "Time-series round-by-round points accumulation for drivers, supporting dynamic slider filtering and progression charts."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Championship round number"
+        data_tests:
+          - not_null
+
+      - name: country
+        description: "Country where the event took place"
+
+      - name: location
+        description: "City or region of the circuit"
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: event_name
+        description: "Common Grand Prix name"
+
+      - name: session_name
+        description: "Session designation (Race or Sprint)"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Team name representing the driver"
+
+      - name: team_color
+        description: "Hexadecimal team color"
+
+      - name: finishing_position
+        description: "Finishing position in this specific session"
+
+      - name: is_race_win
+        description: "Flag (1/0) indicating if the driver won this Grand Prix race"
+
+      - name: is_sprint_win
+        description: "Flag (1/0) indicating if the driver won this Sprint race"
+
+      - name: is_race_podium
+        description: "Flag (1/0) indicating a top-3 podium finish in this Grand Prix race"
+
+      - name: is_sprint_podium
+        description: "Flag (1/0) indicating a top-3 finish in this Sprint race"
+
+      - name: is_win
+        description: "Flag (1/0) indicating a victory in any session"
+
+      - name: is_podium
+        description: "Flag (1/0) indicating a podium in any session"
+
+      - name: points
+        description: "Points scored by the driver in this round/session"
+
+      - name: cumulative_driver_points
+        description: "Running cumulative points total up to this round"
+        data_tests:
+          - not_null
+
+
+  - name: v_cumulative_teams_points
+    description: "Time-series round-by-round points accumulation for constructors, supporting dynamic season progression charts."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Championship round number"
+        data_tests:
+          - not_null
+
+      - name: country
+        description: "Country where the event took place"
+
+      - name: location
+        description: "City or region of the circuit"
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: event_name
+        description: "Common Grand Prix name"
+
+      - name: session_name
+        description: "Session designation (Race or Sprint)"
+
+      - name: team_name
+        description: "Full constructor team name"
+        data_tests:
+          - not_null
+
+      - name: team_color
+        description: "Hexadecimal team color"
+
+      - name: race_wins
+        description: "Count of Grand Prix race victories won by the constructor in this session"
+
+      - name: sprint_wins
+        description: "Count of Sprint victories won by the constructor in this session"
+
+      - name: race_podiums
+        description: "Count of Grand Prix podium finishes achieved by the constructor in this session"
+
+      - name: sprint_podiums
+        description: "Count of Sprint podium finishes achieved by the constructor in this session"
+
+      - name: wins
+        description: "Total session victories won by the constructor"
+
+      - name: podiums
+        description: "Total session podium finishes achieved by the constructor"
+
+      - name: points
+        description: "Total points scored by the constructor in this round/session"
+
+      - name: cumulative_team_points
+        description: "Running cumulative points total for the constructor up to this round"
+        data_tests:
+          - not_null
+
+
+  - name: v_ideal_lap
+    description: "Theoretical ideal lap analysis combining each driver's fastest individual sectors (S1, S2, S3) and comparing against their actual best lap."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: session_number
+        description: "Chronological session number (1 to 5)"
+
+      - name: session_name
+        description: "Session designation"
+
+      - name: driver_full_name
+        description: "Driver's full name"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Constructor team name"
+
+      - name: sector_1
+        description: "Fastest Sector 1 time achieved by the driver in the session (formatted MM:SS.mmm)"
+
+      - name: sector_2
+        description: "Fastest Sector 2 time achieved by the driver in the session (formatted MM:SS.mmm)"
+
+      - name: sector_3
+        description: "Fastest Sector 3 time achieved by the driver in the session (formatted MM:SS.mmm)"
+
+      - name: lap_time
+        description: "Actual fastest complete lap time recorded by the driver in the session (formatted MM:SS.mmm)"
+
+      - name: delta_ideal_lap
+        description: "Time difference between actual best lap and the theoretical ideal lap (sum of best S1 + S2 + S3)"
+
+
+  - name: v_lap_by_lap
+    description: "Lap-by-lap telemetry and progression data for race sessions, tracking sector times, tyre life, and track conditions."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: session_name
+        description: "Session designation (Race or Sprint)"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: driver_abbreviation
+        description: "Three-letter driver code"
+
+      - name: team_name
+        description: "Constructor team name"
+
+      - name: team_color
+        description: "Hexadecimal team color"
+
+      - name: lap_number
+        description: "Lap sequence number in the session"
+        data_tests:
+          - not_null
+
+      - name: sector_1_time_seconds
+        description: "Sector 1 time in decimal seconds"
+
+      - name: sector_2_time_seconds
+        description: "Sector 2 time in decimal seconds"
+
+      - name: sector_3_time_seconds
+        description: "Sector 3 time in decimal seconds"
+
+      - name: lap_time_seconds
+        description: "Lap time in decimal seconds"
+
+      - name: lap_time
+        description: "Formatted lap time string (MM:SS.mmm)"
+
+      - name: compound
+        description: "Tyre compound used during the lap (SOFT, MEDIUM, HARD, etc.)"
+
+      - name: tyre_life
+        description: "Age in laps of the current tyre set"
+
+      - name: track_status_description
+        description: "Description of track flags active during the lap"
+
+      - name: position
+        description: "Running race position at the conclusion of the lap"
+
+
+  - name: v_max_speed
+    description: "Maximum recorded speeds per driver across all session radar measurement points (Speed Trap, Intermediate 1, Intermediate 2, Finish Line)."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: session_name
+        description: "Session designation"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Constructor team name"
+
+      - name: max_speed_trap
+        description: "Top speed recorded at the official Speed Trap sensor (km/h)"
+
+      - name: max_speed_i1
+        description: "Top speed recorded at Intermediate Sector 1 sensor (km/h)"
+
+      - name: max_speed_i2
+        description: "Top speed recorded at Intermediate Sector 2 sensor (km/h)"
+
+      - name: max_speed_fl
+        description: "Top speed recorded crossing the Finish Line (km/h)"
+
+
+  - name: v_race_pace
+    description: "Race pace analysis calculating average clean lap times and pace standard deviation per driver, filtering out pit in/out laps and Safety Car periods."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: session_name
+        description: "Session designation (Race or Sprint)"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Constructor team name"
+
+      - name: avg_lap_time_seconds
+        description: "Arithmetic mean lap time in decimal seconds across clean racing laps"
+
+      - name: lap_pace
+        description: "Formatted average lap pace (MM:SS.mmm)"
+
+      - name: pace_stddev
+        description: "Standard deviation of lap times, reflecting stint consistency"
+
+
+  - name: v_tyre_strategy
+    description: "Tyre stint strategy analysis detailing compound usage, stint duration in laps, average pace per stint, and pit stops under neutralization periods."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: official_event_name
+        description: "Official Grand Prix event title"
+
+      - name: session_name
+        description: "Session designation (Race or Sprint)"
+
+      - name: driver_full_name
+        description: "Full name of the driver"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Constructor team name"
+
+      - name: stint
+        description: "Stint sequence number for the driver (1, 2, 3, etc.)"
+        data_tests:
+          - not_null
+
+      - name: compound
+        description: "Tyre compound fitted during this stint"
+
+      - name: lap_start
+        description: "First lap of the stint"
+
+      - name: lap_end
+        description: "Final lap of the stint"
+
+      - name: stint_laps_completed
+        description: "Total number of laps completed on this tyre set"
+
+      - name: stint_avg_lap_time
+        description: "Formatted average lap time during this stint (MM:SS.mmm)"
+
+      - name: pit_under_safety_car
+        description: "Boolean indicating if the pit stop ending this stint occurred under Full Safety Car"
+
+      - name: pit_under_vsc
+        description: "Boolean indicating if the pit stop occurred under Virtual Safety Car"
+
+      - name: pit_under_red_flag
+        description: "Boolean indicating if tyres were changed during a Red Flag stoppage"
