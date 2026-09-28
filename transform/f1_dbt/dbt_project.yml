@@ -36,3 +36,17 @@ models:
       +materialized: table
       core:
         +schema: gold
+        fact_laps:
+          +post-hook:
+            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_session_sk ON {{ this }} (session_sk)"
+            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_session_lap_time ON {{ this }} (session_sk, lap_time_seconds) WHERE lap_time_seconds IS NOT NULL"
+            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_speed_trap ON {{ this }} (session_sk, speed_trap) WHERE speed_trap IS NOT NULL"
+        fact_results:
+          +post-hook:
+            - "CREATE INDEX IF NOT EXISTS idx_fact_results_session_sk ON {{ this }} (session_sk)"
+        dim_sessions:
+          +post-hook:
+            - "CREATE INDEX IF NOT EXISTS idx_dim_sessions_event_sk ON {{ this }} (event_sk)"
+        dim_schedule:
+          +post-hook:
+            - "CREATE INDEX IF NOT EXISTS idx_dim_schedule_circuit_sk ON {{ this }} (circuit_sk)"
