@@ -146,12 +146,14 @@ docker exec f1-pipeline-airflow-scheduler-1 airflow connections add supabase_pos
    - **URL**: [http://localhost:8080](http://localhost:8080)
    - **Usuário**: `airflow`
    - **Senha**: `airflow`
-2. Localize a DAG **`f1_pipeline_dag`**.
-3. Ative o toggle para `Unpause` (ou dispare manualmente clicando em **Trigger DAG**).
-4. O Airflow executará o ciclo completo:
-   ```text
-   get_missing_gps ➔ f1_ingest_schedule ➔ f1_ingestion (em paralelo) ➔ f1_dbt (build)
-   ```
+2. As principais DAGs disponíveis são:
+   - **`f1_schedule_dag`**: Executa mensalmente (ou sob demanda com `params.year`) para sincronizar o calendário oficial da temporada em `bronze.schedule`.
+   - **`f1_pipeline_dag`**: Executa a cada hora nos finais de semana de GP. Identifica sessões pendentes e dispara o fluxo:
+     ```text
+     get_missing_gps ➔ f1_ingestion (em paralelo) ➔ f1_dbt (build)
+     ```
+   - **`f1_manual_pipeline_dag`**: Permite reprocessamento histórico manual flexível via interface (ano, intervalo de GPs, tipos de sessão e flag `force`).
+3. Ative o toggle para `Unpause` nas DAGs desejadas para iniciar o agendamento contínuo.
 
 ### Opção B: Execução Manual dos Modelos dbt (CLI)
 Caso queira testar ou reconstruir os modelos do dbt diretamente via terminal sem esperar pelo Airflow:

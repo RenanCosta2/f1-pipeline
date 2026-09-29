@@ -74,24 +74,6 @@ def f1_pipeline_dag():
 
     gps_to_ingest = get_missing_gps()
 
-    # Ingesting the season schedule ONCE before parallel session tasks
-    # This prevents race conditions where multiple parallel tasks would
-    # simultaneously detect the schedule as missing and insert it N times.
-    ingest_schedule = DockerOperator(
-        task_id="f1_ingest_schedule",
-        image="f1-pipeline-ingestion:latest",
-        command=f"python ingestion/orchestration_schedule.py --year {{{{ macros.ds_format(ds, '%Y-%m-%d', '%Y') }}}}",
-        auto_remove="success",
-        mount_tmp_dir=False,
-        docker_url="unix://var/run/docker.sock",
-        network_mode="f1-pipeline_default",
-        mounts=[fastf1_cache_mount],
-        environment=env_vars,
-        retries=3,
-        retry_delay=timedelta(minutes=2),
-        execution_timeout=timedelta(minutes=5)
-    )
-
     # Mounting the command for each GP
     commands = gps_to_ingest.map(
         lambda x: f"python ingestion/orchestration.py --year {x['year']} --gp {x['gp']} --session {x['session']}"
@@ -126,6 +108,6 @@ def f1_pipeline_dag():
         retry_delay=timedelta(minutes=5),
     )
 
-    gps_to_ingest >> ingest_schedule >> ingestion >> dbt_build
+    gps_to_ingest >> ingestion >> dbt_build
 
 f1_pipeline_dag()
