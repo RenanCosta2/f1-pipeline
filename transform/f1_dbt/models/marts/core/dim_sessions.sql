@@ -1,8 +1,8 @@
 {{ config(materialized='table', schema='gold') }}
 
 SELECT DISTINCT
-    {{ dbt_utils.generate_surrogate_key(['year', 'round_number', 'official_event_name', 'session_number']) }} AS session_sk,
-    {{ dbt_utils.generate_surrogate_key(['year', 'round_number', 'official_event_name']) }} AS event_sk,
+    {{ dbt_utils.generate_surrogate_key(['year', 'round_number', 'official_event_name', 'session_number', 'session_date']) }} AS session_sk,
+    {{ dbt_utils.generate_surrogate_key(['year', 'round_number', 'official_event_name', 'event_date']) }} AS event_sk,
     session_number,
     session_name,
     CASE
