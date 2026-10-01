@@ -414,6 +414,9 @@ models:
         data_tests:
           - accepted_values:
               values:
+                - 'SUPERSOFT'
+                - 'ULTRASOFT'
+                - 'HYPERSOFT'
                 - 'SOFT'
                 - 'MEDIUM'
                 - 'HARD'
