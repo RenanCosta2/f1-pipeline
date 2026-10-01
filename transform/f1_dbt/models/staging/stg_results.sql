@@ -196,7 +196,11 @@ standardized_data AS (
             ORDER BY (broadcast_name IS NULL), season_year DESC, extracted_at DESC
         ) AS broadcast_name,
 
-        driver_abbreviation,
+        FIRST_VALUE(driver_abbreviation) OVER (
+            PARTITION BY final_driver_id
+            ORDER BY (driver_abbreviation IS NULL), season_year DESC, extracted_at DESC
+        ) AS driver_abbreviation,
+
         final_driver_id AS driver_id,
 
         FIRST_VALUE(team_name) OVER (
@@ -293,6 +297,54 @@ typed_data AS (
         extracted_at::DATE
     FROM
         standardized_data
+),
+
+deduplicated_data AS (
+    SELECT
+        season_year,
+        round_number,
+        session_type,
+        driver_number,
+        broadcast_name,
+        driver_abbreviation,
+        driver_id,
+        team_name,
+        team_color,
+        team_id,
+        driver_first_name,
+        driver_last_name,
+        driver_full_name,
+        driver_headshot_url,
+        driver_nationality,
+        finishing_position,
+        classified_position,
+        classification_status,
+        grid_position,
+        q1_time_seconds,
+        q2_time_seconds,
+        q3_time_seconds,
+        total_time_seconds,
+        status,
+        points,
+        laps_completed,
+        extracted_at
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER (
+                PARTITION BY season_year, round_number, session_type, driver_id
+                ORDER BY
+                    (laps_completed IS NOT NULL AND laps_completed > 0) DESC,
+                    (finishing_position IS NOT NULL) DESC,
+                    (driver_number != 65535) DESC,
+                    (driver_number != 0) DESC,
+                    extracted_at DESC
+            ) AS row_priority
+        FROM
+            typed_data
+    ) ranked
+    WHERE 
+        row_priority = 1
 )
 
-SELECT * FROM typed_data
+SELECT * FROM deduplicated_data
