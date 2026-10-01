@@ -98,3 +98,26 @@ class S3Uploader:
                 return False
             logger.error(f"Error checking file {key}: {e}")
             return False
+
+    def download_parquet(self, key: str):
+        """Downloads a parquet file from S3 and returns it as a pandas DataFrame.
+
+        Args:
+            key (str): The key (name) of the file in S3.
+
+        Returns:
+            pd.DataFrame | None: The loaded DataFrame, or None if download fails.
+        """
+        import io
+        import pandas as pd
+        logger.info(f"Downloading parquet from S3: {key}")
+        try:
+            buffer = io.BytesIO()
+            self.s3.download_fileobj(self.bucket_name, key, buffer)
+            buffer.seek(0)
+            df = pd.read_parquet(buffer)
+            logger.info(f"Parquet {key} downloaded successfully ({len(df)} rows)!")
+            return df
+        except Exception as e:
+            logger.error(f"Error downloading parquet {key}: {e}")
+            return None

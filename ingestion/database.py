@@ -60,6 +60,32 @@ class PostgresLoader:
         except Exception as e:
             logger.warning(f"Could not delete existing records (table may not exist yet): {e}")
 
+    def session_exists(self, table_name: str, schema_name: str, year: int, gp: int, session: str) -> bool:
+        """Checks if records exist for a specific year, GP, and session in the database.
+
+        Args:
+            table_name (str): The target table name.
+            schema_name (str): The target schema name (e.g., 'bronze').
+            year (int): The season year.
+            gp (int): The round number of the GP.
+            session (str): The session identifier (e.g., 'R').
+
+        Returns:
+            bool: True if at least one record exists, False otherwise.
+        """
+        query = text(f"""
+            SELECT 1 FROM {schema_name}.{table_name}
+            WHERE "year"::text = :year AND "gp"::text = :gp AND "session" = :session
+            LIMIT 1;
+        """)
+        try:
+            with self.engine.connect() as conn:
+                res = conn.execute(query, {"year": str(year), "gp": str(gp), "session": session}).scalar()
+                return res is not None
+        except Exception as e:
+            logger.warning(f"Could not verify existence in {schema_name}.{table_name} (table may not exist yet): {e}")
+            return False
+
     def load_data(self, df: pd.DataFrame, table_name: str, schema_name: str):
         """Loads a pandas DataFrame into a specified PostgreSQL schema and table.
 
