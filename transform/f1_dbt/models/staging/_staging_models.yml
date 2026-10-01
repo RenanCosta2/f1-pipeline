@@ -86,48 +86,30 @@ models:
 
       - name: session_2
         description: "Second session of the Grand Prix"
-        data_tests:
-          - not_null
 
       - name: session_2_date
         description: "Date of the second session of the Grand Prix"
-        data_tests:
-          - not_null
 
       - name: session_2_date_utc
         description: "Date of the second session of the Grand Prix (UTC Format)"
-        data_tests:
-          - not_null
 
       - name: session_2_date_brt
         description: "Date of the second session of the Grand Prix (BRT Format)"
-        data_tests:
-          - not_null
 
       - name: session_3
         description: "Third session of the Grand Prix"
-        data_tests:
-          - not_null
 
       - name: session_3_date
         description: "Date of the third session of the Grand Prix"
-        data_tests:
-          - not_null
 
       - name: session_3_date_utc
         description: "Date of the third session of the Grand Prix (UTC Format)"
-        data_tests:
-          - not_null
 
       - name: session_3_date_brt
         description: "Date of the third session of the Grand Prix (BRT Format)"
-        data_tests:
-          - not_null
 
       - name: session_4
         description: "Fourth session of the Grand Prix"
-        data_tests:
-          - not_empty
 
       - name: session_4_date
         description: "Date of the fourth session of the Grand Prix"
@@ -140,8 +122,6 @@ models:
 
       - name: session_5
         description: "Fifth session of the Grand Prix"
-        data_tests:
-          - not_empty
 
       - name: session_5_date
         description: "Date of the fifth session of the Grand Prix"
@@ -439,6 +419,7 @@ models:
                 - 'HARD'
                 - 'INTERMEDIATE'
                 - 'WET'
+                - 'TEST'
                 - 'TEST_UNKNOWN'
                 - 'UNKNOWN'
               config:

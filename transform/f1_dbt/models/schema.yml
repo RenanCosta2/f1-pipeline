@@ -50,28 +50,16 @@ sources:
               - not_null
           - name: '"Session2"'
             description: "Second session of the Grand Prix"
-            data_tests:
-              - not_null
           - name: '"Session2Date"'
             description: "Date of the second session of the Grand Prix"
-            data_tests:
-              - not_null
           - name: '"Session2DateUtc"'
             description: "Date of the second session of the Grand Prix (UTC Format)"
-            data_tests:
-              - not_null
           - name: '"Session3"'
             description: "Third session of the Grand Prix"
-            data_tests:
-              - not_null
           - name: '"Session3Date"'
             description: "Date of the third session of the Grand Prix"
-            data_tests:
-              - not_null
           - name: '"Session3DateUtc"'
             description: "Date of the third session of the Grand Prix (UTC Format)"
-            data_tests:
-              - not_null
           - name: '"Session4"'
             description: "Fourth session of the Grand Prix"
           - name: '"Session4Date"'

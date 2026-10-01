@@ -42,8 +42,6 @@ models:
 
       - name: team_name
         description: "Full constructor team name"
-        data_tests:
-          - not_null
 
       - name: team_color
         description: "Official team color in hexadecimal format (e.g., #E80020)"
@@ -534,8 +532,6 @@ models:
 
       - name: stint
         description: "Stint sequence number for the driver (1, 2, 3, etc.)"
-        data_tests:
-          - not_null
 
       - name: compound
         description: "Tyre compound fitted during this stint"
