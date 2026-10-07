@@ -1,4 +1,10 @@
-{{ config(materialized='view', schema='website') }}
+{{ config(
+    materialized='table', 
+    schema='website',
+    post_hook=[
+        "CREATE INDEX IF NOT EXISTS idx_ideal_lap_lookup ON {{ this }} (year, round_number)"
+    ]
+) }}
 
 WITH driver_best_sectors AS (
     SELECT
