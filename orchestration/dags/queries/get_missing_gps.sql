@@ -7,11 +7,11 @@ WITH gp_sessions AS (
     FROM bronze.schedule AS schedule
     CROSS JOIN LATERAL (
         VALUES
-            (schedule."Session1", schedule."Session1Date"),
-            (schedule."Session2", schedule."Session2Date"),
-            (schedule."Session3", schedule."Session3Date"),
-            (schedule."Session4", schedule."Session4Date"),
-            (schedule."Session5", schedule."Session5Date")
+            (schedule."Session1", schedule."Session1DateUtc"),
+            (schedule."Session2", schedule."Session2DateUtc"),
+            (schedule."Session3", schedule."Session3DateUtc"),
+            (schedule."Session4", schedule."Session4DateUtc"),
+            (schedule."Session5", schedule."Session5DateUtc")
     ) x(session, session_date)
     WHERE schedule."RoundNumber" > 0
 ),
