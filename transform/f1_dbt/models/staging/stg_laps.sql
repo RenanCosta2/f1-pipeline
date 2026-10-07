@@ -1,5 +1,3 @@
-{{ config(materialized='table') }}
-
 WITH source AS (
     SELECT * FROM {{ source('bronze', 'laps') }}
 ),
@@ -46,6 +44,31 @@ renamed_columns AS (
         source
 ),
 
+distinct_track_statuses AS (
+    SELECT DISTINCT "TrackStatus" AS track_status FROM source
+),
+
+track_status_descriptions AS (
+    SELECT
+        track_status,
+        (
+            SELECT STRING_AGG(
+                CASE digit
+                    WHEN '1' THEN 'Track Clear'
+                    WHEN '2' THEN 'Yellow Flag'
+                    WHEN '4' THEN 'Safety Car'
+                    WHEN '5' THEN 'Red Flag'
+                    WHEN '6' THEN 'VSC Deployed'
+                    WHEN '7' THEN 'VSC Ending'
+                    ELSE digit
+                END,
+                ', '
+            )
+            FROM REGEXP_SPLIT_TO_TABLE(track_status, '') AS digit
+        ) AS track_status_description
+    FROM distinct_track_statuses
+),
+
 cleaning_data AS (
     SELECT
         season_year,
@@ -86,29 +109,18 @@ cleaning_data AS (
         (track_status LIKE '%4%') AS has_safety_car,
         (track_status LIKE '%5%') AS has_red_flag,
         (track_status LIKE '%6%' OR track_status LIKE '%7%') AS has_vsc,
-         (
-            SELECT STRING_AGG(
-                CASE digit
-                    WHEN '1' THEN 'Track Clear'
-                    WHEN '2' THEN 'Yellow Flag'
-                    WHEN '4' THEN 'Safety Car'
-                    WHEN '5' THEN 'Red Flag'
-                    WHEN '6' THEN 'VSC Deployed'
-                    WHEN '7' THEN 'VSC Ending'
-                    ELSE digit
-                END,
-                ', '
-            )
-            FROM REGEXP_SPLIT_TO_TABLE(track_status, '') AS digit
-        ) AS track_status_description,
+        track_status_description,
         position,
         deleted,
         {{ clean_null_string('deleted_reason') }},
         fast_f1_generated,
         is_accurate,
         extracted_at
-    from
+    FROM
         renamed_columns
+    LEFT JOIN
+        track_status_descriptions
+        USING (track_status)
 ),
 
 typed_data AS (
