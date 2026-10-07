@@ -1,5 +1,3 @@
-{{ config(materialized='table') }}
-
 WITH source AS (
     SELECT * FROM {{ source('bronze', 'schedule') }}
 ),
@@ -14,7 +12,11 @@ renamed_columns AS (
         "RoundNumber" AS round_number,
         COALESCE(overrides.canonical_country, "Country") AS country,
         COALESCE(overrides.canonical_location, "Location") AS location,
-        "OfficialEventName" AS official_event_name,
+        REGEXP_REPLACE(
+            "OfficialEventName",
+            '\s+\d{4}$',
+            ''
+        ) AS official_event_name,
         "EventDate" AS event_date,
         COALESCE(overrides.canonical_event_name, "EventName") AS event_name,
         "EventFormat" AS event_format,
@@ -48,11 +50,7 @@ cleaning_data AS (
         round_number,
         country,
         location,
-        REGEXP_REPLACE(
-            official_event_name,
-            '\s+\d{4}$',
-            ''
-        ) AS official_event_name,
+        {{ clean_null_string('official_event_name') }},
         event_date,
         event_name,
         event_format,
