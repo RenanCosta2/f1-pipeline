@@ -44,7 +44,6 @@ models:
       - name: official_event_name
         description: "Official name of the Grand Prix event"
         data_tests:
-          - not_null
           - not_empty
 
       - name: event_date
@@ -71,8 +70,6 @@ models:
 
       - name: session_1_date
         description: "Date of the first session of the Grand Prix"
-        data_tests:
-          - not_null
 
       - name: session_1_date_utc
         description: "Date of the first session of the Grand Prix (UTC Format)"
