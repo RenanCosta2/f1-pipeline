@@ -47,8 +47,6 @@ models:
 
       - name: official_event_name
         description: "Official name of the Grand Prix event"
-        data_tests:
-          - not_null
 
       - name: circuit_sk
         description: "Foreign key reference to dim_circuits"

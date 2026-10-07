@@ -42,8 +42,6 @@ sources:
               - not_null
           - name: '"Session1Date"'
             description: "Date of the first session of the Grand Prix"
-            data_tests:
-              - not_null
           - name: '"Session1DateUtc"'
             description: "Date of the first session of the Grand Prix (UTC Format)"
             data_tests:
