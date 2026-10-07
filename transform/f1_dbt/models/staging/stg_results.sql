@@ -1,5 +1,3 @@
-{{ config(materialized='table') }}
-
 WITH source AS (
     SELECT * FROM {{ source('bronze', 'results') }}
 ),
@@ -191,10 +189,13 @@ standardized_data AS (
         END AS session_type,
         driver_number,
 
-        FIRST_VALUE(broadcast_name) OVER (
-            PARTITION BY final_driver_id
-            ORDER BY (broadcast_name IS NULL), season_year DESC, extracted_at DESC
-        ) AS broadcast_name,
+        COALESCE(
+            FIRST_VALUE(broadcast_name) OVER (
+                PARTITION BY final_driver_id
+                ORDER BY (broadcast_name IS NULL), season_year DESC, extracted_at DESC
+            ),
+            UPPER(LEFT(driver_first_name, 1)) || ' ' || UPPER(driver_last_name)
+        )AS broadcast_name,
 
         FIRST_VALUE(driver_abbreviation) OVER (
             PARTITION BY final_driver_id
