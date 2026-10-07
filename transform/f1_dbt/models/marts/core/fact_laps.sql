@@ -50,8 +50,6 @@ INNER JOIN
     ON dim_schedule.event_sk = dim_sessions.event_sk
     AND laps.session_type = dim_sessions.session_type
 LEFT JOIN
-    {{ ref('stg_results') }} AS results
-    ON laps.season_year = results.season_year
-    AND laps.round_number = results.round_number
-    AND laps.session_type = results.session_type
+    {{ ref('fact_results') }} AS results
+    ON dim_sessions.session_sk = results.session_sk
     AND laps.driver_number = results.driver_number
