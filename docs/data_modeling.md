@@ -62,14 +62,15 @@ A extração via Python/Pandas a partir da biblioteca FastF1 gera artefatos clá
 * **Granularidade**: Um registro por evento/rodada de Grande Prêmio.
 * **Transformações e Regras de Negócio**:
   - **Padronização Canônica de Circuitos**: Harmonização de nomes de países e cidades inconsistentes via seed `circuit_overrides`.
-  - **Limpeza de Nomes Oficiais**: Remoção do ano no sufixo do nome do evento via Regex (`REGEXP_REPLACE`).
+  - **Limpeza de Nomes Oficiais**: Remoção do ano no sufixo do nome do evento via Regex (`REGEXP_REPLACE(..., '\s+\d{4}$', '')`) e sanitização de strings nulas.
   - **Tratamento de Fuso Horário**: Conversão de datas e horas UTC para o horário de Brasília (`session_date_brt`) usando `AT TIME ZONE 'America/Sao_Paulo'`.
 
 #### ⏱️ `stg_laps`
 * **Origem**: `bronze.laps`
 * **Granularidade**: Um registro por volta completada por piloto.
 * **Transformações e Regras de Negócio**:
-  - **Decodificação de Status de Pista**: Quebra da coluna composta `TrackStatus` em flags booleanas analíticas (`has_yellow_flag`, `has_safety_car`, `has_vsc`, `has_red_flag`, `is_track_clear`).
+  - **Decodificação de Status de Pista (Otimização com CTEs)**: A decodificação de `TrackStatus` para `track_status_description` é pré-calculada via CTEs (`distinct_track_statuses` e `track_status_descriptions`) apenas para as combinações únicas distintas, reduzindo uma operação de 500.000 subqueries correlacionadas para um join em memória de menos de 1 segundo.
+  - **Flags Analíticas de Neutralização**: Separação booleana para `has_yellow_flag`, `has_safety_car`, `has_vsc`, `has_red_flag` e `is_track_clear`.
   - **Conversão de Telemetria e Velocidades**: Tipagem de microssetores, tempos de parada nos boxes (`pit_in_time_seconds`, `pit_out_time_seconds`) e velocidades no radar (*Speed Trap*).
 
 ---
@@ -157,12 +158,18 @@ SUM(points) OVER (
 
 ## ⚡ 6. Otimizações de Performance & Indexação
 
-Para garantir tempos de resposta de consulta inferiores a **200 ms** no dashboard, os modelos de fatos e a tabela `v_sessions_summary` possuem índices B-Tree específicos criados via `post_hook` no dbt:
+Para garantir tempos de resposta de consulta inferiores a **50 ms** no dashboard e prevenir timeouts durante a execução paralela de testes no dbt, as tabelas de fatos e os modelos analíticos pesados do mart são materializados como `table` com índices B-Tree criados via `post_hook`:
 
 ```sql
 -- Índices na tabela v_sessions_summary
 CREATE INDEX IF NOT EXISTS idx_sess_sum_lookup ON website.v_sessions_summary (year, round_number, session_name);
 CREATE INDEX IF NOT EXISTS idx_sess_sum_finish ON website.v_sessions_summary (finishing_position);
+
+-- Índices nas tabelas de métricas analíticas (Marts)
+CREATE INDEX IF NOT EXISTS idx_race_pace_lookup ON website.v_race_pace (year, round_number);
+CREATE INDEX IF NOT EXISTS idx_tyre_strat_lookup ON website.v_tyre_strategy (year, round_number);
+CREATE INDEX IF NOT EXISTS idx_ideal_lap_lookup ON website.v_ideal_lap (year, round_number);
+CREATE INDEX IF NOT EXISTS idx_max_speed_lookup ON website.v_max_speed (year, round_number);
 
 -- Índices nas tabelas de fatos (Gold)
 CREATE INDEX IF NOT EXISTS idx_fact_results_session_sk ON gold.fact_results (session_sk);
@@ -178,10 +185,11 @@ CREATE INDEX IF NOT EXISTS idx_fact_laps_speed_trap ON gold.fact_laps (session_s
 Os dados são auditados automaticamente na execução do dbt por meio das suítes de testes definidas nos arquivos de esquema:
 - [`staging/_staging_models.yml`](../transform/f1_dbt/models/staging/_staging_models.yml): Testes de validação da camada Silver / Staging.
 - [`marts/core/_core_models.yml`](../transform/f1_dbt/models/marts/core/_core_models.yml): Testes de unicidade e integridade referencial do modelo dimensional Snowflake.
-- [`marts/website/_website_models.yml`](../transform/f1_dbt/models/marts/website/_website_models.yml): Testes e documentação das 10 visões analíticas de consumo do dashboard.
+- [`marts/website/_website_models.yml`](../transform/f1_dbt/models/marts/website/_website_models.yml): Testes e documentação das visões analíticas de consumo do dashboard.
 
 ### Tipos de Testes Aplicados:
-- **Unicidade (`unique`)**: Garante ausência de duplicação em chaves primárias e substitutas (`session_sk`, `driver_id`, `event_sk`, `team_sk`).
-- **Valores Obrigatórios (`not_null`)**: Assegura preenchimento de campos críticos de pontuação, nomes, identificadores e métricas de volta.
-- **Integridade Referencial (`relationships`)**: Valida que toda chave estrangeira nas tabelas de fatos existe na respectiva dimensão (`dim_sessions`, `dim_drivers`, `dim_constructors`).
+- **Unicidade (`unique` & `unique_combination_of_columns`)**: Garante ausência de duplicação em chaves primárias e substitutas (`session_sk`, `driver_id`, `event_sk`), bem como combinações exclusivas de sessão, piloto e volta.
+- **Valores Aceitos (`accepted_values`)**: Validação de domínios restritos, incluindo compostos modernos e históricos (`'SOFT'`, `'MEDIUM'`, `'HARD'`, `'INTERMEDIATE'`, `'WET'`, `'SUPERSOFT'`, `'ULTRASOFT'`, `'HYPERSOFT'`, `'TEST'`).
+- **Valores Obrigatórios (`not_null`)**: Assegura preenchimento de campos críticos de pontuação, nomes, identificadores e métricas de volta, com tolerância deliberada em colunas esparsas de temporadas anteriores (`official_event_name`, datas locais de sessões).
+- **Integridade Referencial (`relationships`)**: Valida que toda chave estrangeira nas tabelas de fatos existe na respectiva dimensão (`dim_sessions`, `dim_drivers`, `dim_constructors`, `dim_circuits`).
 - **Testes de Aceitação Customizados**: Validações de limites e regras de negócio (ex: consistência de intervalos de tempo e posições).

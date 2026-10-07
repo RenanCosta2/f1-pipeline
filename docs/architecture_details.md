@@ -22,6 +22,7 @@ O projeto segue a abordagem **ELT (Extract, Load, Transform)** estruturada em tr
 - **Biblioteca FastF1**: Extração de resultados, telemetria, tempos de volta e calendário oficial da temporada.
 - **Buffer em Memória (`io.BytesIO`)**: Os dados extraídos são convertidos para Parquet diretamente na memória antes do upload para o S3, evitando criação de arquivos temporários em disco nos containers.
 - **Cache Local (`fastf1_cache`)**: Volume Docker nomeado para reaproveitar os downloads da API da F1 entre execuções, poupando banda e acelerando testes locais.
+- **Verificação Dupla de Existência**: Antes de disparar uma extração pesada, o orquestrador valida se a sessão já foi persistida **tanto no banco relacional (`bronze.results` e `bronze.laps`) quanto no bucket S3**, garantindo integridade e consistência transacional mesmo em casos de reinicialização ou falha parcial de rede.
 
 ### 2.2 Armazenamento Raw (Supabase Storage / S3)
 - **Protocolo S3**: Utilização do Supabase Storage via `boto3`.
@@ -42,7 +43,7 @@ O projeto segue a abordagem **ELT (Extract, Load, Transform)** estruturada em tr
   - `bronze`: Tabelas brutas populadas pelos scripts de carga (`schedule`, `results`, `laps`).
   - `silver`: Tabelas limpas, tipadas e padronizadas (`stg_schedule`, `stg_results`, `stg_laps`).
   - `gold`: Modelo dimensional Snowflake com fatos, dimensões e chaves substitutas (`circuit_sk`, `session_sk`, etc.).
-  - `website`: Views analíticas consumidas pelo dashboard.
+  - `website`: Views e tabelas analíticas materializadas e indexadas consumidas pelo dashboard.
 
 ### 2.4 Camada de Transformação (dbt)
 - **Modelagem Declarativa**: Centralização das regras de negócio e métricas no dbt.
@@ -66,7 +67,7 @@ A orquestração separa processos de cadências distintas em DAGs dedicadas, evi
   - Como o calendário já reside em `bronze.schedule`, a verificação de sessões pendentes executa em milissegundos via SQL, encerrando com `AirflowSkipException` sem instanciar containers Docker desnecessários quando não há eventos.
 
 ### 3.2 Detecção Incremental de Sessões (`get_missing_gps.sql`)
-- Desmembra as sessões da temporada (`CROSS JOIN LATERAL`) e filtra aquelas ocorridas há pelo menos **3 horas** (`session_date <= CURRENT_TIMESTAMP - INTERVAL '3 hour'`), garantindo que os dados já foram consolidados pela FIA/FastF1.
+- Desmembra as sessões da temporada (`CROSS JOIN LATERAL`) e filtra aquelas ocorridas há pelo menos **3 horas** usando as colunas em UTC (`session_date_utc <= CURRENT_TIMESTAMP - INTERVAL '3 hour'`), garantindo robustez e consistência tanto em temporadas atuais quanto históricas.
 - Cruza com o que já foi ingerido na camada `bronze`. Apenas sessões pendentes são enviadas para extração.
 
 ### 3.3 Dynamic Task Mapping
@@ -75,7 +76,7 @@ A orquestração separa processos de cadências distintas em DAGs dedicadas, evi
 
 ### 3.4 Gatilho de Transformação (`f1_dbt`)
 - Após a conclusão bem-sucedida de todas as tarefas de extração da rodada, a DAG aciona a tarefa `f1_dbt` executando `dbt build`.
-- Isso processa as camadas Silver e Gold, valida os testes de qualidade de dados e atualiza as views da camada `website` de ponta a ponta.
+- Isso processa as camadas Silver e Gold, valida os testes de qualidade de dados e atualiza as tabelas da camada `website` de ponta a ponta.
 
 ### 3.5 Isolamento via Docker Socket (`/var/run/docker.sock`)
 - O Airflow dispara a ingestão e o dbt como containers Docker separados (`f1-pipeline-ingestion:latest` e `f1-pipeline-dbt:latest`), garantindo isolamento total de dependências em relação ao ambiente do Airflow.
