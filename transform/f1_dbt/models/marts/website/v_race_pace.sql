@@ -1,3 +1,4 @@
+
 {{ config(
     materialized='table', 
     schema='website',
@@ -12,7 +13,9 @@ SELECT
     official_event_name,
     session_name,
     driver_full_name,
+    driver_headshot_url,
     team_name,
+    team_color,
     AVG(lap_time_seconds) AS avg_lap_time_seconds,
     TO_CHAR(MAKE_INTERVAL(secs => AVG(lap_time_seconds)), 'FMMI:SS:MS') AS lap_pace,
     STDDEV(lap_time_seconds) AS pace_stddev
@@ -42,4 +45,6 @@ GROUP BY
     official_event_name,
     session_name,
     driver_full_name,
-    team_name
+    driver_headshot_url,
+    team_name,
+    team_color

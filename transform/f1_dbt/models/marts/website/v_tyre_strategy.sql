@@ -12,6 +12,7 @@ SELECT
     official_event_name,
     session_name,
     driver_full_name,
+    driver_headshot_url,
     team_name,
     stint,
     compound,
@@ -44,6 +45,7 @@ GROUP BY
     official_event_name,
     session_name,
     driver_full_name,
+    driver_headshot_url,
     team_name,
     stint,
     compound
