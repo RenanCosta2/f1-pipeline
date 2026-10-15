@@ -1,10 +1,7 @@
 
 {{ config(
-    materialized='table', 
-    schema='website',
-    post_hook=[
-        "CREATE INDEX IF NOT EXISTS idx_race_pace_lookup ON {{ this }} (year, round_number)"
-    ]
+    materialized='view', 
+    schema='website'
 ) }}
 
 SELECT
