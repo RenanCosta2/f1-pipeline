@@ -57,7 +57,8 @@ LEFT JOIN
 WHERE 
   results.year IS NULL 
   OR (
-    laps.year IS NULL 
+    sessions.year >= 2018
+    AND laps.year IS NULL 
     AND NOT EXISTS (
       SELECT 1 
       FROM bronze.results r 
