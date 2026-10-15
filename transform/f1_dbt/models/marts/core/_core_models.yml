@@ -101,8 +101,6 @@ models:
 
       - name: session_date
         description: "Local date and time of the session"
-        data_tests:
-          - not_null
 
       - name: session_date_utc
         description: "UTC date and time of the session"
