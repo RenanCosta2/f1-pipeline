@@ -103,10 +103,14 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | Modelo | Tipo | Página de Consumo | Objetivo / Métricas |
 | :--- | :--- | :--- | :--- |
 | **`v_sessions_summary`** | Table | Visão Geral (`/`) & Corrida (`/race`) | Classificação da sessão com *gap* para o líder, *interval* para o carro à frente, deltas de posição e número de paradas. |
+| **`v_season_races_summary`** | View | Visão Geral (`/`) | Listagem oficial dos Grandes Prêmios da temporada, status do evento (`Completed` / `Scheduled`), circuito, piloto vencedor e equipe. |
 | **`v_driver_standings`** | View | Temporada (`/season`) | Classificação do mundial de pilotos com total de pontos, vitórias em GP/Sprint e pódios. |
 | **`v_constructor_standings`** | View | Temporada (`/season`) | Classificação do mundial de construtores com pontos totais e vitórias acumuladas. |
 | **`v_cumulative_drivers_points`** | View | Temporada (`/season`) | Pontuação acumulada corrida a corrida por piloto para alimentar o gráfico de linhas e o filtro de rodadas. |
 | **`v_cumulative_teams_points`** | View | Temporada (`/season`) | Pontuação acumulada corrida a corrida por construtor para evolução no campeonato. |
+| **`v_season_matrix`** | View | Temporada (`/season`) | Matriz de resultados da temporada estilo Wikipedia (P1, P2, P3, Pontos, Ret, DNS, DSQ) mapeando cada piloto a cada GP do calendário. |
+| **`v_driver_season_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Métricas consolidadas ano a ano por piloto: vitórias, poles, pódios, presenças em Q2/Q3, taxa de conversão pole-to-win, DNFs e posição final no campeonato. |
+| **`v_driver_career_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Estatísticas consolidadas da carreira histórica do piloto: GPs disputados, títulos mundiais, vitórias, pódios, status de piloto ativo no grid atual (`is_active`) e rankings históricos *all-time*. |
 | **`v_ideal_lap`** | View | Telemetria (`/telemetry`) | Volta ideal (soma dos melhores micro-setores) vs. melhor volta real de cada piloto. |
 | **`v_lap_by_lap`** | View | Corrida (`/race`) | Evolução de ritmo volta a volta por piloto. |
 | **`v_race_pace`** | View | Corrida (`/race`) | Média e desvio padrão de ritmo de corrida por piloto/equipe sem voltas anômalas (Safety Car / Outlaps). |
@@ -132,10 +136,20 @@ ABS(final_session_time_seconds - LAG(final_session_time_seconds, 1) OVER (
 )) AS interval_seconds
 ```
 
-### 5.2 Delta de Posição de Largada vs. Chegada
+### 5.2 Delta de Posição de Largada vs. Chegada com Fallback de Grid (`v_sessions_summary`)
+Para evitar deltas nulos ou inconsistentes decorrentes de omissões da API de telemetria em sessões de corrida/sprint, o grid de largada implementa fallback automático via `COALESCE` com o resultado da qualificação correspondente (`Qualifying` ou `Sprint Shootout`), sendo restrito estritamente a sessões competitivas de corrida:
 ```sql
--- Posição ganha ou perdida na pista (valor positivo = escalou o grid)
-grid_position - finishing_position AS delta_position
+CASE 
+    WHEN dim_sessions.session_name IN ('Race', 'Sprint') THEN
+        COALESCE(
+            ranked_results.grid_position,
+            CASE 
+                WHEN dim_sessions.session_name = 'Sprint' THEN esg.sprint_grid_position
+                ELSE eqg.quali_grid_position
+            END
+        ) - finishing_position
+    ELSE NULL
+END AS delta_position
 ```
 
 ### 5.3 Número de Pit Stops
@@ -152,6 +166,17 @@ SUM(points) OVER (
     ORDER BY round_number, session_number
     ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
 ) AS cumulative_driver_points
+```
+
+### 5.5 Critério de Grid Ativo e Fallback de Temporada (`v_driver_career_summary`)
+O catálogo e os perfis identificam os pilotos do **Grid Atual** com base na sua participação efetiva em sessões competitivas no ano (`Race`, `Sprint`, `Qualifying`, `Sprint Shootout`), excluindo pilotos de teste ou novatos que participam unicamente de treinos livres (FP1 regulamentar da FIA):
+- **Cálculo de `competitive_gps`**: Contagem distinta de eventos com participação em sessões competitivas.
+- **Fallback Automático de Virada de Temporada**: No início de uma nova temporada (onde ainda não ocorreram sessões competitivas), a view automaticamente faz fallback para o ano imediatamente anterior que possui corridas concluídas, impedindo que o grid zere no início do ano.
+
+### 5.6 Taxa de Conversão de Pole Positions em Vitórias (*Pole-to-Win Rate*)
+Métrica analítica que avalia a eficiência de conversão da pole position em vitória oficial:
+```sql
+ROUND((poles_to_win::NUMERIC / NULLIF(race_poles, 0)) * 100, 2) AS pole_to_win_rate
 ```
 
 ---

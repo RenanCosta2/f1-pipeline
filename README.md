@@ -5,9 +5,10 @@ Este projeto implementa um pipeline de dados ponta a ponta (*end-to-end*) focado
 O pipeline foi desenhado para ser incremental. À medida que o campeonato avança e novos Grandes Prêmios acontecem, o fluxo processa novas informações, permitindo que a aplicação evolua dinamicamente.
 
 O objetivo é disponibilizar dados estruturados para possibilitar a análise e visualização de:
-- 🏎️ **Métricas de Corrida**: Posições finais, pontos acumulados e classificação.
-- ⏱️ **Desempenho em Pista**: Tempos de volta (*lap times*) e telemetria.
-- 📅 **Calendário Dinâmico**: Cronograma de sessões (Treinos Livres, Sprint e Corrida).
+- 🏎️ **Métricas de Corrida**: Posições finais, pontos acumulados, classificação oficial e matriz completa da temporada estilo Wikipedia.
+- 👤 **Perfis & Histórico dos Pilotos**: Raio-X de carreira, títulos mundiais, rankings *all-time*, taxa de conversão de poles e status do grid ativo.
+- ⏱️ **Desempenho em Pista**: Tempos de volta (*lap times*), voltas ideais e telemetria de velocidade máxima (*Speed Trap*).
+- 📅 **Calendário Dinâmico**: Cronograma e status em tempo real de todas as sessões (Treinos Livres, Sprint e Corrida).
 
 
 ## 🛠️ Tecnologias Utilizadas
@@ -18,7 +19,7 @@ O projeto é construído utilizando as seguintes ferramentas de Engenharia de Da
 * ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) **Ingestão & Extração** — Scripts de ingestão consumindo a biblioteca [FastF1](https://github.com/theOehrly/Fast-F1) com processamento otimizado usando `pandas` e serialização com `pyarrow` (Parquet).
 * ![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat-square&logo=dbt&logoColor=white) **Transformação** — Utilizado para modelagem de dados e implementação da arquitetura Medalhão.
 * ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white) **Banco de Dados & Storage** — Banco relacional PostgreSQL para as tabelas finais e estruturadas, integrado a um bucket S3 para persistência de dados brutos (Raw/Parquet).
-* ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) / ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) **Visualização & Dashboard** — Interface web interativa (ApexF1 Hub) desenvolvida em Next.js para visualização da classificação, ritmo de corrida e telemetria.
+* ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) / ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) **Visualização & Dashboard** — Interface web interativa (ApexF1 Hub) desenvolvida em Next.js para visualização da classificação, matriz da temporada, perfis históricos de pilotos, ritmo de corrida e telemetria.
 * ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) / ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?style=flat-square&logo=docker&logoColor=white) **Ambiente & Infraestrutura** — Garante que todo o pipeline e seus microsserviços rodem de forma idêntica localmente ou em produção.
 
 
@@ -45,10 +46,10 @@ O pipeline segue o modelo **ELT (Extract, Load, Transform)** e é totalmente orq
      - 🥉 **Bronze (Raw Data)**: Dados em seu formato original bruto de extração.
      - 🥈 **Silver (Clean Data)**: Processamento e limpeza dos dados. Nesta camada, os dados são limpos, tipados e estruturados.
      - 🥇 **Gold (Metrics)**: Tabelas finais agregadas e enriquecidas com métricas de performance no modelo dimensional Snowflake.
-     - 🌐 **Website (Marts)**: Tabelas analíticas materializadas e indexadas alimentando o front-end com alta performance.
+     - 🌐 **Website (Marts)**: Tabelas e views analíticas materializadas e indexadas alimentando o front-end com alta performance.
 
 5. **Consumo & Visualização (Dashboard Next.js)**:
-   - Aplicação web moderna conectando ao banco de dados com cache em memória para exibir métricas da temporada, ritmo de corrida e contagem regressiva para os próximos GPs.
+   - Aplicação web moderna conectando ao banco de dados com cache em memória para exibir métricas da temporada, matriz de GPs, catálogo/perfis detalhados de pilotos com Raio-X de carreira, ritmo de corrida e contagem regressiva para os próximos GPs.
 
 
 ## 📚 Documentação do Projeto
