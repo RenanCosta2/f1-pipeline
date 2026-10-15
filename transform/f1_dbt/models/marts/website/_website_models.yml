@@ -574,3 +574,210 @@ models:
 
       - name: pit_under_red_flag
         description: "Boolean indicating if tyres were changed during a Red Flag stoppage"
+
+
+  - name: v_season_matrix
+    description: "Official Formula 1 season results matrix mart modeled after the Wikipedia championship grid, consolidating every round's outcome per driver, pole positions, fastest laps, sprints, and official colour-coded categories."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+
+      - name: round_number
+        description: "Grand Prix round number"
+        data_tests:
+          - not_null
+
+      - name: circuit_short_code
+        description: "Standardized 3-letter circuit abbreviation (e.g. BHR, MON, INT)"
+        data_tests:
+          - not_null
+
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+
+      - name: driver_full_name
+        description: "Driver full name"
+        data_tests:
+          - not_null
+
+      - name: team_name
+        description: "Constructor team name"
+        data_tests:
+          - not_null
+
+      - name: championship_position
+        description: "Championship ranking position of the driver"
+
+      - name: total_driver_points
+        description: "Total points accumulated by the driver in the season"
+
+      - name: result_code
+        description: "Display code for the round (1, 2, Ret, DNS, DSQ, 17†, etc.)"
+
+      - name: result_category
+        description: "Color-coded category for styling (p1, p2, p3, points, no_points, retired, dns, dsq, scheduled, not_participated)"
+
+  - name: v_driver_season_summary
+    description: "Serving mart consolidating season-by-season performance metrics per driver: race/sprint wins, podiums, poles, fastest laps, total points, best results, DNFs, competitive sessions, and official championship position."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+      - name: broadcast_name
+        description: "Standard TV broadcast display name"
+      - name: driver_abbreviation
+        description: "Three-letter driver code (e.g. VER, HAM, ALO)"
+      - name: driver_full_name
+        description: "Driver full name"
+      - name: driver_nationality
+        description: "Three-letter country code of driver nationality"
+      - name: driver_headshot_url
+        description: "Official Formula 1 driver portrait image URL"
+      - name: total_gps
+        description: "Total Grand Prix main races entered by the driver in the season"
+      - name: competitive_gps
+        description: "Total events where the driver took part in competitive sessions (Race, Sprint, Qualifying, or Sprint Shootout)"
+      - name: race_wins
+        description: "Total Grand Prix race victories won by the driver in the season"
+      - name: sprint_wins
+        description: "Total Sprint race victories won by the driver in the season"
+      - name: race_poles
+        description: "Total Grand Prix pole positions achieved by the driver in the season"
+      - name: sprint_poles
+        description: "Total Sprint pole positions achieved by the driver in the season"
+      - name: total_wins
+        description: "Combined race and sprint victories won by the driver in the season"
+      - name: poles_to_win
+        description: "Count of Grand Prix races won starting from pole position in the season"
+      - name: race_podiums
+        description: "Total Grand Prix podium finishes (P1-P3) in the season"
+      - name: sprint_podiums
+        description: "Total Sprint podium finishes (P1-P3) in the season"
+      - name: total_podiums
+        description: "Combined race and sprint podium finishes in the season"
+      - name: q2_appearences
+        description: "Count of qualifying sessions where driver advanced to Q2"
+      - name: q3_appearences
+        description: "Count of qualifying sessions where driver reached top-10 shootout Q3"
+      - name: race_points
+        description: "Total championship points earned in Grand Prix main races"
+      - name: sprint_points
+        description: "Total championship points earned in Sprint races"
+      - name: total_points
+        description: "Cumulative championship points scored across the full season"
+      - name: best_finish_position
+        description: "Best finishing position achieved in a Grand Prix race during the season"
+      - name: best_grid_position
+        description: "Best starting grid position in a Grand Prix race during the season"
+      - name: total_dnfs
+        description: "Total race retirements / did not finish instances in the season"
+      - name: fastest_laps
+        description: "Total fastest race laps recorded by the driver during the season"
+      - name: pole_to_win_rate
+        description: "Conversion rate percentage of pole positions to race wins"
+      - name: is_season_completed
+        description: "Boolean indicating whether all scheduled rounds in the season have been completed"
+      - name: championship_position
+        description: "Official championship standing position ranked by total points, race wins, and podiums"
+      - name: team_name
+        description: "Constructor team name the driver raced for at the end of the season"
+      - name: team_color
+        description: "Hexadecimal color code of the driver's team"
+
+  - name: v_driver_career_summary
+    description: "Serving mart consolidating all-time career statistics and historical rankings per driver: total GPs, seasons active, world championship titles, race/sprint wins, podiums, poles, fastest laps, points, and DNFs."
+    columns:
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+      - name: broadcast_name
+        description: "Standard TV broadcast display name"
+      - name: driver_abbreviation
+        description: "Three-letter driver code"
+      - name: driver_full_name
+        description: "Driver full name"
+      - name: driver_nationality
+        description: "Three-letter country code of driver nationality"
+      - name: driver_headshot_url
+        description: "Official Formula 1 driver portrait image URL"
+      - name: total_gps
+        description: "Total Formula 1 Grand Prix races entered across career"
+      - name: total_seasons
+        description: "Total distinct Formula 1 seasons participated in"
+      - name: first_season
+        description: "First Formula 1 season year the driver entered"
+      - name: last_season
+        description: "Most recent Formula 1 season year the driver entered"
+      - name: active_season_competitive_gps
+        description: "Number of competitive Grand Prix events the driver participated in during the active season"
+      - name: total_world_championships
+        description: "Total Formula 1 World Drivers Championship titles won across completed seasons"
+      - name: race_wins
+        description: "Total career Grand Prix race victories"
+      - name: sprint_wins
+        description: "Total career Sprint race victories"
+      - name: total_wins
+        description: "Combined career victories across Grand Prix and Sprint sessions"
+      - name: total_poles_to_win
+        description: "Career total races won starting from pole position"
+      - name: race_poles
+        description: "Total career Grand Prix pole positions"
+      - name: sprint_poles
+        description: "Total career Sprint pole positions"
+      - name: pole_to_win_rate
+        description: "All-time career conversion rate percentage from pole position to victory"
+      - name: race_podiums
+        description: "Total career Grand Prix podium finishes"
+      - name: sprint_podiums
+        description: "Total career Sprint podium finishes"
+      - name: total_podiums
+        description: "Combined career podium finishes across Grand Prix and Sprint sessions"
+      - name: total_q2_appearences
+        description: "Total career appearances in Qualifying Q2"
+      - name: total_q3_appearences
+        description: "Total career appearances in Qualifying top-10 Q3 shootout"
+      - name: total_fastest_laps
+        description: "Total career official fastest race laps"
+      - name: race_points
+        description: "Total career points scored in Grand Prix main races"
+      - name: sprint_points
+        description: "Total career points scored in Sprint sessions"
+      - name: total_points
+        description: "Cumulative all-time career championship points scored"
+      - name: best_finish_position
+        description: "Highest career finishing position in a Grand Prix race"
+      - name: best_grid_position
+        description: "Highest career starting grid position in a Grand Prix race"
+      - name: total_dnfs
+        description: "Total career race retirements / did not finish instances"
+      - name: is_active
+        description: "Boolean flag indicating whether the driver belongs to the active competitive grid"
+      - name: rank_world_championships
+        description: "All-time historical rank by World Championship titles"
+      - name: rank_wins
+        description: "All-time historical rank by total race and sprint victories"
+      - name: rank_poles
+        description: "All-time historical rank by Grand Prix pole positions"
+      - name: rank_podiums
+        description: "All-time historical rank by total podium finishes"
+      - name: rank_gps
+        description: "All-time historical rank by Grand Prix race starts"
+      - name: rank_seasons
+        description: "All-time historical rank by total seasons active in Formula 1"
+      - name: rank_q3_appearences
+        description: "All-time historical rank by Q3 shootout appearances"
+      - name: rank_q2_appearences
+        description: "All-time historical rank by Q2 appearances"
+      - name: rank_points
+        description: "All-time historical rank by cumulative championship points"
+
