@@ -55,6 +55,29 @@ driver_final_time AS (
         last_lap_rn = 1
 ),
 
+event_qualifying_grid AS (
+    SELECT
+        sessions.event_sk,
+        results.driver_id,
+        results.finishing_position AS quali_grid_position
+    FROM 
+        {{ ref('fact_results') }} AS results
+    JOIN 
+        {{ ref('dim_sessions') }} AS sessions 
+        USING (session_sk)
+    WHERE sessions.session_name = 'Qualifying'
+),
+
+event_sprint_grid AS (
+    SELECT
+        dse.event_sk,
+        fr.driver_id,
+        fr.finishing_position AS sprint_grid_position
+    FROM {{ ref('fact_results') }} fr
+    JOIN {{ ref('dim_sessions') }} dse USING (session_sk)
+    WHERE dse.session_name IN ('Sprint Qualifying', 'Sprint Shootout')
+),
+
 ranked_results AS (
     SELECT
         r.session_sk,
@@ -91,7 +114,7 @@ ranked_results AS (
 race_results_base AS (
     SELECT
         session_sk,
-        driver_id,
+        ranked_results.driver_id,
         circuit_sk,
         year,
         round_number,
@@ -108,8 +131,28 @@ race_results_base AS (
         team_color,
         points,
         finishing_position,
-        grid_position,
-        grid_position - finishing_position AS delta_position,
+        CASE 
+            WHEN dim_sessions.session_name IN ('Race', 'Sprint') THEN
+                COALESCE(
+                    ranked_results.grid_position,
+                    CASE 
+                        WHEN dim_sessions.session_name = 'Sprint' THEN esg.sprint_grid_position
+                        ELSE eqg.quali_grid_position
+                    END
+                )
+            ELSE NULL
+        END AS grid_position,
+        CASE 
+            WHEN dim_sessions.session_name IN ('Race', 'Sprint') THEN
+                COALESCE(
+                    ranked_results.grid_position,
+                    CASE 
+                        WHEN dim_sessions.session_name = 'Sprint' THEN esg.sprint_grid_position
+                        ELSE eqg.quali_grid_position
+                    END
+                ) - finishing_position
+            ELSE NULL
+        END AS delta_position,
         stops,
         lap_time_seconds,
         status,
@@ -153,6 +196,12 @@ race_results_base AS (
     LEFT JOIN 
         {{ ref('dim_circuits') }}
         USING(circuit_sk)
+    LEFT JOIN 
+        event_qualifying_grid eqg
+        ON eqg.event_sk = dim_schedule.event_sk AND eqg.driver_id = ranked_results.driver_id
+    LEFT JOIN
+        event_sprint_grid esg
+        ON esg.event_sk = dim_schedule.event_sk AND esg.driver_id = ranked_results.driver_id
 )
 
 SELECT
