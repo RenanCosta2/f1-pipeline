@@ -30,6 +30,5 @@ CROSS JOIN LATERAL (
 ) AS sessions(session_number, session_name, session_date, session_date_utc, session_date_brt)
 WHERE
     session_name IS NOT NULL
-    AND session_date IS NOT NULL
     AND session_date_utc IS NOT NULL
     AND session_date_brt IS NOT NULL
