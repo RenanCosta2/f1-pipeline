@@ -150,6 +150,13 @@ sources:
             description: "A status message to indicate if and how the driver finished the race or to indicate the cause of a DNF. Possible values include but are not limited to 'Finished', '+ 1 Lap', 'Crash', 'Gearbox', …"
           - name: '"Points"'
             description: "Points received by the driver for the finishing result"
+            data_tests:
+              - not_null:
+                  config:
+                    where: "session IN ('R', 'S')"
+              - not_empty:
+                  config:
+                    where: "session IN ('R', 'S')"
           - name: '"Laps"'
             description: "The number of laps driven by the driver"
 
