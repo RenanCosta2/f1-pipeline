@@ -201,8 +201,9 @@ SELECT
     metrics.*,
     COALESCE(fastest.fastest_laps, 0) AS fastest_laps,
     CASE 
-        WHEN poles_to_win > 0 
-        THEN ROUND((poles_to_win::NUMERIC / NULLIF(race_poles, 0)) * 100, 2) 
+        WHEN race_poles > 0 
+        THEN ROUND((poles_to_win::NUMERIC / race_poles) * 100, 2) 
+        ELSE NULL 
     END AS pole_to_win_rate,
     CASE WHEN completed.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,
     DENSE_RANK() OVER (
@@ -224,3 +225,5 @@ LEFT JOIN
 LEFT JOIN
     completed_seasons AS completed
     ON metrics.year = completed.year
+WHERE
+    competitive_gps > 0
