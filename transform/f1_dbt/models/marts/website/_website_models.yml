@@ -764,12 +764,20 @@ models:
         description: "Boolean flag indicating whether the driver belongs to the active competitive grid"
       - name: rank_world_championships
         description: "All-time historical rank by World Championship titles"
-      - name: rank_wins
-        description: "All-time historical rank by total race and sprint victories"
+      - name: rank_race_wins
+        description: "All-time official historical rank by Grand Prix victories (canonical F1 record)"
+      - name: rank_sprint_wins
+        description: "All-time historical rank by Sprint race victories"
+      - name: rank_total_wins
+        description: "All-time historical rank by combined victories (Grand Prix + Sprint)"
       - name: rank_poles
         description: "All-time historical rank by Grand Prix pole positions"
-      - name: rank_podiums
-        description: "All-time historical rank by total podium finishes"
+      - name: rank_race_podiums
+        description: "All-time official historical rank by Grand Prix podium finishes (canonical F1 record)"
+      - name: rank_sprint_podiums
+        description: "All-time historical rank by Sprint podium finishes"
+      - name: rank_total_podiums
+        description: "All-time historical rank by combined podium finishes"
       - name: rank_gps
         description: "All-time historical rank by Grand Prix race starts"
       - name: rank_seasons

@@ -113,9 +113,13 @@ SELECT
 
     -- Rankings Históricos
     DENSE_RANK() OVER (ORDER BY total_world_championships DESC) AS rank_world_championships,
-    DENSE_RANK() OVER (ORDER BY total_wins DESC) AS rank_wins,
+    DENSE_RANK() OVER (ORDER BY race_wins DESC) AS rank_race_wins,
+    DENSE_RANK() OVER (ORDER BY sprint_wins DESC) AS rank_sprint_wins,
+    DENSE_RANK() OVER (ORDER BY total_wins DESC) AS rank_total_wins,
     DENSE_RANK() OVER (ORDER BY race_poles DESC) AS rank_poles,
-    DENSE_RANK() OVER (ORDER BY total_podiums DESC) AS rank_podiums,
+    DENSE_RANK() OVER (ORDER BY race_podiums DESC) AS rank_race_podiums,
+    DENSE_RANK() OVER (ORDER BY sprint_podiums DESC) AS rank_sprint_podiums,
+    DENSE_RANK() OVER (ORDER BY total_podiums DESC) AS rank_total_podiums,
     DENSE_RANK() OVER (ORDER BY total_gps DESC) AS rank_gps,
     DENSE_RANK() OVER (ORDER BY total_seasons DESC) AS rank_seasons,
     DENSE_RANK() OVER (ORDER BY total_q3_appearences DESC) AS rank_q3_appearences,
