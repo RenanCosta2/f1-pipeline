@@ -113,6 +113,7 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | **`v_driver_career_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Estatísticas consolidadas da carreira histórica do piloto: GPs disputados, títulos mundiais, vitórias, pódios, status de piloto ativo no grid atual (`is_active`) e rankings históricos *all-time*. |
 | **`v_constructor_season_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Métricas consolidadas ano a ano por construtora: vitórias GP/Sprint, poles, pódios, dobradinhas (1-2), primeiras filas no grid, pódios e pontos duplos, voltas mais rápidas, DNFs combinados, lineup de pilotos em JSON e posição no campeonato. |
 | **`v_constructor_career_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Estatísticas consolidadas da trajetória histórica da equipe: total de GPs disputados, temporadas, títulos de construtores, vitórias, dobradinhas, primeiras filas, status de escuderia ativa (`is_active`) e rankings históricos *all-time*. |
+| **`v_constructor_driver_summary`** | View | Equipes (`/teams/[id]`) | Estatísticas completas e comparativo histórico de cada piloto pela escuderia: temporadas ativas, lista de anos, títulos mundiais com o time, vitórias, poles, pódios, pontos e rankings internos na equipe. |
 | **`v_ideal_lap`** | View | Telemetria (`/telemetry`) | Volta ideal (soma dos melhores micro-setores) vs. melhor volta real de cada piloto. |
 | **`v_lap_by_lap`** | View | Corrida (`/race`) | Evolução de ritmo volta a volta por piloto. |
 | **`v_race_pace`** | View | Corrida (`/race`) | Média e desvio padrão de ritmo de corrida por piloto/equipe sem voltas anômalas (Safety Car / Outlaps). |
@@ -220,6 +221,22 @@ DENSE_RANK() OVER (ORDER BY race_wins DESC) AS rank_race_wins,
 DENSE_RANK() OVER (ORDER BY race_poles DESC) AS rank_poles,
 DENSE_RANK() OVER (ORDER BY race_podiums DESC) AS rank_race_podiums,
 DENSE_RANK() OVER (ORDER BY total_points DESC) AS rank_points
+```
+
+### 5.10 Histórico e Rankings Internos de Pilotos por Equipe (`v_constructor_driver_summary`)
+Para apresentar com fidelidade a passagem de cada piloto por uma escuderia específica (inclusive nos casos de saídas e retornos em anos não consecutivos), o modelo gera a lista cronológica exata de anos e calcula os rankings históricos restritos à equipe:
+```sql
+-- Lista cronológica de temporadas em que o piloto atuou pela equipe
+STRING_AGG(DISTINCT schedule.year::TEXT, ', ' ORDER BY schedule.year::TEXT ASC) AS seasons_list,
+
+-- Títulos mundiais de pilotos conquistados correndo por esta escuderia
+COUNT(CASE WHEN driver_season_summary.championship_position = 1 AND driver_season_summary.is_season_completed THEN 1 END) AS driver_titles_with_team,
+
+-- Rankings do piloto no histórico exclusivo da equipe
+DENSE_RANK() OVER (PARTITION BY team_id ORDER BY total_points DESC, total_wins DESC) AS rank_in_team_points,
+DENSE_RANK() OVER (PARTITION BY team_id ORDER BY race_wins DESC, total_points DESC) AS rank_in_team_wins,
+DENSE_RANK() OVER (PARTITION BY team_id ORDER BY gps_raced DESC) AS rank_in_team_gps,
+DENSE_RANK() OVER (PARTITION BY team_id ORDER BY driver_titles_with_team DESC, total_wins DESC) AS rank_in_team_titles
 ```
 
 ## ⚡ 6. Otimizações de Performance & Indexação

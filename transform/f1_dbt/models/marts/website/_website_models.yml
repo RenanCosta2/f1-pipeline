@@ -961,3 +961,83 @@ models:
       - name: rank_points
         description: "All-time historical rank by cumulative championship points"
 
+  - name: v_constructor_driver_summary
+    description: "Serving mart consolidating driver performance and statistics within each constructor's history: seasons raced, complete seasons list, GPs entered, world titles won with the team, race/sprint wins, poles, podiums, fastest laps, points scored, and internal historical rankings per team."
+    columns:
+      - name: team_id
+        description: "Canonical constructor identifier"
+        data_tests:
+          - not_null
+      - name: team_name
+        description: "Full constructor team name"
+      - name: team_color
+        description: "Official team color in hexadecimal format"
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+      - name: broadcast_name
+        description: "Standard TV broadcast display name of the driver"
+      - name: driver_abbreviation
+        description: "Three-letter driver abbreviation code"
+      - name: driver_full_name
+        description: "Full name of the driver"
+      - name: driver_nationality
+        description: "Three-letter country code of driver nationality"
+      - name: driver_headshot_url
+        description: "Official Formula 1 driver portrait image URL"
+      - name: seasons_count
+        description: "Total distinct seasons the driver competed for this constructor"
+      - name: first_season
+        description: "First season year the driver raced for this constructor"
+      - name: last_season
+        description: "Most recent season year the driver raced for this constructor"
+      - name: seasons_list
+        description: "Comma-separated chronological list of all seasons the driver competed for this constructor"
+      - name: gps_raced
+        description: "Total Grand Prix races entered by the driver for this constructor"
+      - name: competitive_gps
+        description: "Total competitive Grand Prix events (Race, Sprint, Qualifying) entered by the driver for this team"
+      - name: driver_titles_with_team
+        description: "World Drivers Championship titles won by the driver while racing for this constructor"
+      - name: race_wins
+        description: "Total Grand Prix race victories won by the driver for this constructor"
+      - name: sprint_wins
+        description: "Total Sprint race victories won by the driver for this constructor"
+      - name: total_wins
+        description: "Combined Grand Prix and Sprint race victories won by the driver for this constructor"
+      - name: race_poles
+        description: "Total Grand Prix pole positions achieved by the driver for this constructor"
+      - name: sprint_poles
+        description: "Total Sprint pole positions achieved by the driver for this constructor"
+      - name: race_podiums
+        description: "Total Grand Prix podium finishes (P1-P3) achieved by the driver for this constructor"
+      - name: sprint_podiums
+        description: "Total Sprint podium finishes achieved by the driver for this constructor"
+      - name: total_podiums
+        description: "Combined race and sprint podium finishes achieved by the driver for this constructor"
+      - name: fastest_laps
+        description: "Total official fastest race laps recorded by the driver for this constructor"
+      - name: points_finishes
+        description: "Total Grand Prix races where the driver finished in points-scoring positions (top 10) for this constructor"
+      - name: race_points
+        description: "Total championship points earned in Grand Prix main races for this constructor"
+      - name: sprint_points
+        description: "Total championship points earned in Sprint sessions for this constructor"
+      - name: total_points
+        description: "Cumulative championship points scored by the driver for this constructor"
+      - name: best_finish_position
+        description: "Highest finishing position achieved in a Grand Prix race with this constructor"
+      - name: best_grid_position
+        description: "Highest starting grid position achieved in a Grand Prix race with this constructor"
+      - name: total_dnfs
+        description: "Total race retirements / did not finish instances with this constructor"
+      - name: rank_in_team_points
+        description: "Driver's all-time rank in total points scored within this constructor's history"
+      - name: rank_in_team_wins
+        description: "Driver's all-time rank in Grand Prix victories within this constructor's history"
+      - name: rank_in_team_gps
+        description: "Driver's all-time rank in Grand Prix starts within this constructor's history"
+      - name: rank_in_team_titles
+        description: "Driver's all-time rank in World Championships won within this constructor's history"
+
