@@ -111,6 +111,8 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | **`v_season_matrix`** | View | Temporada (`/season`) | Matriz de resultados da temporada estilo Wikipedia (P1, P2, P3, Pontos, Ret, DNS, DSQ) mapeando cada piloto a cada GP do calendário. |
 | **`v_driver_season_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Métricas consolidadas ano a ano por piloto: vitórias, poles, pódios, presenças em Q2/Q3, taxa de conversão pole-to-win, DNFs e posição final no campeonato. |
 | **`v_driver_career_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Estatísticas consolidadas da carreira histórica do piloto: GPs disputados, títulos mundiais, vitórias, pódios, status de piloto ativo no grid atual (`is_active`) e rankings históricos *all-time*. |
+| **`v_constructor_season_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Métricas consolidadas ano a ano por construtora: vitórias GP/Sprint, poles, pódios, dobradinhas (1-2), primeiras filas no grid, pódios e pontos duplos, voltas mais rápidas, DNFs combinados, lineup de pilotos em JSON e posição no campeonato. |
+| **`v_constructor_career_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Estatísticas consolidadas da trajetória histórica da equipe: total de GPs disputados, temporadas, títulos de construtores, vitórias, dobradinhas, primeiras filas, status de escuderia ativa (`is_active`) e rankings históricos *all-time*. |
 | **`v_ideal_lap`** | View | Telemetria (`/telemetry`) | Volta ideal (soma dos melhores micro-setores) vs. melhor volta real de cada piloto. |
 | **`v_lap_by_lap`** | View | Corrida (`/race`) | Evolução de ritmo volta a volta por piloto. |
 | **`v_race_pace`** | View | Corrida (`/race`) | Média e desvio padrão de ritmo de corrida por piloto/equipe sem voltas anômalas (Safety Car / Outlaps). |
@@ -179,7 +181,46 @@ Métrica analítica que avalia a eficiência de conversão da pole position em v
 ROUND((poles_to_win::NUMERIC / NULLIF(race_poles, 0)) * 100, 2) AS pole_to_win_rate
 ```
 
----
+### 5.7 Métricas Coletivas de Equipe por Grande Prêmio (`v_constructor_season_summary`)
+As métricas da escuderia são pré-calculadas evento a evento a partir dos resultados dos 2 carros da equipe para evitar duplicações em joins:
+```sql
+-- Dobradinha (1-2 no GP)
+CASE WHEN COUNT(CASE WHEN results.finishing_position IN (1, 2) THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_one_two,
+
+-- Pódio Duplo (ambos no top 3)
+CASE WHEN COUNT(CASE WHEN results.finishing_position <= 3 THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_double_podium,
+
+-- Pontuação Dupla (ambos na zona de pontos P1-P10)
+CASE WHEN COUNT(CASE WHEN results.finishing_position <= 10 THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_double_points,
+
+-- Primeira Fila Completa (Bloqueio 1-2 no Grid de largada)
+CASE WHEN COUNT(CASE WHEN results.grid_position IN (1, 2) THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_front_row_lockout
+```
+
+### 5.8 Agregação da Dupla de Pilotos em JSON (`v_constructor_season_summary`)
+Para alimentar simultaneamente as tabelas e os cards de Raio-X das equipes sem requisições adicionais, a relação de pilotos que atuaram pela escuderia no ano é consolidada em um array JSON com ordenação decrescente de pontos e corridas:
+```sql
+JSON_AGG(
+    JSON_BUILD_OBJECT(
+        'driver_id', drivers.driver_id,
+        'driver_full_name', drivers.driver_full_name,
+        'driver_abbreviation', drivers.driver_abbreviation,
+        'driver_headshot_url', drivers.driver_headshot_url,
+        'gps_raced', driver_totals.gps_raced,
+        'points', driver_totals.points
+    ) ORDER BY driver_totals.points DESC, driver_totals.gps_raced DESC
+) AS drivers_lineup
+```
+
+### 5.9 Grid Ativo e Rankings Históricos de Construtores (`v_constructor_career_summary`)
+Similarmente aos pilotos, o status de **Escuderia Ativa** (`is_active`) avalia a participação competitiva no ano corrente com fallback para a temporada anterior concluída. Os recordes históricos *all-time* são computados via `DENSE_RANK()`:
+```sql
+DENSE_RANK() OVER (ORDER BY total_world_championships DESC) AS rank_world_championships,
+DENSE_RANK() OVER (ORDER BY race_wins DESC) AS rank_race_wins,
+DENSE_RANK() OVER (ORDER BY race_poles DESC) AS rank_poles,
+DENSE_RANK() OVER (ORDER BY race_podiums DESC) AS rank_race_podiums,
+DENSE_RANK() OVER (ORDER BY total_points DESC) AS rank_points
+```
 
 ## ⚡ 6. Otimizações de Performance & Indexação
 

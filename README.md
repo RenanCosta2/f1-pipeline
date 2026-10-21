@@ -7,6 +7,7 @@ O pipeline foi desenhado para ser incremental. À medida que o campeonato avanç
 O objetivo é disponibilizar dados estruturados para possibilitar a análise e visualização de:
 - 🏎️ **Métricas de Corrida**: Posições finais, pontos acumulados, classificação oficial e matriz completa da temporada estilo Wikipedia.
 - 👤 **Perfis & Histórico dos Pilotos**: Raio-X de carreira, títulos mundiais, rankings *all-time*, taxa de conversão de poles e status do grid ativo.
+- 🛡️ **Perfis & Histórico das Escuderias**: Trajetória histórica dos construtores, títulos mundiais, dobradinhas (1-2), primeiras filas, pódios e pontos duplos, rankings *all-time* e elenco de pilotos por temporada.
 - ⏱️ **Desempenho em Pista**: Tempos de volta (*lap times*), voltas ideais e telemetria de velocidade máxima (*Speed Trap*).
 - 📅 **Calendário Dinâmico**: Cronograma e status em tempo real de todas as sessões (Treinos Livres, Sprint e Corrida).
 

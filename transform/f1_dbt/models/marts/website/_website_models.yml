@@ -789,3 +789,175 @@ models:
       - name: rank_points
         description: "All-time historical rank by cumulative championship points"
 
+  - name: v_constructor_season_summary
+    description: "Serving mart consolidating season-by-season statistics and metrics per constructor: total GPs, competitive sessions, race/sprint wins, poles, podiums, 1-2 finishes, front row lockouts, double podiums/points, Q2/Q3 appearances, fastest laps, DNFs, championship position, and driver lineups."
+    columns:
+      - name: year
+        description: "Championship season year"
+        data_tests:
+          - not_null
+      - name: team_id
+        description: "Canonical constructor identifier"
+        data_tests:
+          - not_null
+      - name: team_name
+        description: "Full constructor team name"
+      - name: team_color
+        description: "Official team color in hexadecimal format"
+      - name: total_gps
+        description: "Total Grand Prix races entered by the team in the season"
+      - name: competitive_gps
+        description: "Count of events with participation in competitive sessions (Race, Sprint, Qualifying)"
+      - name: race_wins
+        description: "Total Grand Prix race victories won by the constructor in the season"
+      - name: sprint_wins
+        description: "Total Sprint race victories won by the constructor in the season"
+      - name: total_wins
+        description: "Combined Grand Prix and Sprint victories won by the constructor in the season"
+      - name: race_poles
+        description: "Total Grand Prix pole positions achieved by the constructor in the season"
+      - name: sprint_poles
+        description: "Total Sprint pole positions achieved by the constructor in the season"
+      - name: poles_to_win
+        description: "Count of Grand Prix races won starting from pole position in the season"
+      - name: race_podiums
+        description: "Total Grand Prix podium finishes (P1-P3) in the season"
+      - name: sprint_podiums
+        description: "Total Sprint podium finishes (P1-P3) in the season"
+      - name: total_podiums
+        description: "Combined race and sprint podium finishes in the season"
+      - name: q2_appearences
+        description: "Count of qualifying sessions where at least one team car advanced to Q2"
+      - name: q3_appearences
+        description: "Count of qualifying sessions where at least one team car reached top-10 shootout Q3"
+      - name: race_points
+        description: "Total championship points earned in Grand Prix main races"
+      - name: sprint_points
+        description: "Total championship points earned in Sprint races"
+      - name: total_points
+        description: "Cumulative championship points scored across the full season"
+      - name: best_finish_position
+        description: "Best finishing position achieved in a Grand Prix race during the season"
+      - name: best_grid_position
+        description: "Best starting grid position in a Grand Prix race during the season"
+      - name: total_dnfs
+        description: "Total race retirements / did not finish instances combined across both team cars in the season"
+      - name: total_one_two
+        description: "Total 1-2 finishes (first and second place in the same Grand Prix)"
+      - name: total_double_podium
+        description: "Count of Grand Prix races with both team drivers finishing on the podium"
+      - name: total_double_points
+        description: "Count of Grand Prix races with both team drivers finishing in points-scoring positions (top 10)"
+      - name: total_front_row
+        description: "Count of Grand Prix races with a 1-2 front row lockout in qualifying"
+      - name: fastest_laps
+        description: "Total fastest race laps recorded by the team during the season"
+      - name: pole_to_win_rate
+        description: "Conversion rate percentage of pole positions to race wins"
+      - name: is_season_completed
+        description: "Boolean indicating whether all scheduled rounds in the season have been completed"
+      - name: championship_position
+        description: "Official World Constructors Championship standing position ranked by total points, race wins, and podiums"
+      - name: drivers_lineup
+        description: "JSON array containing the driver lineup for the season (driver ID, name, headshot URL, GPs raced, points)"
+      - name: drivers_used_count
+        description: "Count of distinct drivers who raced for the constructor during the season"
+
+  - name: v_constructor_career_summary
+    description: "Serving mart consolidating all-time historical statistics and rankings per constructor: total GPs, seasons active, World Constructors Championship titles, race/sprint wins, 1-2 finishes, front row lockouts, poles, podiums, double podiums/points, fastest laps, points, and all-time historical rankings."
+    columns:
+      - name: team_id
+        description: "Canonical constructor identifier"
+        data_tests:
+          - not_null
+      - name: team_name
+        description: "Full constructor team name"
+      - name: team_color
+        description: "Official team color in hexadecimal format"
+      - name: total_gps
+        description: "Total Formula 1 Grand Prix races entered across history"
+      - name: total_seasons
+        description: "Total distinct Formula 1 seasons participated in"
+      - name: first_season
+        description: "First Formula 1 season year the constructor entered"
+      - name: last_season
+        description: "Most recent Formula 1 season year the constructor entered"
+      - name: active_season_competitive_gps
+        description: "Number of competitive Grand Prix events the constructor participated in during the active season"
+      - name: total_world_championships
+        description: "Total Formula 1 World Constructors Championship titles won across completed seasons"
+      - name: race_wins
+        description: "Total career Grand Prix race victories"
+      - name: sprint_wins
+        description: "Total career Sprint race victories"
+      - name: total_wins
+        description: "Combined career victories across Grand Prix and Sprint sessions"
+      - name: total_one_two
+        description: "All-time 1-2 race finishes (both cars finishing first and second in a Grand Prix)"
+      - name: race_poles
+        description: "Total career Grand Prix pole positions"
+      - name: sprint_poles
+        description: "Total career Sprint pole positions"
+      - name: total_front_row
+        description: "All-time front row lockouts (1-2 starting grid lockouts)"
+      - name: total_poles_to_win
+        description: "Career total races won starting from pole position"
+      - name: pole_to_win_rate
+        description: "All-time career conversion rate percentage from pole position to victory"
+      - name: race_podiums
+        description: "Total career Grand Prix podium finishes"
+      - name: sprint_podiums
+        description: "Total career Sprint podium finishes"
+      - name: total_podiums
+        description: "Combined career podium finishes across Grand Prix and Sprint sessions"
+      - name: total_double_podium
+        description: "All-time Grand Prix races where both team cars finished on the podium"
+      - name: total_q2_appearences
+        description: "Total qualifying sessions where at least one car reached Q2"
+      - name: total_q3_appearences
+        description: "Total qualifying sessions where at least one car reached top-10 shootout Q3"
+      - name: total_fastest_laps
+        description: "Total career official fastest race laps"
+      - name: total_double_points
+        description: "All-time Grand Prix races where both team cars scored points (top 10)"
+      - name: race_points
+        description: "Total career points scored in Grand Prix main races"
+      - name: sprint_points
+        description: "Total career points scored in Sprint sessions"
+      - name: total_points
+        description: "Cumulative all-time career championship points scored"
+      - name: best_finish_position
+        description: "Highest career finishing position in a Grand Prix race"
+      - name: best_grid_position
+        description: "Highest career starting grid position in a Grand Prix race"
+      - name: total_dnfs
+        description: "Total career race retirements / did not finish instances"
+      - name: is_active
+        description: "Boolean flag indicating whether the constructor belongs to the active competitive grid"
+      - name: rank_world_championships
+        description: "All-time historical rank by World Constructors Championship titles"
+      - name: rank_race_wins
+        description: "All-time official historical rank by Grand Prix victories"
+      - name: rank_sprint_wins
+        description: "All-time historical rank by Sprint race victories"
+      - name: rank_total_wins
+        description: "All-time historical rank by combined victories (Grand Prix + Sprint)"
+      - name: rank_poles
+        description: "All-time historical rank by Grand Prix pole positions"
+      - name: rank_race_podiums
+        description: "All-time official historical rank by Grand Prix podium finishes"
+      - name: rank_sprint_podiums
+        description: "All-time historical rank by Sprint podium finishes"
+      - name: rank_total_podiums
+        description: "All-time historical rank by combined podium finishes"
+      - name: rank_gps
+        description: "All-time historical rank by Grand Prix race starts"
+      - name: rank_seasons
+        description: "All-time historical rank by total seasons active in Formula 1"
+      - name: rank_q3_appearences
+        description: "All-time historical rank by Q3 shootout appearances"
+      - name: rank_q2_appearences
+        description: "All-time historical rank by Q2 appearances"
+      - name: rank_points
+        description: "All-time historical rank by cumulative championship points"
+
