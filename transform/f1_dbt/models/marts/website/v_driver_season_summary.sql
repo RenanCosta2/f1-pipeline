@@ -30,18 +30,20 @@ latest_driver_team AS (
     SELECT
         year,
         driver_id,
+        team_id,
         team_name,
         team_color
     FROM (
         SELECT
             schedule.year,
             results.driver_id,
+            teams.team_id,
             teams.team_name,
             teams.team_color,
             ROW_NUMBER() OVER (
                 PARTITION BY schedule.year, results.driver_id 
                 ORDER BY schedule.round_number DESC
-            ) AS rn
+            ) AS latest_round_rank
         FROM 
             {{ ref('fact_results') }} AS results
         JOIN 
@@ -55,9 +57,33 @@ latest_driver_team AS (
             USING (team_id)
         WHERE 
             results.team_id IS NOT NULL
-    ) ranked
+    ) AS ranked_driver_teams
     WHERE 
-        rn = 1
+        latest_round_rank = 1
+),
+
+driver_season_teams AS (
+    SELECT
+        schedule.year,
+        results.driver_id,
+        COUNT(DISTINCT teams.team_id) AS teams_count,
+        STRING_AGG(DISTINCT teams.team_name, ' / ' ORDER BY teams.team_name) AS teams_list
+    FROM 
+        {{ ref('fact_results') }} AS results
+    JOIN 
+        {{ ref('dim_sessions') }} AS sessions 
+        USING (session_sk)
+    JOIN 
+        {{ ref('dim_schedule') }} AS schedule 
+        USING (event_sk)
+    JOIN 
+        {{ ref('dim_constructors') }} AS teams 
+        USING (team_id)
+    WHERE 
+        results.team_id IS NOT NULL
+    GROUP BY
+        schedule.year,
+        results.driver_id
 ),
 
 race_fastest_laps AS (
@@ -154,7 +180,7 @@ driver_season_metrics AS (
         COUNT(CASE WHEN results.finishing_position <= 3 AND sessions.session_name IN ('Race', 'Sprint') THEN 1 END) AS total_podiums,
 
         -- Aparições nas qualis
-        COUNT(CASE WHEN sessions.session_name = 'Qualifying' AND results.finishing_position <= quali.q2_cutoff THEN 1 END ) AS q2_appearences,
+        COUNT(CASE WHEN sessions.session_name = 'Qualifying' AND results.finishing_position <= qualifying_sessions.q2_cutoff THEN 1 END ) AS q2_appearences,
         COUNT(CASE WHEN sessions.session_name = 'Qualifying' AND results.finishing_position <= 10 THEN 1 END) AS q3_appearences,
 
         -- Pontos
@@ -185,7 +211,7 @@ driver_season_metrics AS (
         {{ ref('dim_drivers') }} AS drivers 
         USING (driver_id)
     LEFT JOIN
-        qualifying_sessions AS quali
+        qualifying_sessions
         USING (session_sk)
     GROUP BY
         schedule.year,
@@ -198,32 +224,39 @@ driver_season_metrics AS (
 )
 
 SELECT
-    metrics.*,
-    COALESCE(fastest.fastest_laps, 0) AS fastest_laps,
+    driver_season_metrics.*,
+    COALESCE(season_fastest_laps.fastest_laps, 0) AS fastest_laps,
     CASE 
         WHEN race_poles > 0 
         THEN ROUND((poles_to_win::NUMERIC / race_poles) * 100, 2) 
         ELSE NULL 
     END AS pole_to_win_rate,
-    CASE WHEN completed.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,
+    CASE WHEN completed_seasons.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,
     DENSE_RANK() OVER (
-        PARTITION BY metrics.year 
-        ORDER BY metrics.total_points DESC, metrics.race_wins DESC, metrics.race_podiums DESC
+        PARTITION BY driver_season_metrics.year 
+        ORDER BY driver_season_metrics.total_points DESC, driver_season_metrics.race_wins DESC, driver_season_metrics.race_podiums DESC
     ) AS championship_position,
-    COALESCE(latest_team.team_name, 'F1 Team') AS team_name,
-    latest_team.team_color
+    latest_driver_team.team_id,
+    COALESCE(latest_driver_team.team_name, 'F1 Team') AS team_name,
+    latest_driver_team.team_color,
+    COALESCE(driver_season_teams.teams_count, 1) AS teams_count,
+    COALESCE(driver_season_teams.teams_list, latest_driver_team.team_name, 'F1 Team') AS teams_list
 FROM
-    driver_season_metrics AS metrics
+    driver_season_metrics
 LEFT JOIN
-    latest_driver_team AS latest_team
-    ON metrics.year = latest_team.year 
-    AND metrics.driver_id = latest_team.driver_id
+    latest_driver_team
+    ON driver_season_metrics.year = latest_driver_team.year 
+    AND driver_season_metrics.driver_id = latest_driver_team.driver_id
 LEFT JOIN
-    season_fastest_laps AS fastest
-    ON metrics.year = fastest.year
-    AND metrics.driver_id = fastest.driver_id
+    driver_season_teams
+    ON driver_season_metrics.year = driver_season_teams.year
+    AND driver_season_metrics.driver_id = driver_season_teams.driver_id
 LEFT JOIN
-    completed_seasons AS completed
-    ON metrics.year = completed.year
+    season_fastest_laps
+    ON driver_season_metrics.year = season_fastest_laps.year
+    AND driver_season_metrics.driver_id = season_fastest_laps.driver_id
+LEFT JOIN
+    completed_seasons
+    ON driver_season_metrics.year = completed_seasons.year
 WHERE
     competitive_gps > 0
