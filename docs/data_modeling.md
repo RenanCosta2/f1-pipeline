@@ -103,7 +103,7 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | Modelo | Tipo | Página de Consumo | Objetivo / Métricas |
 | :--- | :--- | :--- | :--- |
 | **`v_sessions_summary`** | Table | Visão Geral (`/`) & Corrida (`/race`) | Classificação da sessão com *gap* para o líder, *interval* para o carro à frente, deltas de posição e número de paradas. |
-| **`v_season_races_summary`** | View | Visão Geral (`/`) | Listagem oficial dos Grandes Prêmios da temporada, status do evento (`Completed` / `Scheduled`), circuito, piloto vencedor e equipe. |
+| **`v_circuit_season_summary`** | View | Temporada (`/season`) & Visão Geral | Resumo dos circuitos e Grandes Prêmios da temporada: status do evento (`Completed`, `In Progress`, `Scheduled`), circuito, pole position, vencedor da corrida, vencedor da sprint, volta mais rápida e abandonos (DNFs). |
 | **`v_driver_standings`** | View | Temporada (`/season`) | Classificação do mundial de pilotos com total de pontos, vitórias em GP/Sprint e pódios. |
 | **`v_constructor_standings`** | View | Temporada (`/season`) | Classificação do mundial de construtores com pontos totais e vitórias acumuladas. |
 | **`v_cumulative_drivers_points`** | View | Temporada (`/season`) | Pontuação acumulada corrida a corrida por piloto para alimentar o gráfico de linhas e o filtro de rodadas. |
@@ -111,7 +111,8 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | **`v_season_matrix`** | View | Temporada (`/season`) | Matriz de resultados da temporada estilo Wikipedia (P1, P2, P3, Pontos, Ret, DNS, DSQ) mapeando cada piloto a cada GP do calendário. |
 | **`v_driver_season_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Métricas consolidadas ano a ano por piloto: vitórias, poles, pódios, presenças em Q2/Q3, taxa de conversão pole-to-win, DNFs e posição final no campeonato. |
 | **`v_driver_career_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Estatísticas consolidadas da carreira histórica do piloto: GPs disputados, títulos mundiais, vitórias, pódios, status de piloto ativo no grid atual (`is_active`) e rankings históricos *all-time*. |
-| **`v_driver_circuit_performance`** | View | Pilotos (`/drivers/[id]`) | Histórico detalhado de performance do piloto em cada autódromo físico: participações, vitórias, pódios, poles, voltas mais rápidas, pontos totais, melhor posição e abandonos (DNFs). |
+| **`v_circuit_driver_performance`** | View | Pilotos (`/drivers/[id]`) | Histórico detalhado de performance do piloto em cada autódromo físico: participações, vitórias, pódios, poles, voltas mais rápidas, pontos totais, melhor posição e abandonos (DNFs). |
+| **`v_circuit_overview`** | View | Visão Geral (`/`) & Circuitos | Panorama histórico completo de cada autódromo: total de GPs, anos ativo, média e total de DNFs, equipe mais vitoriosa, pilotos recordistas (vitórias, pódios, poles, sprints) e recordes oficiais de volta em corrida e classificação. |
 | **`v_constructor_season_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Métricas consolidadas ano a ano por construtora: vitórias GP/Sprint, poles, pódios, dobradinhas (1-2), primeiras filas no grid, pódios e pontos duplos, voltas mais rápidas, DNFs combinados, lineup de pilotos em JSON e posição no campeonato. |
 | **`v_constructor_career_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Estatísticas consolidadas da trajetória histórica da equipe: total de GPs disputados, temporadas, títulos de construtores, vitórias, dobradinhas, primeiras filas, status de escuderia ativa (`is_active`) e rankings históricos *all-time*. |
 | **`v_constructor_driver_summary`** | View | Equipes (`/teams/[id]`) | Estatísticas completas e comparativo histórico de cada piloto pela escuderia: temporadas ativas, lista de anos, títulos mundiais com o time, vitórias, poles, pódios, pontos e rankings internos na equipe. |
@@ -239,6 +240,81 @@ DENSE_RANK() OVER (PARTITION BY team_id ORDER BY race_wins DESC, total_points DE
 DENSE_RANK() OVER (PARTITION BY team_id ORDER BY gps_raced DESC) AS rank_in_team_gps,
 DENSE_RANK() OVER (PARTITION BY team_id ORDER BY driver_titles_with_team DESC, total_wins DESC) AS rank_in_team_titles
 ```
+
+### 5.11 Resolução de Recordistas e Desempate por Autódromo (`v_circuit_overview`)
+Para determinar com rigor os pilotos e equipes recordistas em cada circuito (vitórias em GP, pódios, poles, vitórias em sprint e escuderia mais vitoriosa), a view utiliza mini-CTEs com Window Functions de ranqueamento (`DENSE_RANK()`) combinadas com a cláusula `DISTINCT ON (circuit_id)` do PostgreSQL. Caso haja empate na contagem de vitórias/pódios/poles entre dois ou mais pilotos em uma mesma pista, o critério de desempate prioriza o piloto com atuação mais recente (`last_year DESC`, `first_year DESC`):
+
+```sql
+WITH top_race_winners AS (
+    SELECT DISTINCT ON (circuit_id)
+        circuit_id,
+        driver_id AS most_wins_driver_id,
+        driver_full_name AS most_wins_driver,
+        driver_abbreviation AS most_wins_driver_code,
+        driver_nationality AS most_wins_driver_nationality,
+        driver_headshot_url AS most_wins_driver_headshot_url,
+        race_wins AS most_wins_count
+    FROM (
+        SELECT 
+            circuit_id, driver_id, driver_full_name, driver_abbreviation,
+            driver_nationality, driver_headshot_url, race_wins, last_year, first_year,
+            DENSE_RANK() OVER (PARTITION BY circuit_id ORDER BY race_wins DESC) AS rank_race_wins
+        FROM {{ ref('v_circuit_driver_performance') }}
+        WHERE race_wins > 0
+    ) ranked
+    WHERE rank_race_wins = 1
+    ORDER BY circuit_id, last_year DESC, first_year DESC
+)
+```
+
+### 5.12 Recordes Oficiais de Volta em Corrida vs. Classificação (`v_circuit_overview`)
+No automobilismo e nos regulamentos da FIA, há uma separação técnica estrita entre o **Recorde de Volta Oficial** e a **Melhor Marca Absoluta do Traçado**:
+1. **Recorde de Volta em Corrida**: Válido unicamente durante a prova principal de domingo (`session_name = 'Race'`), com combustível de corrida e condições dinâmicas de desgaste.
+2. **Recorde de Classificação**: Obtido em voltas rápidas no limite com pouco combustível e potência máxima nas sessões de tomada de tempo (`session_name IN ('Qualifying', 'Sprint Shootout', 'Sprint Qualifying')`).
+
+O modelo extrai essas marcas diretamente de `fact_laps`, resolvendo empates por ano mais recente e formatando os segundos em `M:SS.MS`:
+
+```sql
+race_lap_records AS (
+    SELECT DISTINCT ON (schedule.circuit_id)
+        schedule.circuit_id,
+        laps.driver_id AS race_lap_record_driver_id,
+        drivers.driver_full_name AS race_lap_record_driver,
+        drivers.driver_abbreviation AS race_lap_record_driver_code,
+        drivers.driver_headshot_url AS race_lap_record_headshot_url,
+        constructors.team_name AS race_lap_record_team,
+        constructors.team_color AS race_lap_record_team_color,
+        schedule.year AS race_lap_record_year,
+        laps.lap_time_seconds AS race_lap_record_seconds,
+        TO_CHAR(MAKE_INTERVAL(secs => laps.lap_time_seconds), 'FMMI:SS.MS') AS race_lap_record_formatted
+    FROM {{ ref('fact_laps') }} AS laps
+    JOIN {{ ref('dim_sessions') }} AS sessions USING (session_sk)
+    JOIN {{ ref('dim_schedule') }} AS schedule USING (event_sk)
+    JOIN {{ ref('dim_drivers') }} AS drivers USING (driver_id)
+    LEFT JOIN {{ ref('dim_constructors') }} AS constructors USING (team_id)
+    WHERE sessions.session_name = 'Race'
+      AND laps.lap_time_seconds > 0
+      AND laps.is_accurate = TRUE
+    ORDER BY schedule.circuit_id, laps.lap_time_seconds ASC, schedule.year DESC
+)
+```
+
+### 5.13 Consolidação Histórica de Edições e Confiabilidade por Autódromo (`v_circuit_season_summary`)
+Agrega cada final de semana de Grande Prêmio realizado em cada autódromo (`event_sk`), identificando os detentores da pole position, vencedores de corrida principal e sprint, detentor da volta mais rápida e a contagem exata de abandonos (`total_dnfs`):
+
+```sql
+COUNT(CASE 
+    WHEN sessions.session_name = 'Race' 
+     AND results.status NOT IN ('Finished', 'Lapped') 
+     AND results.status NOT LIKE '+%' 
+    THEN 1 
+END) AS total_dnfs
+```
+
+O status de execução da etapa (`race_status`) classifica dinamicamente a rodada em `Completed` (quando a corrida foi concluída com P1), `In Progress` (quando há sessões parciais registradas) ou `Scheduled` (quando o evento ainda irá acontecer).
+
+### 5.14 Desempenho Cumulativo de Pilotos por Autódromo (`v_circuit_driver_performance`)
+Mapeia a carreira e os números consolidados de cada piloto em cada autódromo físico (`circuit_id, driver_id`). Diferente de visões orientadas a calendário, este modelo permite responder quais pistas são as mais favoráveis a cada piloto, computando total de participações em GPs, vitórias em GPs principais e Sprints, pódios, poles, voltas rápidas oficiais, pontuação total somada, abandonos acumulados e melhores posições históricas no grid e na bandeirada.
 
 ## ⚡ 6. Otimizações de Performance & Indexação
 

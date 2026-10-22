@@ -1,8 +1,8 @@
 version: 2
 
 models:
-  - name: v_season_races_summary
-    description: "Serving mart for season races listing and grand prix overview, consolidating round information, circuits, winning drivers, teams, laps completed, and official times."
+  - name: v_circuit_season_summary
+    description: "Serving mart for season circuits and grand prix overview, consolidating round information, circuit details, pole positions, race winners, fastest laps, sprint winners, and official race status."
     columns:
       - name: year
         description: "Championship season year"
@@ -17,7 +17,7 @@ models:
       - name: country
         description: "Host country of the circuit"
       - name: race_status
-        description: "Status of the race: Completed or Scheduled"
+        description: "Status of the race: Completed, In Progress, or Scheduled"
 
   - name: v_sessions_summary
     description: "Analytical mart containing the comprehensive results of every session (Practice, Qualifying, Sprint, Race), including calculated gaps to leader, intervals to car ahead, pit stops, and position deltas."
@@ -1041,3 +1041,185 @@ models:
       - name: rank_in_team_titles
         description: "Driver's all-time rank in World Championships won within this constructor's history"
 
+  - name: v_circuit_overview
+    description: "Serving mart consolidating all-time circuit records and historical statistics: total GPs, first/last year, average DNFs, most successful teams and drivers (wins, podiums, poles, sprints), and official lap records for both Race and Qualifying."
+    columns:
+      - name: circuit_id
+        description: "Canonical circuit identifier"
+        data_tests:
+          - not_null
+          - unique
+      - name: circuit_name
+        description: "Official racetrack name"
+        data_tests:
+          - not_null
+      - name: country
+        description: "Host country of the circuit"
+      - name: location
+        description: "City or geographic location"
+      - name: track_type
+        description: "Circuit layout typology (Street, Permanent, Hybrid)"
+      - name: total_gps_completed
+        description: "Total number of completed Grand Prix main races held at this circuit"
+      - name: total_gps_scheduled
+        description: "Total scheduled Grand Prix editions held at this circuit in the dataset"
+      - name: first_gp_year
+        description: "First season year this circuit appeared in the modern dataset"
+      - name: last_gp_year
+        description: "Most recent season year this circuit hosted a Grand Prix"
+      - name: total_dnfs
+        description: "Cumulative count of driver race retirements (DNFs) at this circuit"
+      - name: avg_dnfs_per_race
+        description: "Average number of retirements per Grand Prix race at this circuit"
+      - name: most_wins_team_id
+        description: "Team ID of the constructor with the most victories at this circuit"
+      - name: most_wins_team
+        description: "Name of the constructor with the most victories at this circuit"
+      - name: most_wins_team_color
+        description: "Hexadecimal brand color of the most victorious constructor"
+      - name: most_wins_team_count
+        description: "Total victories achieved by the top constructor at this circuit"
+      - name: most_wins_driver_id
+        description: "Driver ID of the all-time race victory record holder at this circuit"
+      - name: most_wins_driver
+        description: "Full name of the all-time race victory record holder at this circuit"
+      - name: most_wins_driver_code
+        description: "Three-letter abbreviation of the victory record holder"
+      - name: most_wins_count
+        description: "Total Grand Prix race victories won by the top driver at this circuit"
+      - name: most_podiums_driver_id
+        description: "Driver ID of the all-time podium record holder at this circuit"
+      - name: most_podiums_driver
+        description: "Full name of the all-time podium record holder at this circuit"
+      - name: most_podiums_count
+        description: "Total Grand Prix podium finishes achieved by the top driver at this circuit"
+      - name: most_poles_driver_id
+        description: "Driver ID of the all-time pole position record holder at this circuit"
+      - name: most_poles_driver
+        description: "Full name of the all-time pole position record holder at this circuit"
+      - name: most_poles_count
+        description: "Total Grand Prix pole positions achieved by the top driver at this circuit"
+      - name: most_sprint_wins_driver_id
+        description: "Driver ID of the all-time Sprint race victory record holder at this circuit"
+      - name: most_sprint_wins_driver
+        description: "Full name of the all-time Sprint race victory record holder at this circuit"
+      - name: most_sprint_wins_count
+        description: "Total Sprint victories won by the top driver at this circuit"
+      - name: race_lap_record_driver_id
+        description: "Driver ID holding the official fastest lap record in a Grand Prix race"
+      - name: race_lap_record_driver
+        description: "Driver full name holding the official Grand Prix race lap record"
+      - name: race_lap_record_team
+        description: "Team with which the official Grand Prix race lap record was set"
+      - name: race_lap_record_year
+        description: "Season year in which the official Grand Prix race lap record was recorded"
+      - name: race_lap_record_seconds
+        description: "Lap time in seconds of the official Grand Prix race lap record"
+      - name: race_lap_record_formatted
+        description: "Formatted lap time (M:SS.MS) of the official Grand Prix race lap record"
+      - name: quali_lap_record_driver_id
+        description: "Driver ID holding the all-time fastest lap record in official Qualifying"
+      - name: quali_lap_record_driver
+        description: "Driver full name holding the all-time Qualifying lap record"
+      - name: quali_lap_record_team
+        description: "Team with which the all-time Qualifying lap record was set"
+      - name: quali_lap_record_year
+        description: "Season year in which the all-time Qualifying lap record was recorded"
+      - name: quali_lap_record_seconds
+        description: "Lap time in seconds of the all-time Qualifying lap record"
+      - name: quali_lap_record_formatted
+        description: "Formatted lap time (M:SS.MS) of the all-time Qualifying lap record"
+
+  - name: v_circuit_season_summary
+    description: "Serving mart consolidating each Grand Prix edition held at each circuit over time: event metadata, race winners, pole sitters, fastest lap holders, sprint winners, and reliability stats (DNFs)."
+    columns:
+      - name: year
+        description: "Season championship year"
+        data_tests:
+          - not_null
+      - name: round_number
+        description: "Grand Prix round number in the championship calendar"
+        data_tests:
+          - not_null
+      - name: circuit_id
+        description: "Canonical circuit identifier"
+        data_tests:
+          - not_null
+      - name: circuit_name
+        description: "Official racetrack name"
+      - name: official_event_name
+        description: "Official commercial name of the Grand Prix event"
+      - name: event_date
+        description: "Official event date"
+      - name: race_winner_driver_id
+        description: "Driver ID of the Grand Prix race winner"
+      - name: race_winner_driver
+        description: "Full name of the Grand Prix race winner"
+      - name: race_winner_team
+        description: "Team name of the Grand Prix race winner"
+      - name: race_time_formatted
+        description: "Total elapsed race time or formatted winning duration"
+      - name: pole_driver
+        description: "Driver full name who took pole position for the Grand Prix"
+      - name: pole_team
+        description: "Team of the driver who took pole position"
+      - name: fastest_lap_driver
+        description: "Driver full name who set the fastest lap of the Grand Prix race"
+      - name: fastest_lap_time_formatted
+        description: "Fastest lap time formatted as M:SS.MS"
+      - name: sprint_winner_driver
+        description: "Full name of the Sprint race winner (if a Sprint was held)"
+      - name: sprint_winner_team
+        description: "Team of the Sprint race winner"
+      - name: total_dnfs
+        description: "Total retirements (Did Not Finish) in the main race"
+      - name: race_status
+        description: "Event execution status: Completed, In Progress, or Scheduled"
+
+  - name: v_circuit_driver_performance
+    description: "Serving mart consolidating driver performance and statistics aggregated per physical racetrack: total GPs entered, race/sprint wins, poles, podiums, fastest laps, points scored, and best finishes."
+    columns:
+      - name: circuit_id
+        description: "Canonical circuit identifier"
+        data_tests:
+          - not_null
+      - name: circuit_name
+        description: "Official racetrack name"
+      - name: driver_id
+        description: "Canonical driver identifier"
+        data_tests:
+          - not_null
+      - name: driver_full_name
+        description: "Driver full name"
+        data_tests:
+          - not_null
+      - name: driver_abbreviation
+        description: "Driver 3-letter code"
+      - name: driver_nationality
+        description: "Driver nationality"
+      - name: total_gps
+        description: "Total Grand Prix events entered by the driver at this circuit"
+      - name: first_year
+        description: "First year the driver competed at this circuit"
+      - name: last_year
+        description: "Most recent year the driver competed at this circuit"
+      - name: total_wins
+        description: "Total victories (GP main race + Sprint) won by the driver at this circuit"
+      - name: race_wins
+        description: "Total Grand Prix main race victories won by the driver at this circuit"
+      - name: sprint_wins
+        description: "Total Sprint race victories won by the driver at this circuit"
+      - name: total_podiums
+        description: "Total podium finishes (P1-P3) achieved at this circuit"
+      - name: race_poles
+        description: "Total Grand Prix pole positions achieved at this circuit"
+      - name: total_fastest_laps
+        description: "Total official fastest race laps recorded at this circuit"
+      - name: total_points
+        description: "Cumulative championship points scored at this circuit"
+      - name: best_finish_position
+        description: "Highest finishing position achieved in a Grand Prix race at this circuit"
+      - name: best_grid_position
+        description: "Highest starting grid position achieved in a Grand Prix race at this circuit"
+      - name: total_dnfs
+        description: "Total race retirements (DNFs) experienced by the driver at this circuit"
