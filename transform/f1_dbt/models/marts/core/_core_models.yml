@@ -4,24 +4,32 @@ models:
   - name: dim_circuits
     description: "Circuit dimension containing standardized circuit metadata and geographical details"
     columns:
-      - name: circuit_sk
-        description: "Surrogate primary key for the circuit"
+      - name: circuit_id
+        description: "Canonical unique slug identifier for the circuit (e.g. silverstone, red_bull_ring)"
         data_tests:
           - unique
           - not_null
 
+      - name: circuit_name
+        description: "Official real name of the racetrack circuit"
+        data_tests:
+          - not_null
+
       - name: country
-        description: "Country name of the Grand Prix event"
+        description: "Country where the circuit is physically located"
         data_tests:
           - not_null
 
       - name: location
-        description: "City name of the Grand Prix event"
+        description: "City or locality of the circuit"
         data_tests:
           - not_null
 
+      - name: track_type
+        description: "Type of circuit: Permanent or Street"
+
       - name: event_name
-        description: "Name of the Grand Prix event"
+        description: "Primary Grand Prix event name (preserved for backward compatibility)"
         data_tests:
           - not_null
 
@@ -48,13 +56,13 @@ models:
       - name: official_event_name
         description: "Official name of the Grand Prix event"
 
-      - name: circuit_sk
+      - name: circuit_id
         description: "Foreign key reference to dim_circuits"
         data_tests:
           - not_null
           - relationships:
               to: ref('dim_circuits')
-              field: circuit_sk
+              field: circuit_id
 
       - name: event_date
         description: "Date of the Grand Prix event"

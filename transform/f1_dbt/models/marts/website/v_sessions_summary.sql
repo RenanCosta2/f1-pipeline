@@ -115,7 +115,7 @@ race_results_base AS (
     SELECT
         session_sk,
         ranked_results.driver_id,
-        circuit_sk,
+        circuit_id,
         year,
         round_number,
         country,
@@ -195,7 +195,7 @@ race_results_base AS (
         USING(event_sk)
     LEFT JOIN 
         {{ ref('dim_circuits') }}
-        USING(circuit_sk)
+        USING(circuit_id)
     LEFT JOIN 
         event_qualifying_grid eqg
         ON eqg.event_sk = dim_schedule.event_sk AND eqg.driver_id = ranked_results.driver_id
@@ -207,7 +207,7 @@ race_results_base AS (
 SELECT
     session_sk,
     driver_id,
-    circuit_sk,
+    circuit_id,
     year,
     round_number,
     country,

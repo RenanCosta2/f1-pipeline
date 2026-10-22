@@ -49,4 +49,4 @@ models:
             - "CREATE INDEX IF NOT EXISTS idx_dim_sessions_event_sk ON {{ this }} (event_sk)"
         dim_schedule:
           +post-hook:
-            - "CREATE INDEX IF NOT EXISTS idx_dim_schedule_circuit_sk ON {{ this }} (circuit_sk)"
+            - "CREATE INDEX IF NOT EXISTS idx_dim_schedule_circuit_id ON {{ this }} (circuit_id)"

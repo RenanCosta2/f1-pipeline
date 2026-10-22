@@ -175,7 +175,7 @@ season_drivers_teams AS (
 season_rounds AS (
     SELECT
         schedule.event_sk,
-        schedule.circuit_sk,
+        schedule.circuit_id,
         schedule.year,
         schedule.round_number,
         schedule.official_event_name,
@@ -209,7 +209,7 @@ season_rounds AS (
         {{ ref('dim_schedule') }} AS schedule
     JOIN 
         {{ ref('dim_circuits') }} AS circuits 
-        USING (circuit_sk)
+        USING (circuit_id)
     LEFT JOIN 
         event_sessions_stats AS session_stats 
         USING (event_sk)
@@ -220,7 +220,7 @@ season_rounds AS (
 SELECT 
     season_drivers.year,
     rounds.round_number,
-    rounds.circuit_sk,
+    rounds.circuit_id,
     rounds.country,
     rounds.location,
     rounds.official_event_name,

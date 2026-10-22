@@ -2,52 +2,63 @@ WITH source AS (
     SELECT * FROM {{ source('bronze', 'schedule') }}
 ),
 
-circuit_overrides AS (
-    SELECT * FROM {{ ref('circuit_overrides') }}
+circuit_mapping AS (
+    SELECT * FROM {{ ref('circuit_mapping') }}
+),
+
+seed_circuits AS (
+    SELECT * FROM {{ ref('seed_circuits') }}
 ),
 
 renamed_columns AS (
     SELECT
-        year,
-        "RoundNumber" AS round_number,
-        COALESCE(overrides.canonical_country, "Country") AS country,
-        COALESCE(overrides.canonical_location, "Location") AS location,
+        source.year,
+        source."RoundNumber" AS round_number,
+        COALESCE(
+            mapping.circuit_id,
+            LOWER(REGEXP_REPLACE(REPLACE(source."Location", ' ', '_'), '[^a-zA-Z0-9_]', '', 'g'))
+        ) AS circuit_id,
+        COALESCE(circuits.country, source."Country") AS country,
+        COALESCE(circuits.location, source."Location") AS location,
         REGEXP_REPLACE(
-            "OfficialEventName",
+            source."OfficialEventName",
             '\s+\d{4}$',
             ''
         ) AS official_event_name,
-        "EventDate" AS event_date,
-        COALESCE(overrides.canonical_event_name, "EventName") AS event_name,
-        "EventFormat" AS event_format,
-        "Session1" AS session_1,
-        "Session1Date" AS session_1_date,
-        "Session1DateUtc" AS session_1_date_utc,
-        "Session2" AS session_2,
-        "Session2Date" AS session_2_date,
-        "Session2DateUtc" AS session_2_date_utc,
-        "Session3" AS session_3,
-        "Session3Date" AS session_3_date,
-        "Session3DateUtc" AS session_3_date_utc,
-        "Session4" AS session_4,
-        "Session4Date" AS session_4_date,
-        "Session4DateUtc" AS session_4_date_utc,
-        "Session5" AS session_5,
-        "Session5Date" AS session_5_date,
-        "Session5DateUtc" AS session_5_date_utc,
-        "F1ApiSupport" AS f1_api_support,
-        extracted_at
+        source."EventDate" AS event_date,
+        source."EventName" AS event_name,
+        source."EventFormat" AS event_format,
+        source."Session1" AS session_1,
+        source."Session1Date" AS session_1_date,
+        source."Session1DateUtc" AS session_1_date_utc,
+        source."Session2" AS session_2,
+        source."Session2Date" AS session_2_date,
+        source."Session2DateUtc" AS session_2_date_utc,
+        source."Session3" AS session_3,
+        source."Session3Date" AS session_3_date,
+        source."Session3DateUtc" AS session_3_date_utc,
+        source."Session4" AS session_4,
+        source."Session4Date" AS session_4_date,
+        source."Session4DateUtc" AS session_4_date_utc,
+        source."Session5" AS session_5,
+        source."Session5Date" AS session_5_date,
+        source."Session5DateUtc" AS session_5_date_utc,
+        source."F1ApiSupport" AS f1_api_support,
+        source.extracted_at
     FROM
         source
-    LEFT JOIN circuit_overrides AS overrides
-        ON  source."Country"  = overrides.raw_country
-        AND source."Location" = overrides.raw_location
+    LEFT JOIN circuit_mapping AS mapping
+        ON  source."Country"  = mapping.raw_country
+        AND source."Location" = mapping.raw_location
+    LEFT JOIN seed_circuits AS circuits
+        ON  mapping.circuit_id = circuits.circuit_id
 ),
 
 cleaning_data AS (
     SELECT
         year,
         round_number,
+        circuit_id,
         country,
         location,
         {{ clean_null_string('official_event_name') }},
@@ -79,6 +90,7 @@ typed_data AS (
     SELECT
         year::INT,
         round_number::INT,
+        circuit_id::VARCHAR,
         country::VARCHAR,
         location::VARCHAR,
         official_event_name::VARCHAR,

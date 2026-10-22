@@ -5,7 +5,7 @@ SELECT DISTINCT
     year,
     round_number,
     official_event_name,
-    {{ dbt_utils.generate_surrogate_key(['country', 'location', 'event_name']) }} AS circuit_sk,
+    circuit_id,
     event_date,
     event_format
 FROM 

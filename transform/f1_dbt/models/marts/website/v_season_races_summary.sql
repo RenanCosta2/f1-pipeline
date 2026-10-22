@@ -16,7 +16,7 @@ SELECT
     dim_schedule.event_sk,
     dim_schedule.official_event_name,
     dim_schedule.event_date,
-    dim_schedule.circuit_sk,
+    dim_schedule.circuit_id,
     country,
     location,
     dim_circuits.event_name AS circuit_name,
@@ -46,7 +46,7 @@ FROM
     {{ ref('dim_schedule') }} 
 JOIN 
     {{ ref('dim_circuits') }}  
-    USING(circuit_sk)
+    USING(circuit_id)
 LEFT JOIN 
     event_sessions_stats
     ON event_sessions_stats.event_sk = dim_schedule.event_sk

@@ -37,7 +37,7 @@ WITH base_results AS (
         USING(event_sk)
     LEFT JOIN
         {{ ref('dim_circuits') }}
-        USING(circuit_sk)
+        USING(circuit_id)
     WHERE
         points IS NOT NULL
     GROUP BY

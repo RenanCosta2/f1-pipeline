@@ -58,10 +58,10 @@ A extração via Python/Pandas a partir da biblioteca FastF1 gera artefatos clá
   - **Conversão de Tempos**: Conversão de tempos de qualificação e totais de nanossegundos para segundos decimais com 3 casas (`ROUND(time / 1e9, 3)`).
 
 #### 📅 `stg_schedule`
-* **Origem**: `bronze.schedule` + Seed `circuit_overrides`
+* **Origem**: `bronze.schedule` + Seeds `circuit_mapping` e `seed_circuits`
 * **Granularidade**: Um registro por evento/rodada de Grande Prêmio.
 * **Transformações e Regras de Negócio**:
-  - **Padronização Canônica de Circuitos**: Harmonização de nomes de países e cidades inconsistentes via seed `circuit_overrides`.
+  - **Mapeamento e Padronização Canônica de Circuitos**: Desacoplamento entre evento de calendário e autódromo físico. Através do seed `circuit_mapping`, cada par `(raw_country, raw_location)` inconsistente do FastF1 é mapeado para um `circuit_id` canônico, enriquecido com os metadados oficiais do `seed_circuits` (nome do autódromo, país, cidade e tipo de traçado).
   - **Limpeza de Nomes Oficiais**: Remoção do ano no sufixo do nome do evento via Regex (`REGEXP_REPLACE(..., '\s+\d{4}$', '')`) e sanitização de strings nulas.
   - **Tratamento de Fuso Horário**: Conversão de datas e horas UTC para o horário de Brasília (`session_date_brt`) usando `AT TIME ZONE 'America/Sao_Paulo'`.
 
@@ -80,8 +80,8 @@ A extração via Python/Pandas a partir da biblioteca FastF1 gera artefatos clá
 A camada Gold implementa o modelo dimensional normalizado (*Snowflake Schema*), isolando entidades e gerando chaves substitutas (*surrogate keys*) determinísticas via hash MD5:
 
 #### 🏛️ Dimensões
-- **`dim_circuits`**: Entidade física do circuito com localização, país e nome do evento (`circuit_sk` gerado via hash MD5).
-- **`dim_schedule`**: Calendário oficial de cada ano, contendo data oficial e formato do final de semana (`event_sk` gerado via hash MD5).
+- **`dim_circuits`**: Entidade canônica do autódromo físico oficial da Fórmula 1 (gerada a partir de `seed_circuits`), contendo a chave primária slug `circuit_id` (ex: `silverstone`, `interlagos`), nome oficial do autódromo (`circuit_name`), país (`country`), cidade/região (`location`) e tipo de pista (`track_type`: Permanente, Rua ou Misto).
+- **`dim_schedule`**: Calendário oficial de cada ano, contendo data oficial, formato do final de semana e chave estrangeira direta para o autódromo físico (`circuit_id`), com identificador `event_sk = hash(year, round_number, official_event_name, event_date)`.
 - **`dim_sessions`**: Normalização das 5 sessões de pista do GP (TL1, TL2, TL3, Quali, Sprint e Corrida) com chaves `session_sk` e relacionamento com `dim_schedule`.
 - **`dim_drivers`**: Entidade de pilotos desduplicada, com identificador único `driver_id`, nomes completos, abreviação, nacionalidade e foto oficial.
 - **`dim_constructors`**: Entidade de equipes desduplicada, com `team_id`, nome oficial e cor institucional em código hexadecimal.
@@ -111,6 +111,7 @@ Os modelos em `transform/f1_dbt/models/marts/website` são otimizados especifica
 | **`v_season_matrix`** | View | Temporada (`/season`) | Matriz de resultados da temporada estilo Wikipedia (P1, P2, P3, Pontos, Ret, DNS, DSQ) mapeando cada piloto a cada GP do calendário. |
 | **`v_driver_season_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Métricas consolidadas ano a ano por piloto: vitórias, poles, pódios, presenças em Q2/Q3, taxa de conversão pole-to-win, DNFs e posição final no campeonato. |
 | **`v_driver_career_summary`** | View | Pilotos (`/drivers` & `/drivers/[id]`) | Estatísticas consolidadas da carreira histórica do piloto: GPs disputados, títulos mundiais, vitórias, pódios, status de piloto ativo no grid atual (`is_active`) e rankings históricos *all-time*. |
+| **`v_driver_circuit_performance`** | View | Pilotos (`/drivers/[id]`) | Histórico detalhado de performance do piloto em cada autódromo físico: participações, vitórias, pódios, poles, voltas mais rápidas, pontos totais, melhor posição e abandonos (DNFs). |
 | **`v_constructor_season_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Métricas consolidadas ano a ano por construtora: vitórias GP/Sprint, poles, pódios, dobradinhas (1-2), primeiras filas no grid, pódios e pontos duplos, voltas mais rápidas, DNFs combinados, lineup de pilotos em JSON e posição no campeonato. |
 | **`v_constructor_career_summary`** | View | Equipes (`/teams` & `/teams/[id]`) | Estatísticas consolidadas da trajetória histórica da equipe: total de GPs disputados, temporadas, títulos de construtores, vitórias, dobradinhas, primeiras filas, status de escuderia ativa (`is_active`) e rankings históricos *all-time*. |
 | **`v_constructor_driver_summary`** | View | Equipes (`/teams/[id]`) | Estatísticas completas e comparativo histórico de cada piloto pela escuderia: temporadas ativas, lista de anos, títulos mundiais com o time, vitórias, poles, pódios, pontos e rankings internos na equipe. |
