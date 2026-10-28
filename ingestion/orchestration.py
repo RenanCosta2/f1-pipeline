@@ -80,8 +80,13 @@ def main():
             laps_in_db = True
 
     # If both results and laps are already in S3 and in Postgres, session is fully synced
-    if results_in_s3 and results_in_db and laps_in_s3 and laps_in_db:
-        logger.info(f"Session {args.year} GP {args.gp} {args.session} already fully present in both S3 and Postgres. Skipping.")
+    session_is_synced = (
+        (results_in_s3 and results_in_db and laps_in_s3 and laps_in_db)
+        if args.year >= 2018 else
+        (results_in_s3 and results_in_db)
+    )
+    if session_is_synced:
+        logger.info("Session already fully present... Skipping.")
         return
 
     # If anything is still missing, trigger FastF1 extraction
