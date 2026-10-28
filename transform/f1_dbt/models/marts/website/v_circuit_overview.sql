@@ -7,6 +7,8 @@ WITH circuit_stats AS (
         COUNT(round_number) AS total_gps_scheduled,
         MIN(year) AS first_gp_year,
         MAX(year) AS last_gp_year,
+        STRING_AGG(DISTINCT year::TEXT, ', ' ORDER BY year::TEXT ASC) AS seasons_list,
+        ARRAY_AGG(DISTINCT year ORDER BY year ASC) AS years_held,
         COALESCE(SUM(total_dnfs), 0) AS total_dnfs,
         ROUND(
             COALESCE(AVG(CASE WHEN race_status = 'Completed' THEN total_dnfs END), 0),
@@ -207,6 +209,8 @@ SELECT
     COALESCE(stats.total_gps_scheduled, 0) AS total_gps_scheduled,
     stats.first_gp_year,
     stats.last_gp_year,
+    stats.seasons_list,
+    stats.years_held,
     COALESCE(stats.total_dnfs, 0) AS total_dnfs,
     COALESCE(stats.avg_dnfs_per_race, 0) AS avg_dnfs_per_race,
 

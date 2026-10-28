@@ -1049,6 +1049,10 @@ models:
         description: "First season year this circuit appeared in the modern dataset"
       - name: last_gp_year
         description: "Most recent season year this circuit hosted a Grand Prix"
+      - name: seasons_list
+        description: "Comma-separated chronological list of seasons held at this circuit"
+      - name: years_held
+        description: "Chronological array of distinct season years in which this circuit hosted a Grand Prix"
       - name: total_dnfs
         description: "Cumulative count of driver race retirements (DNFs) at this circuit"
       - name: avg_dnfs_per_race
@@ -1067,32 +1071,60 @@ models:
         description: "Full name of the all-time race victory record holder at this circuit"
       - name: most_wins_driver_code
         description: "Three-letter abbreviation of the victory record holder"
+      - name: most_wins_driver_nationality
+        description: "Three-letter country code of the victory record holder's nationality"
+      - name: most_wins_driver_headshot_url
+        description: "Official Formula 1 headshot image URL of the victory record holder"
       - name: most_wins_count
         description: "Total Grand Prix race victories won by the top driver at this circuit"
       - name: most_podiums_driver_id
         description: "Driver ID of the all-time podium record holder at this circuit"
       - name: most_podiums_driver
         description: "Full name of the all-time podium record holder at this circuit"
+      - name: most_podiums_driver_code
+        description: "Three-letter abbreviation of the podium record holder"
+      - name: most_podiums_driver_nationality
+        description: "Three-letter country code of the podium record holder's nationality"
+      - name: most_podiums_driver_headshot_url
+        description: "Official Formula 1 headshot image URL of the podium record holder"
       - name: most_podiums_count
         description: "Total Grand Prix podium finishes achieved by the top driver at this circuit"
       - name: most_poles_driver_id
         description: "Driver ID of the all-time pole position record holder at this circuit"
       - name: most_poles_driver
         description: "Full name of the all-time pole position record holder at this circuit"
+      - name: most_poles_driver_code
+        description: "Three-letter abbreviation of the pole position record holder"
+      - name: most_poles_driver_nationality
+        description: "Three-letter country code of the pole position record holder's nationality"
+      - name: most_poles_driver_headshot_url
+        description: "Official Formula 1 headshot image URL of the pole position record holder"
       - name: most_poles_count
         description: "Total Grand Prix pole positions achieved by the top driver at this circuit"
       - name: most_sprint_wins_driver_id
         description: "Driver ID of the all-time Sprint race victory record holder at this circuit"
       - name: most_sprint_wins_driver
         description: "Full name of the all-time Sprint race victory record holder at this circuit"
+      - name: most_sprint_wins_driver_code
+        description: "Three-letter abbreviation of the Sprint race victory record holder"
+      - name: most_sprint_wins_driver_nationality
+        description: "Three-letter country code of the Sprint race victory record holder's nationality"
+      - name: most_sprint_wins_driver_headshot_url
+        description: "Official Formula 1 headshot image URL of the Sprint race victory record holder"
       - name: most_sprint_wins_count
         description: "Total Sprint victories won by the top driver at this circuit"
       - name: race_lap_record_driver_id
         description: "Driver ID holding the official fastest lap record in a Grand Prix race"
       - name: race_lap_record_driver
         description: "Driver full name holding the official Grand Prix race lap record"
+      - name: race_lap_record_driver_code
+        description: "Three-letter abbreviation of the driver holding the official Grand Prix race lap record"
+      - name: race_lap_record_headshot_url
+        description: "Official Formula 1 driver headshot image URL of the race lap record holder"
       - name: race_lap_record_team
         description: "Team with which the official Grand Prix race lap record was set"
+      - name: race_lap_record_team_color
+        description: "Hexadecimal brand color of the constructor with which the race lap record was set"
       - name: race_lap_record_year
         description: "Season year in which the official Grand Prix race lap record was recorded"
       - name: race_lap_record_seconds
@@ -1103,8 +1135,14 @@ models:
         description: "Driver ID holding the all-time fastest lap record in official Qualifying"
       - name: quali_lap_record_driver
         description: "Driver full name holding the all-time Qualifying lap record"
+      - name: quali_lap_record_driver_code
+        description: "Three-letter abbreviation of the driver holding the all-time Qualifying lap record"
+      - name: quali_lap_record_headshot_url
+        description: "Official Formula 1 driver headshot image URL of the Qualifying lap record holder"
       - name: quali_lap_record_team
         description: "Team with which the all-time Qualifying lap record was set"
+      - name: quali_lap_record_team_color
+        description: "Hexadecimal brand color of the constructor with which the Qualifying lap record was set"
       - name: quali_lap_record_year
         description: "Season year in which the all-time Qualifying lap record was recorded"
       - name: quali_lap_record_seconds
