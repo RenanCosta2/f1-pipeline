@@ -1,24 +1,6 @@
 version: 2
 
 models:
-  - name: v_circuit_season_summary
-    description: "Serving mart for season circuits and grand prix overview, consolidating round information, circuit details, pole positions, race winners, fastest laps, sprint winners, and official race status."
-    columns:
-      - name: year
-        description: "Championship season year"
-        data_tests:
-          - not_null
-      - name: round_number
-        description: "Grand Prix round number in championship"
-        data_tests:
-          - not_null
-      - name: official_event_name
-        description: "Official Grand Prix name"
-      - name: country
-        description: "Host country of the circuit"
-      - name: race_status
-        description: "Status of the race: Completed, In Progress, or Scheduled"
-
   - name: v_sessions_summary
     description: "Analytical mart containing the comprehensive results of every session (Practice, Qualifying, Sprint, Race), including calculated gaps to leader, intervals to car ahead, pit stops, and position deltas."
     columns:
