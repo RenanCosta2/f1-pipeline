@@ -1,0 +1,177 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0D0D12;
+  --foreground: #EDEDED;
+  --f1-red: #E10600;
+}
+
+body {
+  color: var(--foreground);
+  background-color: var(--background);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  min-height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #15151E;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2C2C3E;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #E10600;
+}
+
+/* F1 Carbon Pattern & Glows */
+.f1-card {
+  background: linear-gradient(135deg, rgba(30, 30, 44, 0.7) 0%, rgba(20, 20, 30, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  transition: all 0.2s ease-in-out;
+}
+
+.f1-card:hover {
+  border-color: rgba(225, 6, 0, 0.3);
+  box-shadow: 0 4px 20px -2px rgba(225, 6, 0, 0.15);
+}
+
+.f1-red-glow {
+  box-shadow: 0 0 25px -5px rgba(225, 6, 0, 0.4);
+}
+
+.f1-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(225, 6, 0, 0.1),
+    rgba(225, 6, 0, 0.1) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
+/* Recharts Custom Tooltip Styling */
+.recharts-default-tooltip {
+  background-color: #1A1A24 !important;
+  border: 1px solid #2E2E3E !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6) !important;
+}
+
+.recharts-tooltip-label {
+  color: #FFFFFF !important;
+  font-weight: 600 !important;
+}
+
+/* Live pulsing dot */
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #E10600;
+  box-shadow: 0 0 10px #E10600;
+  animation: pulseDot 1.5s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.5;
+  }
+}
+
+.track-line {
+  stroke: #E10600;
+  filter: drop-shadow(0 0 6px rgba(225, 6, 0, 0.5));
+}
+
+.track-shadow {
+  stroke: rgba(225, 6, 0, 0.15);
+}
+
+/* Dual Range Slider styling */
+.range-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+}
+
+.range-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #e10600;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 6px rgba(225, 6, 0, 0.4);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.range-slider-input::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  border-color: #ff2e2e;
+}
+
+.range-slider-input::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #e10600;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.8), 0 0 6px rgba(225, 6, 0, 0.4);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.range-slider-input::-moz-range-thumb:hover {
+  transform: scale(1.25);
+  border-color: #ff2e2e;
+}
+
+/* Navigation Top Laser Loader */
+@keyframes f1Laser {
+  0% {
+    margin-left: 0%;
+    width: 20%;
+  }
+  50% {
+    margin-left: 40%;
+    width: 50%;
+  }
+  100% {
+    margin-left: 100%;
+    width: 20%;
+  }
+}
+
+.f1-laser-bar {
+  animation: f1Laser 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

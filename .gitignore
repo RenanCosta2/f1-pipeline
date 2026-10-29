@@ -80,3 +80,14 @@ orchestration/config/airflow.cfg
 
 # Logs de execução do airflow
 orchestration/logs/
+
+
+# ------------------------------------------
+# 5. Frontend (Next.js / Dashboard)
+# ------------------------------------------
+**/node_modules/
+**/.next/
+**/out/
+*.tsbuildinfo
+.vercel/
+website/check_dups.cjs

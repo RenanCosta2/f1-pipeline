@@ -90,7 +90,7 @@ x-airflow-common:
 
 services:
   ingestion:
-    profiles: [tools]
+    profiles: [ tools ]
     build: ./ingestion
     container_name: f1-ingestion
     ports:
@@ -114,7 +114,7 @@ services:
       - TZ=America/Sao_Paulo
 
   dbt:
-    profiles: [tools]
+    profiles: [ tools ]
     build: ./transform
     container_name: f1-dbt
     working_dir: /usr/app/dbt/f1_dbt
@@ -123,6 +123,21 @@ services:
     environment:
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - TZ=America/Sao_Paulo
+
+  f1-website:
+    build: ./website
+    container_name: f1-website
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./website:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    restart: unless-stopped
 
   postgres:
     image: postgres:16
