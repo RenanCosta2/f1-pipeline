@@ -16,6 +16,9 @@
 *.pem
 *.key
 *.cert
+gcp-credentials.json
+*gcp-credentials.json
+**/gcp-credentials.json
 
 # ------------------------------------------
 # 2. Python (Ingestão & FastF1)

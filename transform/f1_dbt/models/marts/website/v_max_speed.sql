@@ -1,9 +1,6 @@
 {{ config(
     materialized='table', 
-    schema='website',
-    post_hook=[
-        "CREATE INDEX IF NOT EXISTS idx_max_speed_lookup ON {{ this }} (year, round_number)"
-    ]
+    schema='website'
 ) }}
 
 SELECT

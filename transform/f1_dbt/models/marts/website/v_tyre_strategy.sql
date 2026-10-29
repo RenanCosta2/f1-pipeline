@@ -1,9 +1,6 @@
 {{ config(
     materialized='table', 
-    schema='website',
-    post_hook=[
-        "CREATE INDEX IF NOT EXISTS idx_tyre_strat_lookup ON {{ this }} (year, round_number)"
-    ]
+    schema='website'
 ) }}
 
 SELECT
@@ -19,10 +16,10 @@ SELECT
     MIN(lap_number) AS lap_start,
     MAX(lap_number) AS lap_end,
     COUNT(lap_number) AS stint_laps_completed,
-    TO_CHAR(MAKE_INTERVAL(secs => AVG(lap_time_seconds)), 'FMMI:SS:MS') AS stint_avg_lap_time,
-    BOOL_OR(pit_in_time_seconds IS NOT NULL AND has_safety_car IS TRUE) AS pit_under_safety_car,
-    BOOL_OR(pit_in_time_seconds IS NOT NULL AND has_vsc IS TRUE) AS pit_under_vsc,
-    BOOL_OR(pit_in_time_seconds IS NOT NULL AND has_red_flag IS TRUE) AS pit_under_red_flag
+    {{ format_lap_time('AVG(lap_time_seconds)') }} AS stint_avg_lap_time,
+    LOGICAL_OR(pit_in_time_seconds IS NOT NULL AND has_safety_car IS TRUE) AS pit_under_safety_car,
+    LOGICAL_OR(pit_in_time_seconds IS NOT NULL AND has_vsc IS TRUE) AS pit_under_vsc,
+    LOGICAL_OR(pit_in_time_seconds IS NOT NULL AND has_red_flag IS TRUE) AS pit_under_red_flag
 FROM
     {{ ref('fact_laps') }}
 LEFT JOIN

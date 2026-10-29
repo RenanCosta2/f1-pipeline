@@ -276,8 +276,8 @@ SELECT
         WHEN race_results.classification_status LIKE '%Disqual%' OR race_results.classified_position = 'D' THEN 'DSQ'
         WHEN race_results.classification_status = 'Withdrawn' OR race_results.classified_position = 'W' OR race_results.status IN ('Did not start', 'DNS') THEN 'NL'
         WHEN race_results.classification_status = 'Retired' OR race_results.classified_position = 'R' THEN 'Ret'
-        WHEN race_results.classification_status = 'Classified' AND race_results.status NOT IN ('Finished') AND race_results.status NOT LIKE '%Lap%' THEN race_results.finishing_position::text || '†'
-        WHEN race_results.finishing_position IS NOT NULL THEN race_results.finishing_position::text
+        WHEN race_results.classification_status = 'Classified' AND race_results.status NOT IN ('Finished') AND race_results.status NOT LIKE '%Lap%' THEN CONCAT(CAST(race_results.finishing_position AS STRING), '†')
+        WHEN race_results.finishing_position IS NOT NULL THEN CAST(race_results.finishing_position AS STRING)
         ELSE '—'
     END AS result_code,
 
@@ -304,8 +304,8 @@ SELECT
         WHEN sprint_results.sprint_classification_status LIKE '%Disqual%' OR sprint_results.sprint_classified_position = 'D' THEN 'DSQ'
         WHEN sprint_results.sprint_classification_status = 'Withdrawn' OR sprint_results.sprint_classified_position = 'W' OR sprint_results.sprint_status IN ('Did not start', 'DNS') THEN 'NL'
         WHEN sprint_results.sprint_classification_status = 'Retired' OR sprint_results.sprint_classified_position = 'R' THEN 'Ret'
-        WHEN sprint_results.sprint_classification_status = 'Classified' AND sprint_results.sprint_status NOT IN ('Finished') AND sprint_results.sprint_status NOT LIKE '%Lap%' THEN sprint_results.sprint_finishing_position::text || '†'
-        WHEN sprint_results.sprint_finishing_position IS NOT NULL THEN sprint_results.sprint_finishing_position::text
+        WHEN sprint_results.sprint_classification_status = 'Classified' AND sprint_results.sprint_status NOT IN ('Finished') AND sprint_results.sprint_status NOT LIKE '%Lap%' THEN CONCAT(CAST(sprint_results.sprint_finishing_position AS STRING), '†')
+        WHEN sprint_results.sprint_finishing_position IS NOT NULL THEN CAST(sprint_results.sprint_finishing_position AS STRING)
         ELSE '—'
     END AS sprint_result_code
 

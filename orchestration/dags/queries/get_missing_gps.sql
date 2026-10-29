@@ -1,19 +1,18 @@
 WITH gp_sessions AS (
     SELECT
-        schedule."RoundNumber" AS gp,
+        schedule.RoundNumber AS gp,
         x.session,
         x.session_date,
         schedule.year
-    FROM bronze.schedule AS schedule
-    CROSS JOIN LATERAL (
-        VALUES
-            (schedule."Session1", schedule."Session1DateUtc"),
-            (schedule."Session2", schedule."Session2DateUtc"),
-            (schedule."Session3", schedule."Session3DateUtc"),
-            (schedule."Session4", schedule."Session4DateUtc"),
-            (schedule."Session5", schedule."Session5DateUtc")
-    ) x(session, session_date)
-    WHERE schedule."RoundNumber" > 0
+    FROM `f1-analytics-platform.bronze.schedule` AS schedule
+    CROSS JOIN UNNEST([
+        STRUCT(schedule.Session1 AS session, TIMESTAMP_MICROS(CAST(schedule.Session1DateUtc / 1000 AS INT64)) AS session_date),
+        STRUCT(schedule.Session2 AS session, TIMESTAMP_MICROS(CAST(schedule.Session2DateUtc / 1000 AS INT64)) AS session_date),
+        STRUCT(schedule.Session3 AS session, TIMESTAMP_MICROS(CAST(schedule.Session3DateUtc / 1000 AS INT64)) AS session_date),
+        STRUCT(schedule.Session4 AS session, TIMESTAMP_MICROS(CAST(schedule.Session4DateUtc / 1000 AS INT64)) AS session_date),
+        STRUCT(schedule.Session5 AS session, TIMESTAMP_MICROS(CAST(schedule.Session5DateUtc / 1000 AS INT64)) AS session_date)
+    ]) x
+    WHERE schedule.RoundNumber > 0
 ),
 
 gp_sessions_formated AS (
@@ -28,12 +27,12 @@ gp_sessions_formated AS (
             WHEN 'Sprint' THEN 'S'
             WHEN 'Qualifying' THEN 'Q'
             WHEN 'Race' THEN 'R'
-            ELSE UPPER(regexp_replace(session, '(\w)\w*\s*', '\1', 'g'))
+            ELSE UPPER(REGEXP_REPLACE(session, r'(\w)\w*\s*', r'\1'))
         END AS session,
         session_date,
         year
     FROM gp_sessions
-    WHERE session_date <= CURRENT_TIMESTAMP - INTERVAL '3 hour'
+    WHERE session_date <= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 3 HOUR)
 )
 
 SELECT 
@@ -45,13 +44,13 @@ FROM
 LEFT JOIN 
   (
     SELECT DISTINCT year, gp, session 
-    FROM bronze.results
+    FROM `f1-analytics-platform.bronze.results`
   ) results
   ON results.year = sessions.year AND results.gp = sessions.gp AND results.session = sessions.session
 LEFT JOIN 
   (
     SELECT DISTINCT year, gp, session 
-    FROM bronze.laps
+    FROM `f1-analytics-platform.bronze.laps`
   ) laps
   ON laps.year = sessions.year AND laps.gp = sessions.gp AND laps.session = sessions.session
 WHERE 
@@ -61,10 +60,10 @@ WHERE
     AND laps.year IS NULL 
     AND NOT EXISTS (
       SELECT 1 
-      FROM bronze.results r 
+      FROM `f1-analytics-platform.bronze.results` r 
       WHERE r.year = sessions.year 
         AND r.gp = sessions.gp 
         AND r.session = sessions.session
-        AND (r."Laps" IS NULL OR r."Laps" = 0)
+        AND (r.Laps IS NULL OR r.Laps = 0)
     )
   );

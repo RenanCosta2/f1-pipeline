@@ -65,7 +65,7 @@ career_base AS (
         SUM(race_poles) AS race_poles,
         SUM(sprint_poles) AS sprint_poles,
         
-        ROUND((SUM(poles_to_win)::NUMERIC / NULLIF(SUM(race_poles), 0)) * 100, 2) AS pole_to_win_rate,
+        ROUND((CAST(SUM(poles_to_win) AS NUMERIC) / NULLIF(SUM(race_poles), 0)) * 100, 2) AS pole_to_win_rate,
 
         -- Pódios
         SUM(race_podiums) AS race_podiums,

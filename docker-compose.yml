@@ -74,11 +74,14 @@ x-airflow-common:
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
     # The following line can be used to set a custom config file, stored in the local config folder
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
+    GOOGLE_APPLICATION_CREDENTIALS: '/opt/airflow/config/gcp-credentials.json'
+    AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: 'google-cloud-platform://?key_path=%2Fopt%2Fairflow%2Fconfig%2Fgcp-credentials.json&project=${GCP_PROJECT_ID:-}'
   volumes:
     - ./orchestration/dags:/opt/airflow/dags
     - ./orchestration/logs:/opt/airflow/logs
     - ./orchestration/config:/opt/airflow/config
     - ./orchestration/plugins:/opt/airflow/plugins
+    - ./gcp-credentials.json:/opt/airflow/config/gcp-credentials.json:ro
     # Acesso ao arquivo de comunicação do Docker
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
@@ -102,14 +105,14 @@ services:
       - ./data:/app/data
       # Monta o código local para desenvolvimento rápido
       - ./ingestion:/app/ingestion
+      # Credenciais da Service Account do GCP
+      - ./gcp-credentials.json:/app/gcp-credentials.json:ro
     environment:
       - FASTF1_CACHE_DIR=/app/cache
-      # Variáveis de configuração do banco Postgres no Supabase
+      # Variáveis de configuração do GCP (GCS & BigQuery)
       - BUCKET_NAME=${BUCKET_NAME}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - S3_ENDPOINT_URL=${S3_ENDPOINT_URL}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-credentials.json
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - TZ=America/Sao_Paulo
 
@@ -120,11 +123,14 @@ services:
     working_dir: /usr/app/dbt/f1_dbt
     volumes:
       - ./transform:/usr/app/dbt
+      - ./gcp-credentials.json:/app/gcp-credentials.json:ro
     environment:
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-credentials.json
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - TZ=America/Sao_Paulo
 
-  f1-website:
+  website:
     build: ./website
     container_name: f1-website
     ports:

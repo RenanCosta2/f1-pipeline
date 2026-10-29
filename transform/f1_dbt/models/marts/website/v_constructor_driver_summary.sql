@@ -7,7 +7,7 @@ WITH driver_team_race_metrics AS (
         COUNT(DISTINCT schedule.year) AS seasons_count,
         MIN(schedule.year) AS first_season,
         MAX(schedule.year) AS last_season,
-        STRING_AGG(DISTINCT schedule.year::TEXT, ', ' ORDER BY schedule.year::TEXT ASC) AS seasons_list,
+        STRING_AGG(DISTINCT CAST(schedule.year AS STRING), ', ' ORDER BY CAST(schedule.year AS STRING) ASC) AS seasons_list,
 
         -- Participações
         COUNT(DISTINCT CASE WHEN sessions.session_name = 'Race' THEN sessions.event_sk END) AS gps_raced,

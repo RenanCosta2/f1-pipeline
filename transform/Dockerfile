@@ -15,10 +15,11 @@ ENV PYTHONIOENCODING=utf-8
 ENV LANG=C.UTF-8
 ENV DBT_PROFILES_DIR=/usr/app/dbt/
 
-# Update tools and install dbt-core and dbt-postgres
+# Update tools and install dbt-core and dbt-bigquery
 RUN python -m pip install --upgrade pip setuptools wheel --no-cache-dir \
-    && python -m pip install --no-cache-dir dbt-core dbt-postgres
+    && python -m pip install --no-cache-dir dbt-core dbt-bigquery
 
 COPY . .
+RUN mkdir -p /app && if [ -f gcp-credentials.json ]; then cp gcp-credentials.json /app/gcp-credentials.json; fi
 
 ENTRYPOINT ["dbt"]

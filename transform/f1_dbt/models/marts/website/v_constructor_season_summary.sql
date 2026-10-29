@@ -30,16 +30,16 @@ team_season_drivers AS (
     SELECT
         driver_totals.year,
         driver_totals.team_id,
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'driver_id', drivers.driver_id,
-                'driver_full_name', drivers.driver_full_name,
-                'driver_abbreviation', drivers.driver_abbreviation,
-                'driver_headshot_url', drivers.driver_headshot_url,
-                'gps_raced', driver_totals.gps_raced,
-                'points', driver_totals.points
+        TO_JSON_STRING(ARRAY_AGG(
+            STRUCT(
+                drivers.driver_id,
+                drivers.driver_full_name,
+                drivers.driver_abbreviation,
+                drivers.driver_headshot_url,
+                driver_totals.gps_raced,
+                driver_totals.points
             ) ORDER BY driver_totals.points DESC, driver_totals.gps_raced DESC
-        ) AS drivers_lineup,
+        )) AS drivers_lineup,
         COUNT(DISTINCT driver_totals.driver_id) AS drivers_used_count
     FROM 
     (
@@ -262,7 +262,7 @@ SELECT
     COALESCE(fastest.fastest_laps, 0) AS fastest_laps,
     CASE 
         WHEN metrics.race_poles > 0 
-        THEN ROUND((metrics.poles_to_win::NUMERIC / metrics.race_poles) * 100, 2) 
+        THEN ROUND((CAST(metrics.poles_to_win AS NUMERIC) / metrics.race_poles) * 100, 2) 
         ELSE NULL 
     END AS pole_to_win_rate,
     CASE WHEN completed.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,

@@ -228,7 +228,7 @@ SELECT
     COALESCE(season_fastest_laps.fastest_laps, 0) AS fastest_laps,
     CASE 
         WHEN race_poles > 0 
-        THEN ROUND((poles_to_win::NUMERIC / race_poles) * 100, 2) 
+        THEN ROUND((CAST(poles_to_win AS NUMERIC) / race_poles) * 100, 2) 
         ELSE NULL 
     END AS pole_to_win_rate,
     CASE WHEN completed_seasons.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,

@@ -14,7 +14,7 @@ SELECT
     sector_2_time_seconds,
     sector_3_time_seconds,
     lap_time_seconds,
-    TO_CHAR(MAKE_INTERVAL(secs => lap_time_seconds), 'FMMI:SS:MS') AS lap_time,
+    {{ format_lap_time('lap_time_seconds') }} AS lap_time,
     compound,
     tyre_life,
     track_status_description,

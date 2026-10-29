@@ -7,7 +7,7 @@ WITH circuit_stats AS (
         COUNT(round_number) AS total_gps_scheduled,
         MIN(year) AS first_gp_year,
         MAX(year) AS last_gp_year,
-        STRING_AGG(DISTINCT year::TEXT, ', ' ORDER BY year::TEXT ASC) AS seasons_list,
+        STRING_AGG(DISTINCT CAST(year AS STRING), ', ' ORDER BY CAST(year AS STRING) ASC) AS seasons_list,
         ARRAY_AGG(DISTINCT year ORDER BY year ASC) AS years_held,
         COALESCE(SUM(total_dnfs), 0) AS total_dnfs,
         ROUND(
@@ -22,7 +22,7 @@ WITH circuit_stats AS (
 
 -- 1. Piloto com mais Vitórias em GP
 top_race_winners AS (
-    SELECT DISTINCT ON (circuit_id)
+    SELECT
         circuit_id,
         driver_id AS most_wins_driver_id,
         driver_full_name AS most_wins_driver,
@@ -34,15 +34,12 @@ top_race_winners AS (
         {{ ref('v_circuit_driver_performance') }}
     WHERE
         race_wins > 0
-    ORDER BY
-        circuit_id,
-        race_wins DESC,
-        last_year DESC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY circuit_id ORDER BY race_wins DESC, last_year DESC) = 1
 ),
 
 -- 2. Piloto com mais Pódios em GP
 top_race_podiums AS (
-    SELECT DISTINCT ON (circuit_id)
+    SELECT
         circuit_id,
         driver_id AS most_podiums_driver_id,
         driver_full_name AS most_podiums_driver,
@@ -54,15 +51,12 @@ top_race_podiums AS (
         {{ ref('v_circuit_driver_performance') }}
     WHERE
         race_podiums > 0
-    ORDER BY
-        circuit_id,
-        race_podiums DESC,
-        last_year DESC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY circuit_id ORDER BY race_podiums DESC, last_year DESC) = 1
 ),
 
 -- 3. Piloto com mais Pole Positions
 top_poles AS (
-    SELECT DISTINCT ON (circuit_id)
+    SELECT
         circuit_id,
         driver_id AS most_poles_driver_id,
         driver_full_name AS most_poles_driver,
@@ -74,15 +68,12 @@ top_poles AS (
         {{ ref('v_circuit_driver_performance') }}
     WHERE
         race_poles > 0
-    ORDER BY
-        circuit_id,
-        race_poles DESC,
-        last_year DESC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY circuit_id ORDER BY race_poles DESC, last_year DESC) = 1
 ),
 
 -- 4. Piloto com mais Vitórias em Sprint
 top_sprint_winners AS (
-    SELECT DISTINCT ON (circuit_id)
+    SELECT
         circuit_id,
         driver_id AS most_sprint_wins_driver_id,
         driver_full_name AS most_sprint_wins_driver,
@@ -94,10 +85,7 @@ top_sprint_winners AS (
         {{ ref('v_circuit_driver_performance') }}
     WHERE
         sprint_wins > 0
-    ORDER BY
-        circuit_id,
-        sprint_wins DESC,
-        last_year DESC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY circuit_id ORDER BY sprint_wins DESC, last_year DESC) = 1
 ),
 
 -- 5. Equipe com mais Vitórias no Circuito
@@ -121,7 +109,7 @@ circuit_team_wins AS (
 ),
 
 top_team_wins AS (
-    SELECT DISTINCT ON (circuit_id)
+    SELECT
         circuit_id,
         most_wins_team_id,
         most_wins_team,
@@ -129,14 +117,12 @@ top_team_wins AS (
         most_wins_team_count
     FROM
         circuit_team_wins
-    ORDER BY
-        circuit_id,
-        most_wins_team_count DESC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY circuit_id ORDER BY most_wins_team_count DESC) = 1
 ),
 
 -- 6. Volta Mais Rápida da História em Corrida (Recorde Oficial de Corrida)
 race_lap_records AS (
-    SELECT DISTINCT ON (schedule.circuit_id)
+    SELECT
         schedule.circuit_id,
         drivers.driver_id AS race_lap_record_driver_id,
         drivers.driver_full_name AS race_lap_record_driver,
@@ -146,7 +132,7 @@ race_lap_records AS (
         constructors.team_color AS race_lap_record_team_color,
         schedule.year AS race_lap_record_year,
         laps.lap_time_seconds AS race_lap_record_seconds,
-        TO_CHAR(MAKE_INTERVAL(secs => laps.lap_time_seconds), 'FMMI:SS.MS') AS race_lap_record_formatted
+        {{ format_lap_time('laps.lap_time_seconds') }} AS race_lap_record_formatted
     FROM 
         {{ ref('fact_laps') }} AS laps
     JOIN 
@@ -160,14 +146,12 @@ race_lap_records AS (
     WHERE 
         sessions.session_name = 'Race'
         AND laps.lap_time_seconds > 0
-    ORDER BY 
-        schedule.circuit_id,
-        laps.lap_time_seconds ASC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY schedule.circuit_id ORDER BY laps.lap_time_seconds ASC) = 1
 ),
 
 -- 7. Volta Mais Rápida da História em Classificação (Recorde de Quali)
 qualifying_lap_records AS (
-    SELECT DISTINCT ON (schedule.circuit_id)
+    SELECT
         schedule.circuit_id,
         drivers.driver_id AS quali_lap_record_driver_id,
         drivers.driver_full_name AS quali_lap_record_driver,
@@ -177,7 +161,7 @@ qualifying_lap_records AS (
         constructors.team_color AS quali_lap_record_team_color,
         schedule.year AS quali_lap_record_year,
         laps.lap_time_seconds AS quali_lap_record_seconds,
-        TO_CHAR(MAKE_INTERVAL(secs => laps.lap_time_seconds), 'FMMI:SS.MS') AS quali_lap_record_formatted
+        {{ format_lap_time('laps.lap_time_seconds') }} AS quali_lap_record_formatted
     FROM 
         {{ ref('fact_laps') }} AS laps
     JOIN 
@@ -191,9 +175,7 @@ qualifying_lap_records AS (
     WHERE 
         sessions.session_name IN ('Qualifying', 'Sprint Qualifying', 'Sprint Shootout')
         AND laps.lap_time_seconds > 0
-    ORDER BY 
-        schedule.circuit_id,
-        laps.lap_time_seconds ASC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY schedule.circuit_id ORDER BY laps.lap_time_seconds ASC) = 1
 )
 
 SELECT

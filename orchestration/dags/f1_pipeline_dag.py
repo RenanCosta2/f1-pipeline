@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from airflow.sdk import dag, task
 from airflow.exceptions import AirflowSkipException
 from airflow.providers.docker.operators.docker import DockerOperator
-from airflow.providers.postgres.hooks.postgres import PostgresHook
 from docker.types import Mount
 
 logging.basicConfig(
@@ -19,29 +18,44 @@ logger = logging.getLogger("f1_pipeline")
     start_date=datetime(2026, 1, 1),
     schedule="0 * * * 4,5,6,0", 
     catchup=False,
-    tags=["ingestion", "f1", "dbt"],
+    tags=["ingestion", "f1", "dbt", "gcp"],
 )
 def f1_pipeline_dag():
 
     @task
     def get_missing_gps(logical_date=None):
-
-        pg_hook = PostgresHook(postgres_conn_id="supabase_postgres")
+        from google.cloud import bigquery
 
         # Reading SQL file
         query_path = os.path.join(os.path.dirname(__file__), "queries", "get_missing_gps.sql")
         try:
             with open(query_path, "r", encoding="utf-8") as f:
-                sql_template = f.read()
-            sql_query = sql_template
+                sql_query = f.read()
         except Exception as e:
             logger.error(f"Error reading SQL file: {e}")
-            sql_query = ""
+            raise e
 
         try:
-            # Retrieving missing GPs in the database
-            records = pg_hook.get_records(sql_query)
-            missing_gps = [[row[0], row[1], row[2]] for row in records]
+            project_id = os.getenv("GCP_PROJECT_ID", "f1-analytics-platform")
+            creds_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            candidates = [
+                creds_path,
+                "/opt/airflow/config/gcp-credentials.json",
+                "/opt/airflow/gcp-credentials.json",
+                "/app/gcp-credentials.json",
+            ]
+            valid_creds = next(
+                (c for c in candidates if c and os.path.exists(c) and os.path.getsize(c) > 0),
+                None,
+            )
+            if valid_creds:
+                client = bigquery.Client.from_service_account_json(valid_creds, project=project_id)
+            else:
+                client = bigquery.Client(project=project_id)
+
+            query_job = client.query(sql_query)
+            records = query_job.result()
+            missing_gps = [[row["year"], row["gp"], row["session"]] for row in records]
             if not missing_gps:
                 logger.info("No pending sessions for ingestion. Terminating execution early.")
                 raise AirflowSkipException("No missing sessions found to ingest.")
@@ -53,7 +67,7 @@ def f1_pipeline_dag():
         except AirflowSkipException:
             raise
         except Exception as e:
-            logger.error(f"Error querying database: {e}")
+            logger.error(f"Error querying BigQuery: {e}")
             raise e
 
     # Cache volume mapping
@@ -63,11 +77,9 @@ def f1_pipeline_dag():
 
     # Read environment variables
     env_vars = {
-        "BUCKET_NAME": os.getenv("BUCKET_NAME"),
-        "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
-        "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
-        "AWS_REGION": os.getenv("AWS_REGION"),
-        "S3_ENDPOINT_URL": os.getenv("S3_ENDPOINT_URL"),
+        "BUCKET_NAME": os.getenv("BUCKET_NAME", "f1-lake-storage"),
+        "GCP_PROJECT_ID": os.getenv("GCP_PROJECT_ID", "f1-analytics-platform"),
+        "GOOGLE_APPLICATION_CREDENTIALS": "/app/gcp-credentials.json",
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
@@ -108,6 +120,20 @@ def f1_pipeline_dag():
         retry_delay=timedelta(minutes=5),
     )
 
-    gps_to_ingest >> ingestion >> dbt_build
+    # Synchronizing Serving Layer (Website) to Supabase (PostgreSQL)
+    sync_serving = DockerOperator(
+        task_id="f1_sync_serving",
+        image="f1-pipeline-ingestion:latest",
+        command="python ingestion/sync_serving_layer.py",
+        auto_remove="success",
+        docker_url="unix://var/run/docker.sock",
+        mount_tmp_dir=False,
+        network_mode="f1-pipeline_default",
+        environment=env_vars,
+        retries=3,
+        retry_delay=timedelta(minutes=2),
+    )
+
+    gps_to_ingest >> ingestion >> dbt_build >> sync_serving
 
 f1_pipeline_dag()

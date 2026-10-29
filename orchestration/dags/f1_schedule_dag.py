@@ -18,10 +18,8 @@ def f1_schedule_dag():
     # Read environment variables
     env_vars = {
         "BUCKET_NAME": os.getenv("BUCKET_NAME"),
-        "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID"),
-        "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY"),
-        "AWS_REGION": os.getenv("AWS_REGION"),
-        "S3_ENDPOINT_URL": os.getenv("S3_ENDPOINT_URL"),
+        "GCP_PROJECT_ID": os.getenv("GCP_PROJECT_ID"),
+        "GOOGLE_APPLICATION_CREDENTIALS": os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "/app/gcp-credentials.json"),
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }

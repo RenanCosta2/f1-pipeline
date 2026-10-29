@@ -1,9 +1,6 @@
 {{ config(
     materialized='table', 
-    schema='website',
-    post_hook=[
-        "CREATE INDEX IF NOT EXISTS idx_ideal_lap_lookup ON {{ this }} (year, round_number)"
-    ]
+    schema='website'
 ) }}
 
 WITH driver_best_sectors AS (
@@ -53,10 +50,10 @@ SELECT
     session_name,
     driver_full_name,
     team_name,
-    TO_CHAR(MAKE_INTERVAL(secs => best_s1), 'FMMI:SS:MS') AS sector_1,
-    TO_CHAR(MAKE_INTERVAL(secs => best_s2), 'FMMI:SS:MS') AS sector_2,
-    TO_CHAR(MAKE_INTERVAL(secs => best_s3), 'FMMI:SS:MS') AS sector_3,
-    TO_CHAR(MAKE_INTERVAL(secs => best_lap), 'FMMI:SS:MS') AS lap_time,
-    TO_CHAR(MAKE_INTERVAL(secs => best_lap - (best_s1 + best_s2 + best_s3)), 'FMMI:SS:MS') AS delta_ideal_lap
+    {{ format_lap_time('best_s1') }} AS sector_1,
+    {{ format_lap_time('best_s2') }} AS sector_2,
+    {{ format_lap_time('best_s3') }} AS sector_3,
+    {{ format_lap_time('best_lap') }} AS lap_time,
+    {{ format_lap_time('best_lap - (best_s1 + best_s2 + best_s3)') }} AS delta_ideal_lap
 FROM
     driver_best_sectors

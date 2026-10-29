@@ -11,33 +11,33 @@ renamed_columns AS (
         year AS season_year,
         gp AS round_number,
         session AS session_type,
-        "DriverNumber" AS driver_number,
-        "BroadcastName" AS broadcast_name,
-        "Abbreviation" AS driver_abbreviation,
-        COALESCE(overrides.standardized_driver_id, "DriverId") AS driver_id,
-        "TeamName" AS team_name,
-        "TeamColor" AS team_color,
-        "TeamId" AS team_id,
-        "FirstName" AS driver_first_name,
-        "LastName" AS driver_last_name,
-        COALESCE(overrides.standardized_full_name, "FullName") AS driver_full_name,
-        "HeadshotUrl" AS driver_headshot_url,
-        "CountryCode" AS driver_nationality,
-        "Position" AS finishing_position,
-        "ClassifiedPosition" AS classified_position,
-        "GridPosition" AS grid_position,
-        "Q1" AS q1_time,
-        "Q2" AS q2_time,
-        "Q3" AS q3_time,
-        "Time" AS total_time,
-        "Status" AS status,
-        "Points" AS points,
-        "Laps" AS laps_completed,
+        DriverNumber AS driver_number,
+        BroadcastName AS broadcast_name,
+        Abbreviation AS driver_abbreviation,
+        COALESCE(overrides.standardized_driver_id, DriverId) AS driver_id,
+        TeamName AS team_name,
+        TeamColor AS team_color,
+        TeamId AS team_id,
+        FirstName AS driver_first_name,
+        LastName AS driver_last_name,
+        COALESCE(overrides.standardized_full_name, FullName) AS driver_full_name,
+        HeadshotUrl AS driver_headshot_url,
+        CountryCode AS driver_nationality,
+        Position AS finishing_position,
+        ClassifiedPosition AS classified_position,
+        GridPosition AS grid_position,
+        Q1 AS q1_time,
+        Q2 AS q2_time,
+        Q3 AS q3_time,
+        Time AS total_time,
+        Status AS status,
+        Points AS points,
+        Laps AS laps_completed,
         extracted_at
     FROM
         source
     LEFT JOIN overrides
-        ON source."FullName" = overrides.raw_driver_name
+        ON source.FullName = overrides.raw_driver_name
 ),
 
 cleaning_data AS (
@@ -75,16 +75,8 @@ cleaning_data AS (
 normalized_driver_name AS (
     SELECT
         *,
-        TRANSLATE(
-            driver_full_name,
-            'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',
-            'aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN'
-        ) AS clean_full_name,
-        TRANSLATE(
-            driver_last_name,
-            'áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ',
-            'aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN'
-        ) AS clean_last_name
+        REGEXP_REPLACE(NORMALIZE(driver_full_name, NFD), r'\pM', '') AS clean_full_name,
+        REGEXP_REPLACE(NORMALIZE(driver_last_name, NFD), r'\pM', '') AS clean_last_name
     FROM
         cleaning_data
 ),
@@ -113,19 +105,13 @@ resolved_driver_ids AS (
                 )
                 THEN LOWER(
                     REGEXP_REPLACE(
-                        clean_last_name,
-                        '\s+',
-                        '_',
-                        'g'
+                        clean_last_name, r'\s+', '_'
                     )
                 )
 
                 ELSE LOWER(
                     REGEXP_REPLACE(
-                        clean_full_name,
-                        '\s+',
-                        '_',
-                        'g'
+                        clean_full_name, r'\s+', '_'
                     )
                 )
             END
@@ -172,7 +158,7 @@ enriched_team_id AS (
                     ORDER BY (team_id IS NULL), season_year DESC, extracted_at DESC
                 ), 
 
-                LOWER(REGEXP_REPLACE(team_name, '\s+', '_', 'g'))
+                LOWER(REGEXP_REPLACE(team_name, r'\s+', '_'))
             ) 
         END AS final_team_id
     FROM
@@ -245,7 +231,7 @@ standardized_data AS (
         classified_position,
 
         CASE
-            WHEN classified_position ~ '^[0-9]+$' THEN 'Classified'
+            WHEN REGEXP_CONTAINS(classified_position, r'^[0-9]+$') THEN 'Classified'
             WHEN classified_position = 'R' THEN 'Retired'
             WHEN classified_position = 'D' THEN 'Diqualified'
             WHEN classified_position = 'E' THEN 'Exluded'
@@ -269,33 +255,33 @@ standardized_data AS (
 
 typed_data AS (
     SELECT
-        season_year::INT,
-        round_number::INT,
-        session_type::VARCHAR(3),
-        driver_number::INT,
-        broadcast_name::VARCHAR,
-        driver_abbreviation::VARCHAR(3),
-        driver_id::VARCHAR,
-        team_name::VARCHAR,
-        team_color::VARCHAR,
-        team_id::VARCHAR,
-        driver_first_name::VARCHAR,
-        driver_last_name::VARCHAR,
-        driver_full_name::VARCHAR,
-        driver_headshot_url::VARCHAR,
-        driver_nationality::VARCHAR,
-        finishing_position::INT,
-        classified_position::VARCHAR,
-        classification_status::VARCHAR,
-        grid_position::INT,
-        ROUND((q1_time / 1000000000.0)::NUMERIC, 3) AS q1_time_seconds,
-        ROUND((q2_time / 1000000000.0)::NUMERIC, 3) AS q2_time_seconds,
-        ROUND((q3_time / 1000000000.0)::NUMERIC, 3) AS q3_time_seconds,
-        ROUND((total_time / 1000000000.0)::NUMERIC, 3) AS total_time_seconds,
-        status::VARCHAR,
-        points::FLOAT,
-        laps_completed::INT,
-        extracted_at::DATE
+        CAST(season_year AS INT64) AS season_year,
+        CAST(round_number AS INT64) AS round_number,
+        CAST(session_type AS STRING) AS session_type,
+        CAST(driver_number AS INT64) AS driver_number,
+        CAST(broadcast_name AS STRING) AS broadcast_name,
+        CAST(driver_abbreviation AS STRING) AS driver_abbreviation,
+        CAST(driver_id AS STRING) AS driver_id,
+        CAST(team_name AS STRING) AS team_name,
+        CAST(team_color AS STRING) AS team_color,
+        CAST(team_id AS STRING) AS team_id,
+        CAST(driver_first_name AS STRING) AS driver_first_name,
+        CAST(driver_last_name AS STRING) AS driver_last_name,
+        CAST(driver_full_name AS STRING) AS driver_full_name,
+        CAST(driver_headshot_url AS STRING) AS driver_headshot_url,
+        CAST(driver_nationality AS STRING) AS driver_nationality,
+        CAST(finishing_position AS INT64) AS finishing_position,
+        CAST(classified_position AS STRING) AS classified_position,
+        CAST(classification_status AS STRING) AS classification_status,
+        CAST(grid_position AS INT64) AS grid_position,
+        ROUND(CAST(q1_time / 1000000000.0 AS NUMERIC), 3) AS q1_time_seconds,
+        ROUND(CAST(q2_time / 1000000000.0 AS NUMERIC), 3) AS q2_time_seconds,
+        ROUND(CAST(q3_time / 1000000000.0 AS NUMERIC), 3) AS q3_time_seconds,
+        ROUND(CAST(total_time / 1000000000.0 AS NUMERIC), 3) AS total_time_seconds,
+        CAST(status AS STRING) AS status,
+        CAST(points AS FLOAT64) AS points,
+        CAST(laps_completed AS INT64) AS laps_completed,
+        CAST(extracted_at AS DATE) AS extracted_at
     FROM
         standardized_data
 ),

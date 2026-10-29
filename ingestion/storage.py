@@ -1,5 +1,8 @@
-import boto3
+import io
+import os
 import logging
+import pandas as pd
+from google.cloud import storage
 
 logging.basicConfig(
     level=logging.INFO,
@@ -9,47 +12,68 @@ logging.basicConfig(
 logger = logging.getLogger("f1_pipeline.ingestion.storage")
 
 
-class S3Uploader:
+class GCSUploader:
     """
-    Storage class for uploading files to S3.
+    Storage class for uploading and downloading files to/from Google Cloud Storage.
 
     Attributes:
-        s3 (boto3.client): The S3 client.
-        bucket_name (str): The name of the S3 bucket.
+        client (storage.Client): The GCS client.
+        bucket (storage.Bucket): The target GCS bucket.
+        bucket_name (str): The name of the GCS bucket.
     """
 
     def __init__(
         self,
         bucket_name: str,
-        AWS_REGION: str,
-        S3_ENDPOINT_URL: str,
-        AWS_ACCESS_KEY_ID: str,
-        AWS_SECRET_ACCESS_KEY: str,
+        credentials_path: str | None = None,
+        project_id: str | None = None,
     ):
-        # Initialize the S3 client
-        self.s3 = boto3.client(
-            "s3",
-            region_name=AWS_REGION,
-            endpoint_url=S3_ENDPOINT_URL,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-        )
         self.bucket_name = bucket_name
+        try:
+            # Defensive credential path resolution across multiple environments
+            candidate_paths = [
+                credentials_path,
+                os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+                "/app/gcp-credentials.json",
+                "/opt/airflow/config/gcp-credentials.json",
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "gcp-credentials.json")),
+                os.path.abspath(os.path.join(os.path.dirname(__file__), "gcp-credentials.json")),
+            ]
+            resolved_creds = None
+            for candidate in candidate_paths:
+                if candidate and os.path.exists(candidate):
+                    resolved_creds = candidate
+                    break
+
+            if resolved_creds:
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = resolved_creds
+                self.client = storage.Client.from_service_account_json(
+                    resolved_creds, project=project_id
+                )
+            else:
+                self.client = storage.Client(project=project_id)
+
+            self.bucket = self.client.bucket(bucket_name)
+            logger.info(f"Connected to GCS bucket: {bucket_name}")
+        except Exception as e:
+            logger.error(f"Failed to initialize GCS client for bucket '{bucket_name}': {e}")
+            raise e
 
     def upload_file(self, file_path: str, key: str) -> bool:
         """
-        Uploads a file to S3.
+        Uploads a file to GCS.
 
         Args:
             file_path (str): The path to the file to upload.
-            key (str): The key (name) of the file in S3.
+            key (str): The key (name) of the file in GCS.
 
         Returns:
             bool: True if the file was uploaded successfully, False otherwise.
         """
-        logger.info(f"Uploading file {file_path} to {key}")
+        logger.info(f"Uploading file {file_path} to gs://{self.bucket_name}/{key}")
         try:
-            self.s3.upload_file(file_path, self.bucket_name, key)
+            blob = self.bucket.blob(key)
+            blob.upload_from_filename(file_path)
             logger.info("File uploaded successfully!")
             return True
         except Exception as e:
@@ -58,19 +82,19 @@ class S3Uploader:
 
     def upload_fileobj(self, file_obj, key: str) -> bool:
         """
-        Uploads a in-memory object to S3.
+        Uploads an in-memory object to GCS.
 
         Args:
-            file_obj (str): The in-memory object to upload.
-            key (str): The key (name) of the file in S3.
+            file_obj: The in-memory file object (e.g. io.BytesIO) to upload.
+            key (str): The key (name) of the file in GCS.
 
         Returns:
             bool: True if the file was uploaded successfully, False otherwise.
         """
-
-        logger.info(f"Uploading in-memory object to {key}")
+        logger.info(f"Uploading in-memory object to gs://{self.bucket_name}/{key}")
         try:
-            self.s3.upload_fileobj(file_obj, self.bucket_name, key)
+            blob = self.bucket.blob(key)
+            blob.upload_from_file(file_obj)
             logger.info("Object uploaded successfully!")
             return True
         except Exception as e:
@@ -79,45 +103,46 @@ class S3Uploader:
 
     def file_exists(self, key: str) -> bool:
         """
-        Checks if a file exists in S3.
+        Checks if a file exists in GCS.
 
         Args:
-            key (str): The key (name) of the file in S3.
+            key (str): The key (name) of the file in GCS.
 
         Returns:
             bool: True if the file exists, False otherwise.
         """
-        logger.info(f"Checking if file {key} exists in S3")
+        logger.info(f"Checking if file gs://{self.bucket_name}/{key} exists in GCS")
         try:
-            self.s3.head_object(Bucket=self.bucket_name, Key=key)
-            logger.info("File exists!")
-            return True
-        except Exception as e:
-            if e.response['Error']['Code'] == '404':
+            blob = self.bucket.blob(key)
+            exists = blob.exists()
+            if exists:
+                logger.info("File exists!")
+            else:
                 logger.warning(f"File {key} does not exist.")
-                return False
-            logger.error(f"Error checking file {key}: {e}")
+            return exists
+        except Exception as e:
+            logger.error(f"Error checking file {key} in GCS: {e}")
             return False
 
-    def download_parquet(self, key: str):
-        """Downloads a parquet file from S3 and returns it as a pandas DataFrame.
+    def download_parquet(self, key: str) -> pd.DataFrame | None:
+        """
+        Downloads a parquet file from GCS and returns it as a pandas DataFrame.
 
         Args:
-            key (str): The key (name) of the file in S3.
+            key (str): The key (name) of the file in GCS.
 
         Returns:
             pd.DataFrame | None: The loaded DataFrame, or None if download fails.
         """
-        import io
-        import pandas as pd
-        logger.info(f"Downloading parquet from S3: {key}")
+        logger.info(f"Downloading parquet from GCS: gs://{self.bucket_name}/{key}")
         try:
+            blob = self.bucket.blob(key)
             buffer = io.BytesIO()
-            self.s3.download_fileobj(self.bucket_name, key, buffer)
+            blob.download_to_file(buffer)
             buffer.seek(0)
             df = pd.read_parquet(buffer)
             logger.info(f"Parquet {key} downloaded successfully ({len(df)} rows)!")
             return df
         except Exception as e:
-            logger.error(f"Error downloading parquet {key}: {e}")
+            logger.error(f"Error downloading parquet {key} from GCS: {e}")
             return None

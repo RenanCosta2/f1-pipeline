@@ -12,7 +12,7 @@ WITH event_sessions_stats AS (
             THEN 1 
         END) AS total_dnfs,
 
-        BOOL_OR(sessions.session_name = 'Race' AND results.finishing_position = 1) AS is_race_completed
+        LOGICAL_OR(sessions.session_name = 'Race' AND results.finishing_position = 1) AS is_race_completed
 
     FROM 
         {{ ref('dim_sessions') }} AS sessions
@@ -37,11 +37,7 @@ race_winners AS (
         constructors.team_color AS race_winner_team_color,
         results.laps_completed AS race_laps_completed,
         results.total_time_seconds AS race_total_time_seconds,
-        CASE
-            WHEN total_time_seconds IS NOT NULL THEN
-                TO_CHAR(MAKE_INTERVAL(secs => total_time_seconds), 'FMHH24:MI:SS.MS')
-            ELSE NULL
-        END AS race_time_formatted
+        {{ format_race_time('total_time_seconds') }} AS race_time_formatted
     FROM 
         {{ ref('fact_results') }} AS results
     JOIN
@@ -71,11 +67,7 @@ sprint_winners AS (
         constructors.team_color AS sprint_winner_team_color,
         results.laps_completed AS sprint_laps_completed,
         results.total_time_seconds AS sprint_total_time_seconds,
-        CASE
-            WHEN total_time_seconds IS NOT NULL THEN
-                TO_CHAR(MAKE_INTERVAL(secs => total_time_seconds), 'FMHH24:MI:SS.MS')
-            ELSE NULL
-        END AS sprint_time_formatted
+        {{ format_race_time('total_time_seconds') }} AS sprint_time_formatted
     FROM 
         {{ ref('fact_results') }} AS results
     JOIN
@@ -118,7 +110,7 @@ poles AS (
 ),
 
 fastest_laps AS (
-    SELECT DISTINCT ON (sessions.event_sk)
+    SELECT
         sessions.event_sk,
         drivers.driver_id AS fastest_lap_driver_id,
         drivers.driver_full_name AS fastest_lap_driver,
@@ -127,7 +119,7 @@ fastest_laps AS (
         constructors.team_name AS fastest_lap_team,
         constructors.team_color AS fastest_lap_team_color,
         laps.lap_time_seconds AS fastest_lap_time_seconds,
-        TO_CHAR(MAKE_INTERVAL(secs => laps.lap_time_seconds), 'FMMI:SS.MS') AS fastest_lap_time_formatted
+        {{ format_lap_time('laps.lap_time_seconds') }} AS fastest_lap_time_formatted
     FROM 
         {{ ref('fact_laps') }} AS laps
     JOIN 
@@ -143,9 +135,7 @@ fastest_laps AS (
         sessions.session_name = 'Race' 
         AND laps.lap_time_seconds IS NOT NULL
         AND laps.lap_time_seconds > 0
-    ORDER BY
-        sessions.event_sk,
-        laps.lap_time_seconds ASC
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY sessions.event_sk ORDER BY laps.lap_time_seconds ASC) = 1
 )
 
 SELECT

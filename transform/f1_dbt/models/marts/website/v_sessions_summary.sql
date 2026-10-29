@@ -1,10 +1,6 @@
 {{ config(
     materialized='table', 
-    schema='website',
-    post_hook=[
-        "CREATE INDEX IF NOT EXISTS idx_sess_sum_lookup ON {{ this }} (year, round_number, session_name)",
-        "CREATE INDEX IF NOT EXISTS idx_sess_sum_finish ON {{ this }} (finishing_position)"
-    ]
+    schema='website'
 ) }}
 
 WITH driver_session_laps AS (
@@ -92,7 +88,7 @@ ranked_results AS (
                 WHEN f.lap_time_seconds IS NOT NULL THEN
                     DENSE_RANK() OVER (
                         PARTITION BY r.session_sk 
-                        ORDER BY f.lap_time_seconds ASC NULLS LAST
+                        ORDER BY CASE WHEN f.lap_time_seconds IS NULL THEN 1 ELSE 0 END, f.lap_time_seconds ASC
                     )
             END
         ) AS finishing_position,
@@ -159,24 +155,34 @@ race_results_base AS (
         laps_completed,
         final_session_time_seconds,
 
-        FIRST_VALUE(laps_completed) OVER (PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST) AS leader_laps,
+        FIRST_VALUE(laps_completed) OVER (
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
+        ) AS leader_laps,
         
-        LAG(laps_completed, 1) OVER (PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST) AS ahead_laps,
+        LAG(laps_completed, 1) OVER (
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
+        ) AS ahead_laps,
         
         final_session_time_seconds - FIRST_VALUE(final_session_time_seconds) OVER (
-            PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
         ) AS gap_seconds,
         
         ABS(final_session_time_seconds - LAG(final_session_time_seconds, 1) OVER (
-            PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
         )) AS interval_seconds,
 
         lap_time_seconds - FIRST_VALUE(lap_time_seconds) OVER (
-            PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
         ) AS fp_gap_seconds,
 
         ABS(lap_time_seconds - LAG(lap_time_seconds, 1) OVER (
-            PARTITION BY session_sk ORDER BY finishing_position ASC NULLS LAST
+            PARTITION BY session_sk 
+            ORDER BY CASE WHEN finishing_position IS NULL THEN 1 ELSE 0 END, finishing_position ASC
         )) AS fp_interval_seconds
 
     FROM
@@ -231,10 +237,7 @@ SELECT
             CASE 
                 WHEN finishing_position = 1 THEN 'Leader'
                 WHEN fp_gap_seconds IS NOT NULL THEN
-                    CASE 
-                        WHEN fp_gap_seconds >= 60 THEN '+' || TO_CHAR(MAKE_INTERVAL(secs => fp_gap_seconds), 'FMMI:SS.MS')
-                        ELSE '+' || TO_CHAR(fp_gap_seconds::numeric, 'FM990.000') || 's'
-                    END
+                    {{ format_gap('fp_gap_seconds') }}
                 ELSE '-'
             END
         WHEN finishing_position = 1 THEN 'Leader'
@@ -243,9 +246,9 @@ SELECT
             AND COALESCE(status, '') NOT LIKE '%Lap%' 
             AND status != 'Finished' 
             THEN status
-        WHEN leader_laps > laps_completed THEN '+' || (leader_laps - laps_completed)::text || ' Lap(s)'
-        WHEN gap_seconds >= 60 THEN '+' || TO_CHAR(MAKE_INTERVAL(secs => gap_seconds), 'FMMI:SS.MS')
-        ELSE '+' || TO_CHAR(gap_seconds::numeric, 'FM990.000') || 's'
+        WHEN leader_laps > laps_completed THEN CONCAT('+', CAST(leader_laps - laps_completed AS STRING), ' Lap(s)')
+        WHEN gap_seconds IS NOT NULL THEN {{ format_gap('gap_seconds') }}
+        ELSE NULL
     END AS gap_to_leader,
     
     CASE 
@@ -253,10 +256,7 @@ SELECT
             CASE 
                 WHEN finishing_position = 1 THEN '-'
                 WHEN fp_interval_seconds IS NOT NULL THEN
-                    CASE 
-                        WHEN fp_interval_seconds >= 60 THEN '+' || TO_CHAR(MAKE_INTERVAL(secs => fp_interval_seconds), 'FMMI:SS.MS')
-                        ELSE '+' || TO_CHAR(fp_interval_seconds::numeric, 'FM990.000') || 's'
-                    END
+                    {{ format_gap('fp_interval_seconds') }}
                 ELSE '-'
             END
         WHEN finishing_position = 1 THEN '-'
@@ -265,16 +265,13 @@ SELECT
             AND COALESCE(status, '') NOT LIKE '%Lap%' 
             AND status != 'Finished' 
             THEN '-'
-        WHEN ahead_laps > laps_completed THEN '+' || (ahead_laps - laps_completed)::text || ' Lap(s)'
+        WHEN ahead_laps > laps_completed THEN CONCAT('+', CAST(ahead_laps - laps_completed AS STRING), ' Lap(s)')
         WHEN interval_seconds IS NOT NULL THEN
-            CASE 
-                WHEN interval_seconds >= 60 THEN '+' || TO_CHAR(MAKE_INTERVAL(secs => interval_seconds), 'FMMI:SS.MS')
-                ELSE '+' || TO_CHAR(interval_seconds::numeric, 'FM990.000') || 's'
-            END
+            {{ format_gap('interval_seconds') }}
         ELSE '-'
     END AS interval_to_car_ahead,
     
-    TO_CHAR(MAKE_INTERVAL(secs => lap_time_seconds), 'FMMI:SS.MS') AS best_lap,
+    {{ format_lap_time('lap_time_seconds') }} AS best_lap,
     status,
     laps_completed
 FROM 

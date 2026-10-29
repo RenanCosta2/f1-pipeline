@@ -1,4 +1,3 @@
-
 {{ config(
     materialized='view', 
     schema='website'
@@ -14,7 +13,7 @@ SELECT
     team_name,
     team_color,
     AVG(lap_time_seconds) AS avg_lap_time_seconds,
-    TO_CHAR(MAKE_INTERVAL(secs => AVG(lap_time_seconds)), 'FMMI:SS:MS') AS lap_pace,
+    {{ format_lap_time('AVG(lap_time_seconds)') }} AS lap_pace,
     STDDEV(lap_time_seconds) AS pace_stddev
 FROM
     {{ ref('fact_laps') }}

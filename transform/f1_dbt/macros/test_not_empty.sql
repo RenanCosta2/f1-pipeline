@@ -5,7 +5,7 @@ SELECT
 FROM
     {{ model }}
 WHERE
-    TRIM({{ column_name }}::TEXT) = ''
-    OR LOWER(TRIM({{ column_name }}::TEXT)) IN ('nan', 'none', 'none none', 'null')
+    TRIM(CAST({{ column_name }} AS STRING)) = ''
+    OR LOWER(TRIM(CAST({{ column_name }} AS STRING))) IN ('nan', 'none', 'none none', 'null')
 
 {% endtest %}

@@ -23,9 +23,6 @@ clean-targets:         # directories to be removed by `dbt clean`
 # Configuring models
 # Full documentation: https://docs.getdbt.com/docs/configuring-models
 
-# In this example config, we tell dbt to build all models in the example/
-# directory as views. These settings can be overridden in the individual model
-# files using the `{{ config(...) }}` macro.
 models:
   f1_dbt:
     staging:
@@ -36,17 +33,3 @@ models:
       +materialized: table
       core:
         +schema: gold
-        fact_laps:
-          +post-hook:
-            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_session_sk ON {{ this }} (session_sk)"
-            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_session_lap_time ON {{ this }} (session_sk, lap_time_seconds) WHERE lap_time_seconds IS NOT NULL"
-            - "CREATE INDEX IF NOT EXISTS idx_fact_laps_speed_trap ON {{ this }} (session_sk, speed_trap) WHERE speed_trap IS NOT NULL"
-        fact_results:
-          +post-hook:
-            - "CREATE INDEX IF NOT EXISTS idx_fact_results_session_sk ON {{ this }} (session_sk)"
-        dim_sessions:
-          +post-hook:
-            - "CREATE INDEX IF NOT EXISTS idx_dim_sessions_event_sk ON {{ this }} (event_sk)"
-        dim_schedule:
-          +post-hook:
-            - "CREATE INDEX IF NOT EXISTS idx_dim_schedule_circuit_id ON {{ this }} (circuit_id)"

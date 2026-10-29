@@ -30,6 +30,12 @@ RUN mkdir -p /app/cache /app/data && chown -R appuser:appgroup /app
 
 # Copia o código-fonte
 COPY . /app/ingestion/
+RUN mkdir -p /opt/airflow/config && \
+    if [ -f /app/ingestion/gcp-credentials.json ]; then \
+        cp /app/ingestion/gcp-credentials.json /app/gcp-credentials.json && \
+        cp /app/ingestion/gcp-credentials.json /opt/airflow/config/gcp-credentials.json && \
+        chown -R appuser:appgroup /app /opt/airflow; \
+    fi
 RUN chown -R appuser:appgroup /app/ingestion
 
 # Alterna para o usuário não-privilegiado
