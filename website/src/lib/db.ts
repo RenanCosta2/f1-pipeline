@@ -428,31 +428,6 @@ export async function getAvailableSessions(year?: number, roundNumber?: number):
   const targetYear = year || await getLatestSeasonYear();
   const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-  // 1. Tenta ordenar pelo session_number cronológico oficial em gold.dim_sessions
-  const sql = `
-    SELECT DISTINCT 
-      ds.session_name,
-      ds.session_number
-    FROM gold.dim_sessions ds
-    JOIN gold.dim_schedule dsch USING(event_sk)
-    JOIN website.v_sessions_summary sum 
-      ON sum.session_name = ds.session_name 
-      AND sum.year = dsch.year 
-      AND sum.round_number = dsch.round_number
-    WHERE dsch.year = $1 AND dsch.round_number = $2
-    ORDER BY ds.session_number ASC
-  `;
-  const rows = await queryOrFallback<{ session_name: string; session_number?: number }[]>(
-    sql,
-    [targetYear, targetRound],
-    []
-  );
-
-  if (rows && rows.length > 0) {
-    return rows.map((r) => r.session_name);
-  }
-
-  // 2. Fallback caso a tabela dim_sessions não esteja acessível:
   const fallbackSql = `
     SELECT DISTINCT session_name 
     FROM website.v_sessions_summary
@@ -502,9 +477,8 @@ export async function getSessionSummary(year?: number, roundNumber?: number, ses
   const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
   const sql = `
-    SELECT s.*, d.driver_headshot_url 
+    SELECT s.*
     FROM website.v_sessions_summary s
-    LEFT JOIN gold.dim_drivers d ON d.driver_id = s.driver_id
     WHERE s.year = $1 AND s.round_number = $2 AND s.session_name = $3
     ORDER BY s.finishing_position ASC NULLS LAST
   `;
@@ -527,9 +501,8 @@ export async function getTyreStrategies(year?: number, roundNumber?: number, ses
   const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
   const sql = `
-    SELECT t.*, d.driver_headshot_url 
+    SELECT t.*
     FROM website.v_tyre_strategy t
-    LEFT JOIN gold.dim_drivers d ON d.driver_full_name = t.driver_full_name
     WHERE t.year = $1 AND t.round_number = $2 AND t.session_name = $3
     ORDER BY t.driver_full_name ASC, t.stint ASC
   `;
@@ -577,9 +550,8 @@ export async function getRacePace(year?: number, roundNumber?: number, sessionNa
   const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
   const sql = `
-    SELECT r.*, d.driver_headshot_url 
+    SELECT r.*
     FROM website.v_race_pace r
-    LEFT JOIN gold.dim_drivers d ON d.driver_full_name = r.driver_full_name
     WHERE r.year = $1 AND r.round_number = $2 AND r.session_name = $3
     ORDER BY r.avg_lap_time_seconds ASC
   `;
@@ -1789,7 +1761,7 @@ export async function getConstructorRaceLog(teamName: string): Promise<Construct
           const finishingPositions = drivers
             .map((d: any) => Number(d.finishing_position))
             .filter((pos: number) => !isNaN(pos) && pos > 0);
-          
+
           const isOneTwo = finishingPositions.includes(1) && finishingPositions.includes(2);
           const isDoublePodium = finishingPositions.filter((pos: number) => pos <= 3).length >= 2;
           const isDoublePoints = finishingPositions.filter((pos: number) => pos <= 10).length >= 2;
@@ -1847,8 +1819,8 @@ function mapCircuitOverviewRow(r: any): CircuitOverviewItem {
     years_held: Array.isArray(r.years_held)
       ? r.years_held.map(Number)
       : r.seasons_list
-      ? r.seasons_list.split(",").map((y: string) => Number(y.trim()))
-      : [],
+        ? r.seasons_list.split(",").map((y: string) => Number(y.trim()))
+        : [],
     total_dnfs: Number(r.total_dnfs) || 0,
     avg_dnfs_per_race: Number(r.avg_dnfs_per_race) || 0,
 
