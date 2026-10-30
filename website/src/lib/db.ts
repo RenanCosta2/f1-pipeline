@@ -647,7 +647,8 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
           circuit_id,
           circuit_name,
           country,
-          location
+          location,
+          sessions_schedule
         FROM website.v_circuit_season_summary
         WHERE year = $1 AND CAST(round_number AS TEXT) = CAST($2 AS TEXT)
         LIMIT 1
@@ -675,42 +676,109 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
         const fridayDate = new Date(sundayDate.getTime() - 2 * 24 * 60 * 60 * 1000);
         const saturdayDate = new Date(sundayDate.getTime() - 1 * 24 * 60 * 60 * 1000);
 
-        const sessionDefs = [
-          { session_name: 'Practice 1', code: 'FP1', name: 'Treino Livre 1 (FP1)', baseDate: fridayDate, hourBRT: 13, minBRT: 30, hourUTC: 16 },
-          { session_name: 'Practice 2', code: 'FP2', name: 'Treino Livre 2 (FP2)', baseDate: fridayDate, hourBRT: 17, minBRT: 0, hourUTC: 20 },
-          { session_name: 'Practice 3', code: 'FP3', name: 'Treino Livre 3 (FP3)', baseDate: saturdayDate, hourBRT: 12, minBRT: 30, hourUTC: 15 },
-          { session_name: 'Qualifying', code: 'Q', name: 'Classificação (Quali)', baseDate: saturdayDate, hourBRT: 16, minBRT: 0, hourUTC: 19 },
-          { session_name: 'Race', code: 'R', name: 'Grande Prêmio (Corrida)', baseDate: sundayDate, hourBRT: 16, minBRT: 0, hourUTC: 19 }
-        ];
+        const sessionNamePtMap: Record<string, string> = {
+          'Practice 1': 'Treino Livre 1 (FP1)',
+          'Practice 2': 'Treino Livre 2 (FP2)',
+          'Practice 3': 'Treino Livre 3 (FP3)',
+          'Sprint Qualifying': 'Classificação Sprint (SQ)',
+          'Sprint Shootout': 'Classificação Sprint (SQ)',
+          'Sprint': 'Corrida Sprint (Sprint)',
+          'Qualifying': 'Classificação (Quali)',
+          'Race': 'Grande Prêmio (Corrida)',
+        };
 
-        const sessions = sessionDefs.map((def) => {
-          const sDateUtc = new Date(Date.UTC(def.baseDate.getUTCFullYear(), def.baseDate.getUTCMonth(), def.baseDate.getUTCDate(), def.hourUTC, def.minBRT));
-          const day = def.baseDate.getUTCDate();
-          const month = months[def.baseDate.getUTCMonth()];
-          const hours = String(def.hourBRT).padStart(2, '0');
-          const minutes = String(def.minBRT).padStart(2, '0');
+        let parsedSchedule: Array<{
+          session_number: number;
+          session_name: string;
+          session_type: string;
+          session_date_utc: string;
+          session_date_brt: string;
+        }> = [];
 
-          const sessionResult = completedMap.get(def.session_name);
-          const isCompleted = Boolean(sessionResult);
-          const isWaitingData = !isCompleted && now >= sDateUtc;
+        if (event.sessions_schedule) {
+          try {
+            parsedSchedule = typeof event.sessions_schedule === 'string'
+              ? JSON.parse(event.sessions_schedule)
+              : event.sessions_schedule;
+          } catch {
+            parsedSchedule = [];
+          }
+        }
 
-          return {
-            name: def.name,
-            session_name: def.session_name,
-            session_code: def.code,
-            date: `${day} ${month}`,
-            time: `${hours}:${minutes} BRT`,
-            completed: isCompleted,
-            waiting_data: isWaitingData,
-            session_date_utc: sDateUtc.toISOString(),
-            leader: sessionResult?.driver,
-            best_lap: sessionResult?.lap
-          };
-        });
+        let sessions;
+        let raceTimestampUtc: string;
 
-        // Compute race timestamp UTC for countdown timer
-        const raceUtc = new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 19, 0));
-        const raceTimestampUtc = raceUtc.toISOString();
+        if (Array.isArray(parsedSchedule) && parsedSchedule.length > 0) {
+          sessions = parsedSchedule.map((rawSess) => {
+            const sDateUtc = new Date(rawSess.session_date_utc);
+            const [datePart, timePart] = (rawSess.session_date_brt || "").split("T");
+            const [, monthStr, dayStr] = (datePart || "").split("-");
+            const [hourStr, minStr] = (timePart || "00:00").split(":");
+
+            const day = dayStr ? parseInt(dayStr, 10) : sDateUtc.getUTCDate();
+            const month = monthStr ? months[parseInt(monthStr, 10) - 1] : months[sDateUtc.getUTCMonth()];
+            const hours = (hourStr || "00").padStart(2, "0");
+            const minutes = (minStr || "00").padStart(2, "0");
+
+            const sessionResult = completedMap.get(rawSess.session_name);
+            const isCompleted = Boolean(sessionResult);
+            const isWaitingData = !isCompleted && now >= sDateUtc;
+
+            return {
+              name: sessionNamePtMap[rawSess.session_name] || rawSess.session_name,
+              session_name: rawSess.session_name,
+              session_code: rawSess.session_type,
+              date: `${day} ${month}`,
+              time: `${hours}:${minutes} BRT`,
+              completed: isCompleted,
+              waiting_data: isWaitingData,
+              session_date_utc: sDateUtc.toISOString(),
+              leader: sessionResult?.driver,
+              best_lap: sessionResult?.lap
+            };
+          });
+
+          const raceSession = parsedSchedule.find((s) => s.session_type === 'R' || s.session_name === 'Race');
+          raceTimestampUtc = raceSession?.session_date_utc
+            ? new Date(raceSession.session_date_utc).toISOString()
+            : new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0)).toISOString();
+        } else {
+          const sessionDefs = [
+            { session_name: 'Practice 1', code: 'FP1', name: 'Treino Livre 1 (FP1)', baseDate: fridayDate, hourBRT: 15, minBRT: 30, hourUTC: 18 },
+            { session_name: 'Practice 2', code: 'FP2', name: 'Treino Livre 2 (FP2)', baseDate: fridayDate, hourBRT: 19, minBRT: 0, hourUTC: 22 },
+            { session_name: 'Practice 3', code: 'FP3', name: 'Treino Livre 3 (FP3)', baseDate: saturdayDate, hourBRT: 14, minBRT: 30, hourUTC: 17 },
+            { session_name: 'Qualifying', code: 'Q', name: 'Classificação (Quali)', baseDate: saturdayDate, hourBRT: 18, minBRT: 0, hourUTC: 21 },
+            { session_name: 'Race', code: 'R', name: 'Grande Prêmio (Corrida)', baseDate: sundayDate, hourBRT: 17, minBRT: 0, hourUTC: 20 }
+          ];
+
+          sessions = sessionDefs.map((def) => {
+            const sDateUtc = new Date(Date.UTC(def.baseDate.getUTCFullYear(), def.baseDate.getUTCMonth(), def.baseDate.getUTCDate(), def.hourUTC, def.minBRT));
+            const day = def.baseDate.getUTCDate();
+            const month = months[def.baseDate.getUTCMonth()];
+            const hours = String(def.hourBRT).padStart(2, '0');
+            const minutes = String(def.minBRT).padStart(2, '0');
+
+            const sessionResult = completedMap.get(def.session_name);
+            const isCompleted = Boolean(sessionResult);
+            const isWaitingData = !isCompleted && now >= sDateUtc;
+
+            return {
+              name: def.name,
+              session_name: def.session_name,
+              session_code: def.code,
+              date: `${day} ${month}`,
+              time: `${hours}:${minutes} BRT`,
+              completed: isCompleted,
+              waiting_data: isWaitingData,
+              session_date_utc: sDateUtc.toISOString(),
+              leader: sessionResult?.driver,
+              best_lap: sessionResult?.lap
+            };
+          });
+
+          const raceUtc = new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0));
+          raceTimestampUtc = raceUtc.toISOString();
+        }
 
         // 3. Query historical records for this circuit directly from pipeline tables
         let hasHistoricalData = false;

@@ -666,11 +666,11 @@ export const mockUpcomingRace: RaceWeekendInfo = {
   event_date: "2026-11-01",
   is_upcoming: true,
   sessions: [
-    { name: "Treino Livre 1 (FP1)", date: "30 Out", time: "14:30 BRT", completed: false },
-    { name: "Treino Livre 2 (FP2)", date: "30 Out", time: "18:00 BRT", completed: false },
-    { name: "Treino Livre 3 (FP3)", date: "31 Out", time: "13:30 BRT", completed: false },
-    { name: "Classificação (Quali)", date: "31 Out", time: "17:00 BRT", completed: false },
-    { name: "Grande Prêmio (Corrida)", date: "1 Nov", time: "16:00 BRT", completed: false }
+    { name: "Treino Livre 1 (FP1)", date: "30 Out", time: "15:30 BRT", completed: false },
+    { name: "Treino Livre 2 (FP2)", date: "30 Out", time: "19:00 BRT", completed: false },
+    { name: "Treino Livre 3 (FP3)", date: "31 Out", time: "14:30 BRT", completed: false },
+    { name: "Classificação (Quali)", date: "31 Out", time: "18:00 BRT", completed: false },
+    { name: "Grande Prêmio (Corrida)", date: "1 Nov", time: "17:00 BRT", completed: false }
   ],
   circuit_records: {
     lap_record: "1:17.774",
