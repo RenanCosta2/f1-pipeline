@@ -352,14 +352,12 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
     if (pool) {
       const sql = `
         SELECT 
-          dsch.round_number,
-          MIN(dses.session_date_utc) as first_session,
-          MAX(dses.session_date_utc) as last_session
-        FROM gold.dim_schedule dsch
-        JOIN gold.dim_sessions dses USING(event_sk)
-        WHERE dsch.year = $1 AND dsch.round_number > 0
-        GROUP BY dsch.round_number
-        ORDER BY dsch.round_number ASC
+          round_number,
+          event_date,
+          race_status
+        FROM website.v_circuit_season_summary
+        WHERE year = $1 AND CAST(round_number AS INTEGER) > 0
+        ORDER BY CAST(round_number AS INTEGER) ASC
       `;
       const rows = await queryOrFallback<any[]>(sql, [targetYear], [], 10 * 60 * 1000);
       if (rows && rows.length > 0) {
@@ -367,24 +365,25 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
 
         for (let i = 0; i < rows.length; i++) {
           const r = rows[i];
-          const firstSessionDate = new Date(r.first_session);
-          const lastSessionDate = new Date(r.last_session);
+          const raceDate = new Date(r.event_date);
+          const roundNum = parseInt(r.round_number);
 
-          // O fim de semana da etapa começa pelo menos 3 dias (72h) antes da 1ª sessão (TL1)
-          const weekendStart = new Date(firstSessionDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+          // O fim de semana da etapa começa pelo menos 3 dias (72h) antes da corrida (quinta/sexta-feira)
+          const weekendStart = new Date(raceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+          const weekendEnd = new Date(raceDate.getTime() + 24 * 60 * 60 * 1000);
 
           let nextWeekendStart: Date;
           if (i + 1 < rows.length) {
-            const nextFirstSession = new Date(rows[i + 1].first_session);
-            nextWeekendStart = new Date(nextFirstSession.getTime() - 3 * 24 * 60 * 60 * 1000);
+            const nextRaceDate = new Date(rows[i + 1].event_date);
+            nextWeekendStart = new Date(nextRaceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
           } else {
             nextWeekendStart = new Date(targetYear + 1, 0, 1);
           }
 
           if (now >= weekendStart && now < nextWeekendStart) {
-            const isLiveWeekend = now >= weekendStart && now <= new Date(lastSessionDate.getTime() + 12 * 60 * 60 * 1000);
+            const isLiveWeekend = now >= weekendStart && now <= weekendEnd;
             return {
-              round: parseInt(r.round_number),
+              round: roundNum,
               isLiveWeekend
             };
           }
@@ -395,7 +394,7 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
     console.warn("Failed to get active weekend round, falling back to latest completed", e);
   }
 
-  return { round: latestCompleted || 14, isLiveWeekend: false };
+  return { round: latestCompleted ? latestCompleted + 1 : 14, isLiveWeekend: false };
 }
 
 export async function getActiveWeekendRound(year?: number): Promise<number> {
@@ -634,43 +633,30 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
 
   try {
     if (pool) {
-      // 1. Fetch round event info
+      // 1. Fetch round event info directly from website serving view
       const eventRes = await pool.query(`
         SELECT 
-          dsch.event_sk,
-          dsch.round_number,
-          dsch.official_event_name,
-          dsch.event_date,
-          dsch.circuit_id,
-          dc.country,
-          dc.location,
-          dc.circuit_name
-        FROM gold.dim_schedule dsch
-        LEFT JOIN gold.dim_circuits dc USING(circuit_id)
-        WHERE dsch.year = $1 AND dsch.round_number = $2
+          event_sk,
+          round_number,
+          official_event_name,
+          event_date,
+          circuit_id,
+          circuit_name,
+          country,
+          location
+        FROM website.v_circuit_season_summary
+        WHERE year = $1 AND CAST(round_number AS TEXT) = CAST($2 AS TEXT)
+        LIMIT 1
       `, [targetYear, targetRound]);
 
       if (eventRes.rows && eventRes.rows.length > 0) {
         const event = eventRes.rows[0];
 
-        // 2. Fetch sessions for this event
-        const sessRes = await pool.query(`
-          SELECT 
-            session_name,
-            session_number,
-            session_type,
-            session_date_brt,
-            session_date_utc
-          FROM gold.dim_sessions
-          WHERE event_sk = $1
-          ORDER BY session_number ASC
-        `, [event.event_sk]);
-
-        // 2b. Check completed sessions in v_sessions_summary to attach real leader & best lap
+        // 2. Check completed sessions in v_sessions_summary to attach real leader & best lap
         const completedRes = await pool.query(`
           SELECT session_name, driver_full_name, best_lap
           FROM website.v_sessions_summary
-          WHERE year = $1 AND round_number = $2 AND finishing_position = 1
+          WHERE year = $1 AND CAST(round_number AS TEXT) = CAST($2 AS TEXT) AND finishing_position = 1
         `, [targetYear, targetRound]);
 
         const completedMap = new Map<string, { driver: string; lap: string }>();
@@ -681,54 +667,46 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
         const now = new Date();
         const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-        const sessions = sessRes.rows.map((s: any, idx: number) => {
-          const sDate = s.session_date_brt ? new Date(s.session_date_brt) : new Date();
-          const day = sDate.getUTCDate();
-          const month = months[sDate.getUTCMonth()];
-          const hours = String(sDate.getUTCHours()).padStart(2, '0');
-          const minutes = String(sDate.getUTCMinutes()).padStart(2, '0');
+        const sundayDate = event.event_date ? new Date(event.event_date) : new Date();
+        const fridayDate = new Date(sundayDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const saturdayDate = new Date(sundayDate.getTime() - 1 * 24 * 60 * 60 * 1000);
 
-          let code = `S${idx + 1}`;
-          if (s.session_name === 'Practice 1') code = 'FP1';
-          else if (s.session_name === 'Practice 2') code = 'FP2';
-          else if (s.session_name === 'Practice 3') code = 'FP3';
-          else if (s.session_name === 'Qualifying') code = 'Q';
-          else if (s.session_name === 'Race') code = 'R';
-          else if (s.session_name === 'Sprint') code = 'SPR';
-          else if (s.session_name === 'Sprint Shootout' || s.session_name === 'Sprint Qualifying') code = 'SS';
+        const sessionDefs = [
+          { session_name: 'Practice 1', code: 'FP1', name: 'Treino Livre 1 (FP1)', baseDate: fridayDate, hourBRT: 13, minBRT: 30, hourUTC: 16 },
+          { session_name: 'Practice 2', code: 'FP2', name: 'Treino Livre 2 (FP2)', baseDate: fridayDate, hourBRT: 17, minBRT: 0, hourUTC: 20 },
+          { session_name: 'Practice 3', code: 'FP3', name: 'Treino Livre 3 (FP3)', baseDate: saturdayDate, hourBRT: 12, minBRT: 30, hourUTC: 15 },
+          { session_name: 'Qualifying', code: 'Q', name: 'Classificação (Quali)', baseDate: saturdayDate, hourBRT: 16, minBRT: 0, hourUTC: 19 },
+          { session_name: 'Race', code: 'R', name: 'Grande Prêmio (Corrida)', baseDate: sundayDate, hourBRT: 16, minBRT: 0, hourUTC: 19 }
+        ];
 
-          const sessionResult = completedMap.get(s.session_name);
-          // A sessão só é considerada concluída quando o pipeline processou e gravou os dados no banco
+        const sessions = sessionDefs.map((def) => {
+          const sDateUtc = new Date(Date.UTC(def.baseDate.getUTCFullYear(), def.baseDate.getUTCMonth(), def.baseDate.getUTCDate(), def.hourUTC, def.minBRT));
+          const day = def.baseDate.getUTCDate();
+          const month = months[def.baseDate.getUTCMonth()];
+          const hours = String(def.hourBRT).padStart(2, '0');
+          const minutes = String(def.minBRT).padStart(2, '0');
+
+          const sessionResult = completedMap.get(def.session_name);
           const isCompleted = Boolean(sessionResult);
-
-          const sessionDateUtc = s.session_date_utc ? new Date(s.session_date_utc) : sDate;
-          // Se a data/hora da sessão já passou, mas os dados ainda não foram gravados no banco, está aguardando dados
-          const isWaitingData = !isCompleted && now >= sessionDateUtc;
+          const isWaitingData = !isCompleted && now >= sDateUtc;
 
           return {
-            name: s.session_name === 'Race' ? 'Grande Prêmio (Corrida)' :
-              s.session_name === 'Qualifying' ? 'Classificação (Quali)' :
-                s.session_name === 'Practice 1' ? 'Treino Livre 1 (FP1)' :
-                  s.session_name === 'Practice 2' ? 'Treino Livre 2 (FP2)' :
-                    s.session_name === 'Practice 3' ? 'Treino Livre 3 (FP3)' :
-                      s.session_name,
-            session_name: s.session_name,
-            session_code: code,
+            name: def.name,
+            session_name: def.session_name,
+            session_code: def.code,
             date: `${day} ${month}`,
             time: `${hours}:${minutes} BRT`,
             completed: isCompleted,
             waiting_data: isWaitingData,
-            session_date_utc: s.session_date_utc ? new Date(s.session_date_utc).toISOString() : undefined,
+            session_date_utc: sDateUtc.toISOString(),
             leader: sessionResult?.driver,
             best_lap: sessionResult?.lap
           };
         });
 
-        // 2c. Compute race timestamp UTC for countdown timer
-        const raceSession = sessRes.rows.find((s: any) => s.session_name === 'Race');
-        const raceTimestampUtc = raceSession?.session_date_utc
-          ? new Date(raceSession.session_date_utc).toISOString()
-          : (event.event_date ? new Date(event.event_date).toISOString() : null);
+        // Compute race timestamp UTC for countdown timer
+        const raceUtc = new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 19, 0));
+        const raceTimestampUtc = raceUtc.toISOString();
 
         // 3. Query historical records for this circuit directly from pipeline tables
         let hasHistoricalData = false;
@@ -748,24 +726,19 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
           `, [event.circuit_id]).catch(() => ({ rows: [] }));
 
           const speedTrapPromise = pool.query(`
-            SELECT dd.driver_full_name, dsch.year, MAX(fl.speed_trap) as top_speed
-            FROM gold.fact_laps fl
-            JOIN gold.dim_sessions dses USING(session_sk)
-            JOIN gold.dim_schedule dsch USING(event_sk)
-            JOIN gold.dim_drivers dd USING(driver_id)
-            WHERE dsch.circuit_id = $1 AND fl.speed_trap IS NOT NULL
-            GROUP BY dd.driver_full_name, dsch.year
+            SELECT driver_full_name, year, MAX(max_speed_trap) as top_speed
+            FROM website.v_max_speed
+            WHERE official_event_name = $1 AND max_speed_trap IS NOT NULL
+            GROUP BY driver_full_name, year
             ORDER BY top_speed DESC
             LIMIT 1
-          `, [event.circuit_id]).catch(() => ({ rows: [] }));
+          `, [event.official_event_name]).catch(() => ({ rows: [] }));
 
           const totalLapsPromise = pool.query(`
             SELECT count(*) as total_laps
-            FROM gold.fact_laps fl
-            JOIN gold.dim_sessions dses USING(session_sk)
-            JOIN gold.dim_schedule dsch USING(event_sk)
-            WHERE dsch.circuit_id = $1 AND fl.lap_time_seconds IS NOT NULL
-          `, [event.circuit_id]).catch(() => ({ rows: [] }));
+            FROM website.v_lap_by_lap
+            WHERE official_event_name = $1
+          `, [event.official_event_name]).catch(() => ({ rows: [] }));
 
           const [ovRes, speedRes, lapsRes] = await Promise.all([
             overviewPromise,
@@ -823,6 +796,7 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
 
         const loc = (event.location || "").toLowerCase();
         const country = (event.country || "").toLowerCase();
+        const circuitId = (event.circuit_id || "").toLowerCase();
 
         let typicalStrategy = hasHistoricalData
           ? "1 a 2 Paradas (Médio ➔ Duro) balanceando degradação térmica e tempo no pit lane"
@@ -834,8 +808,16 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
           typicalStrategy = "1 Parada (Médio ➔ Duro) em corrida noturna com desgaste extremo de freios e 100% de probabilidade de SC";
         } else if (loc.includes("austin") || loc.includes("texas")) {
           typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Médio) devido às curvas de alta energia no primeiro setor";
-        } else if (loc.includes("são paulo") || loc.includes("interlagos")) {
+        } else if (loc.includes("mexico") || country.includes("mexico") || circuitId.includes("rodriguez")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) devido à altitude de 2.200m que reduz o arrasto aerodinâmico e a refrigeração";
+        } else if (loc.includes("são paulo") || loc.includes("interlagos") || country.includes("brazil")) {
           typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Macio) com alta sensibilidade climática e curvas de tração";
+        } else if (loc.includes("las vegas") || loc.includes("vegas")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com baixas temperaturas noturnas e longas zonas de frenagem";
+        } else if (loc.includes("qatar") || loc.includes("lusail")) {
+          typicalStrategy = "2 a 3 Paradas (Médio ➔ Duro ➔ Médio) devido às forças laterais extremas e limite de voltas por stint";
+        } else if (loc.includes("abu dhabi") || loc.includes("yas marina")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com queda acentuada de temperatura da pista durante o entardecer";
         } else if (loc.includes("monza") || country.includes("italy")) {
           typicalStrategy = "1 Parada (Médio ➔ Duro) com baixa pressão aerodinâmica e alta velocidade de reta";
         } else if (loc.includes("silverstone") || country.includes("united kingdom")) {
@@ -849,13 +831,13 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
         const result: RaceWeekendInfo = {
           round_number: parseInt(event.round_number),
           official_event_name: event.official_event_name,
-          country: event.country || "Azerbaijan",
-          location: event.location || "Baku",
-          circuit_name: event.circuit_name || "Baku City Circuit",
+          country: event.country || "Mexico",
+          location: event.location || "Mexico City",
+          circuit_name: event.circuit_name || "Autódromo Hermanos Rodríguez",
           event_date: formattedEventDate,
           is_upcoming: targetRound > latestCompleted,
           race_timestamp_utc: raceTimestampUtc,
-          sessions: sessions.length > 0 ? sessions : mockUpcomingRace.sessions,
+          sessions: sessions,
           circuit_records: {
             has_historical_data: hasHistoricalData,
             lap_record: raceLap.lap,

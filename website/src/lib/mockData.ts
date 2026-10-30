@@ -320,7 +320,7 @@ export const mockCumulativeDrivers: CumulativeDriverPoint[] = [
   { year: 2024, round_number: 1, location: "Sakhir", country: "Bahrain", official_event_name: "Bahrain GP", session_name: "Race", driver_full_name: "Charles Leclerc", team_name: "Ferrari", team_color: "#E80020", points: 12, cumulative_driver_points: 12 },
   { year: 2024, round_number: 1, location: "Sakhir", country: "Bahrain", official_event_name: "Bahrain GP", session_name: "Race", driver_full_name: "George Russell", team_name: "Mercedes", team_color: "#27F4D2", points: 10, cumulative_driver_points: 10 },
   { year: 2024, round_number: 1, location: "Sakhir", country: "Bahrain", official_event_name: "Bahrain GP", session_name: "Race", driver_full_name: "Lando Norris", team_name: "McLaren", team_color: "#FF8000", points: 8, cumulative_driver_points: 8 },
-  
+
   // Round 2
   { year: 2024, round_number: 2, location: "Jeddah", country: "Saudi Arabia", official_event_name: "Saudi Arabian GP", session_name: "Race", driver_full_name: "Max Verstappen", team_name: "Red Bull Racing", team_color: "#3671C6", points: 25, cumulative_driver_points: 51 },
   { year: 2024, round_number: 2, location: "Jeddah", country: "Saudi Arabia", official_event_name: "Saudi Arabian GP", session_name: "Race", driver_full_name: "Sergio Perez", team_name: "Red Bull Racing", team_color: "#3671C6", points: 18, cumulative_driver_points: 36 },
@@ -347,7 +347,7 @@ export const mockCumulativeDrivers: CumulativeDriverPoint[] = [
   { year: 2024, round_number: 5, location: "Shanghai", country: "China", official_event_name: "Chinese GP", session_name: "Race", driver_full_name: "Lando Norris", team_name: "McLaren", team_color: "#FF8000", points: 21, cumulative_driver_points: 58 },
   { year: 2024, round_number: 5, location: "Shanghai", country: "China", official_event_name: "Chinese GP", session_name: "Race", driver_full_name: "Sergio Perez", team_name: "Red Bull Racing", team_color: "#3671C6", points: 21, cumulative_driver_points: 85 },
   { year: 2024, round_number: 5, location: "Shanghai", country: "China", official_event_name: "Chinese GP", session_name: "Race", driver_full_name: "Charles Leclerc", team_name: "Ferrari", team_color: "#E80020", points: 17, cumulative_driver_points: 76 },
-  
+
   // Round 6 (Miami - 1st win Norris)
   { year: 2024, round_number: 6, location: "Miami", country: "USA", official_event_name: "Miami GP", session_name: "Race", driver_full_name: "Lando Norris", team_name: "McLaren", team_color: "#FF8000", points: 25, cumulative_driver_points: 83 },
   { year: 2024, round_number: 6, location: "Miami", country: "USA", official_event_name: "Miami GP", session_name: "Race", driver_full_name: "Max Verstappen", team_name: "Red Bull Racing", team_color: "#3671C6", points: 26, cumulative_driver_points: 136 },
@@ -622,7 +622,7 @@ export const mockLapByLap: LapByLap[] = [
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "George Russell", driver_abbreviation: "RUS", team_name: "Mercedes", team_color: "#27F4D2", lap_number: 1, sector_1_time_seconds: 19.4, sector_2_time_seconds: 37.8, sector_3_time_seconds: 28.1, lap_time_seconds: 85.3, lap_time: "1:25.300", compound: "INTERMEDIATE", tyre_life: 1, track_status_description: "Clear", position: 1 },
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "Lando Norris", driver_abbreviation: "NOR", team_name: "McLaren", team_color: "#FF8000", lap_number: 1, sector_1_time_seconds: 19.8, sector_2_time_seconds: 37.9, sector_3_time_seconds: 28.2, lap_time_seconds: 85.9, lap_time: "1:25.900", compound: "INTERMEDIATE", tyre_life: 1, track_status_description: "Clear", position: 2 },
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "Max Verstappen", driver_abbreviation: "VER", team_name: "Red Bull Racing", team_color: "#3671C6", lap_number: 1, sector_1_time_seconds: 20.5, sector_2_time_seconds: 38.4, sector_3_time_seconds: 28.4, lap_time_seconds: 87.3, lap_time: "1:27.300", compound: "INTERMEDIATE", tyre_life: 1, track_status_description: "Clear", position: 11 },
-  
+
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "George Russell", driver_abbreviation: "RUS", team_name: "Mercedes", team_color: "#27F4D2", lap_number: 10, sector_1_time_seconds: 19.0, sector_2_time_seconds: 36.9, sector_3_time_seconds: 27.8, lap_time_seconds: 83.7, lap_time: "1:23.700", compound: "INTERMEDIATE", tyre_life: 10, track_status_description: "Clear", position: 1 },
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "Lando Norris", driver_abbreviation: "NOR", team_name: "McLaren", team_color: "#FF8000", lap_number: 10, sector_1_time_seconds: 19.1, sector_2_time_seconds: 37.0, sector_3_time_seconds: 27.9, lap_time_seconds: 84.0, lap_time: "1:24.000", compound: "INTERMEDIATE", tyre_life: 10, track_status_description: "Clear", position: 2 },
   { year: 2024, round_number: 21, official_event_name: "São Paulo GP", session_name: "Race", driver_full_name: "Max Verstappen", driver_abbreviation: "VER", team_name: "Red Bull Racing", team_color: "#3671C6", lap_number: 10, sector_1_time_seconds: 18.7, sector_2_time_seconds: 36.4, sector_3_time_seconds: 27.4, lap_time_seconds: 82.5, lap_time: "1:22.500", compound: "INTERMEDIATE", tyre_life: 10, track_status_description: "Clear", position: 6 },
@@ -658,36 +658,36 @@ export const mockIdealLap: IdealLap[] = [
 ];
 
 export const mockUpcomingRace: RaceWeekendInfo = {
-  round_number: 18,
-  official_event_name: "FORMULA 1 MSC CRUISES UNITED STATES GRAND PRIX 2026",
-  country: "United States",
-  location: "Austin",
-  circuit_name: "Circuit of the Americas",
-  event_date: "2026-10-25",
+  round_number: 19,
+  official_event_name: "FORMULA 1 GRAN PREMIO DE LA CIUDAD DE MÉXICO 2026",
+  country: "Mexico",
+  location: "Mexico City",
+  circuit_name: "Autódromo Hermanos Rodríguez",
+  event_date: "2026-11-01",
   is_upcoming: true,
   sessions: [
-    { name: "Practice 1", date: "23 Out", time: "14:30 BRT", completed: false },
-    { name: "Sprint Qualifying", date: "23 Out", time: "18:30 BRT", completed: false },
-    { name: "Sprint", date: "24 Out", time: "15:00 BRT", completed: false },
-    { name: "Qualifying", date: "24 Out", time: "19:00 BRT", completed: false },
-    { name: "Grand Prix (Race)", date: "25 Out", time: "16:00 BRT", completed: false }
+    { name: "Treino Livre 1 (FP1)", date: "30 Out", time: "14:30 BRT", completed: false },
+    { name: "Treino Livre 2 (FP2)", date: "30 Out", time: "18:00 BRT", completed: false },
+    { name: "Treino Livre 3 (FP3)", date: "31 Out", time: "13:30 BRT", completed: false },
+    { name: "Classificação (Quali)", date: "31 Out", time: "17:00 BRT", completed: false },
+    { name: "Grande Prêmio (Corrida)", date: "1 Nov", time: "16:00 BRT", completed: false }
   ],
   circuit_records: {
-    lap_record: "1:36.169",
-    lap_record_holder: "Charles Leclerc",
-    lap_record_year: 2019,
-    all_time_record: "1:32.029",
-    all_time_holder: "Valtteri Bottas",
+    lap_record: "1:17.774",
+    lap_record_holder: "Valtteri Bottas",
+    lap_record_year: 2021,
+    all_time_record: "1:14.758",
+    all_time_holder: "Max Verstappen",
     all_time_year: 2019,
     all_time_session: "Classificação",
-    max_speed_kmh: 345.2,
-    max_speed_driver: "Max Verstappen",
-    max_speed_year: 2024,
-    total_laps_analyzed: 5120,
+    max_speed_kmh: 354.0,
+    max_speed_driver: "Sergio Pérez",
+    max_speed_year: 2023,
+    total_laps_analyzed: 4500,
     most_wins_driver: "Max Verstappen",
-    most_wins_count: 1,
-    most_poles_driver: "Charles Leclerc",
-    most_poles_count: 1,
-    typical_strategy: "1 Parada (Médio ➔ Duro) ou 2 Paradas dependendo do Safety Car"
+    most_wins_count: 5,
+    most_poles_driver: "Jim Clark",
+    most_poles_count: 4,
+    typical_strategy: "1 Parada (Médio ➔ Duro) devido à baixa perda por arrasto aerodinâmico e asfalto com baixa abrasão"
   }
 };
