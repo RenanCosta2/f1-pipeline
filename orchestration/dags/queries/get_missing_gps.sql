@@ -54,16 +54,29 @@ LEFT JOIN
   ) laps
   ON laps.year = sessions.year AND laps.gp = sessions.gp AND laps.session = sessions.session
 WHERE 
-  results.year IS NULL 
-  OR (
-    sessions.year >= 2018
-    AND laps.year IS NULL 
-    AND NOT EXISTS (
-      SELECT 1 
-      FROM `f1-analytics-platform.bronze.results` r 
-      WHERE r.year = sessions.year 
-        AND r.gp = sessions.gp 
-        AND r.session = sessions.session
-        AND (r.Laps IS NULL OR r.Laps = 0)
+  -- FastF1 data availability rules:
+  -- Prior to 2003: only Race ('R')
+  -- 2003 to 2017: only Qualifying ('Q') and Race ('R')
+  -- 2018 onwards: all sessions
+  (
+    (sessions.year < 2003 AND sessions.session = 'R')
+    OR (sessions.year >= 2003 AND sessions.year < 2018 AND sessions.session IN ('Q', 'R'))
+    OR (sessions.year >= 2018)
+  )
+  AND (
+    results.year IS NULL 
+    OR (
+      sessions.year >= 2018
+      AND laps.year IS NULL 
+      AND NOT EXISTS (
+        SELECT 1 
+        FROM `f1-analytics-platform.bronze.results` r 
+        WHERE r.year = sessions.year 
+          AND r.gp = sessions.gp 
+          AND r.session = sessions.session
+          AND (r.Laps IS NULL OR r.Laps = 0)
+      )
     )
-  );
+  )
+ORDER BY sessions.year ASC, sessions.gp ASC, sessions.session ASC
+LIMIT 25;
