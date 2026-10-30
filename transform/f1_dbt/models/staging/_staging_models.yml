@@ -148,7 +148,7 @@ models:
             - season_year
             - round_number
             - session_type
-            - driver_number
+            - driver_id
     columns:
       - name: season_year
         description: "Schedule year"
