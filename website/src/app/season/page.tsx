@@ -19,8 +19,7 @@ interface Props {
   };
 }
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 60; // Cache de 1 minuto no Edge da Vercel (ISR)
 
 export default async function SeasonPage({ searchParams }: Props) {
   const [defaultYear, availableYears] = await Promise.all([

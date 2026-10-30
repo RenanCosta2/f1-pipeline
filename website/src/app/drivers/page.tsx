@@ -4,8 +4,7 @@ import DriversCatalogView from "@/components/drivers/DriversCatalogView";
 import DriversSpotlightStrip from "@/components/drivers/DriversSpotlightStrip";
 import { Users, Trophy, Flag, Sparkles } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
 
 export default async function DriversPage() {
   const latestYear = await getLatestSeasonYear();

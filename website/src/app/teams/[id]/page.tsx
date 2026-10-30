@@ -9,8 +9,7 @@ import {
 import ConstructorProfileHero from "@/components/constructors/ConstructorProfileHero";
 import ConstructorProfileTabs from "@/components/constructors/ConstructorProfileTabs";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
 
 interface Props {
   params: {

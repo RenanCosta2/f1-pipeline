@@ -8,8 +8,7 @@ import {
 import CircuitProfileHero from "@/components/circuits/CircuitProfileHero";
 import CircuitProfileTabs from "@/components/circuits/CircuitProfileTabs";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
 
 interface Props {
   params: {

@@ -9,8 +9,7 @@ import {
 import DriverProfileHero from "@/components/drivers/DriverProfileHero";
 import DriverProfileTabs from "@/components/drivers/DriverProfileTabs";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
 
 interface Props {
   params: {

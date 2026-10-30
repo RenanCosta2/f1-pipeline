@@ -9,8 +9,7 @@ import CircuitsCatalogView from "@/components/circuits/CircuitsCatalogView";
 import CircuitsSpotlightStrip from "@/components/circuits/CircuitsSpotlightStrip";
 import { MapPin, Flag, Trophy } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
 
 export default async function CircuitsPage() {
   const latestYear = await getLatestSeasonYear();
