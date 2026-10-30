@@ -1171,6 +1171,8 @@ models:
         description: "Official commercial name of the Grand Prix event"
       - name: event_date
         description: "Official event date"
+      - name: sessions_schedule
+        description: "JSON array containing all scheduled sessions for the event (session_number, session_name, session_type, session_date_utc, session_date_brt)"
       - name: race_winner_driver_id
         description: "Driver ID of the Grand Prix race winner"
       - name: race_winner_driver

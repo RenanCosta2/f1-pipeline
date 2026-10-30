@@ -1,52 +1,95 @@
-raw_country,raw_location,circuit_id
-Abu Dhabi,Yas Island,yas_marina
-Australia,Melbourne,albert_park
-Austria,Spielberg,red_bull_ring
-Azerbaijan,Baku,baku_city_circuit
-Bahrain,Bahrain,bahrain
-Bahrain,Kuala Lumpur,bahrain
-Bahrain,Sakhir,bahrain
-Belgium,Spa,spa_francorchamps
-Belgium,Spa-Francorchamps,spa_francorchamps
-Brazil,São Paulo,interlagos
-Canada,Montreal,circuit_gilles_villeneuve
-Canada,Montréal,circuit_gilles_villeneuve
-China,Shanghai,shanghai
-France,Le Castellet,paul_ricard
-Germany,Hockenheim,hockenheimring
-Germany,Nürburg,nurburgring
-Germany,Nürburgring,nurburgring
-Great Britain,Silverstone,silverstone
-Hungary,Budapest,hungaroring
-India,Uttar Pradesh,buddh
-Italy,Imola,imola
-Italy,Monza,monza
-Italy,Mugello,mugello
-Japan,Suzuka,suzuka
-Korea,Yeongam County,korea
-Malaysia,Kuala Lumpur,sepang
-Malaysia,Sepang,sepang
-Mexico,Mexico City,hermanos_rodriguez
-Monaco,Monaco,monaco
-Monaco,Monte Carlo,monaco
-Netherlands,Zandvoort,zandvoort
-Portugal,Portimão,portimao
-Qatar,Lusail,losail
-Russia,Sochi,sochi
-Saudi Arabia,Jeddah,jeddah
-Singapore,Marina Bay,marina_bay
-Singapore,Singapore,marina_bay
-Spain,Barcelona,catalunya
-Spain,Spain,catalunya
-Spain,Madrid,madrid
-Turkey,Istanbul,istanbul_park
-UAE,Abu Dhabi,yas_marina
-UK,Silverstone,silverstone
-United Arab Emirates,Yas Island,yas_marina
-United Arab Emirates,Yas Marina,yas_marina
-United Kingdom,Silverstone,silverstone
-United States,Austin,cota
-United States,Las Vegas,las_vegas
-United States,Miami,miami
-United States,Miami Gardens,miami
-USA,Austin,cota
+raw_country,raw_location,start_year,end_year,circuit_id
+Abu Dhabi,Yas Island,1950,2099,yas_marina
+Argentina,Buenos Aires,1950,2099,buenos_aires
+Australia,Adelaide,1950,2099,adelaide
+Australia,Melbourne,1950,2099,albert_park
+Austria,Spielberg,1950,2099,red_bull_ring
+Austria,Styria,1950,2099,zeltweg
+Azerbaijan,Baku,1950,2099,baku_city_circuit
+Bahrain,Bahrain,1950,2099,bahrain
+Bahrain,Kuala Lumpur,1950,2099,bahrain
+Bahrain,Sakhir,1950,2099,bahrain
+Belgium,Brussels,1950,2099,nivelles
+Belgium,Heusden-Zolder,1950,2099,zolder
+Belgium,Spa,1950,2099,spa_francorchamps
+Belgium,Spa-Francorchamps,1950,2099,spa_francorchamps
+Brazil,Rio de Janeiro,1950,2099,jacarepagua
+Brazil,São Paulo,1950,2099,interlagos
+Canada,Montreal,1950,2099,circuit_gilles_villeneuve
+Canada,Montréal,1950,2099,circuit_gilles_villeneuve
+Canada,Ontario,1950,2099,mosport
+Canada,Quebec,1950,2099,mont_tremblant
+China,Shanghai,1950,2099,shanghai
+France,Clermont-Ferrand,1950,2099,charade
+France,Dijon,1950,2099,dijon
+France,Le Castellet,1950,2099,paul_ricard
+France,Le Mans,1950,2099,lemans
+France,Magny Cours,1950,2099,magny_cours
+France,Reims,1950,2099,reims
+France,Rouen,1950,2099,rouen
+Germany,Berlin,1950,2099,avus
+Germany,Hockenheim,1950,2099,hockenheimring
+Germany,Nürburg,1950,2099,nurburgring
+Germany,Nürburgring,1950,2099,nurburgring
+Great Britain,Silverstone,1950,2099,silverstone
+Hungary,Budapest,1950,2099,hungaroring
+India,Uttar Pradesh,1950,2099,buddh
+Italy,Imola,1950,2099,imola
+Italy,Monza,1950,2099,monza
+Italy,Mugello,1950,2099,mugello
+Italy,Pescara,1950,2099,pescara
+Japan,Okayama,1950,2099,okayama
+Japan,Oyama,1950,2099,fuji
+Japan,Suzuka,1950,2099,suzuka
+Korea,Yeongam County,1950,2099,korea
+Malaysia,Kuala Lumpur,1950,2099,sepang
+Malaysia,Sepang,1950,2099,sepang
+Mexico,Mexico City,1950,2099,hermanos_rodriguez
+Monaco,Monaco,1950,2099,monaco
+Monaco,Monte Carlo,1950,2099,monaco
+Morocco,Casablanca,1950,2099,ain_diab
+Netherlands,Zandvoort,1950,2099,zandvoort
+Portugal,Estoril,1950,2099,estoril
+Portugal,Lisbon,1950,2099,monsanto
+Portugal,Oporto,1950,2099,boavista
+Portugal,Portimão,1950,2099,portimao
+Qatar,Lusail,1950,2099,losail
+Russia,Sochi,1950,2099,sochi
+Saudi Arabia,Jeddah,1950,2099,jeddah
+Singapore,Marina Bay,1950,2099,marina_bay
+Singapore,Singapore,1950,2099,marina_bay
+South Africa,Eastern Cape Province,1950,2099,george
+South Africa,Midrand,1950,2099,kyalami
+Spain,Barcelona,1950,1954,pedralbes
+Spain,Barcelona,1969,1975,montjuic
+Spain,Barcelona,1991,2099,catalunya
+Spain,Jerez de la Frontera,1950,2099,jerez
+Spain,Madrid,1950,1981,jarama
+Spain,Madrid,2026,2099,madrid
+Spain,Spain,1950,2099,catalunya
+Spain,Valencia,1950,2099,valencia
+Sweden,Anderstorp,1950,2099,anderstorp
+Switzerland,Bern,1950,2099,bremgarten
+Turkey,Istanbul,1950,2099,istanbul_park
+UAE,Abu Dhabi,1950,2099,yas_marina
+UK,Castle Donington,1950,2099,donington
+UK,Kent,1950,2099,brands_hatch
+UK,Liverpool,1950,2099,aintree
+UK,Silverstone,1950,2099,silverstone
+USA,Austin,1950,2099,cota
+USA,California,1950,1960,riverside
+USA,California,1976,2099,long_beach
+USA,Dallas,1950,2099,dallas
+USA,Detroit,1950,2099,detroit
+USA,Florida,1950,2099,sebring
+USA,Indianapolis,1950,2099,indianapolis
+USA,Nevada,1950,2099,caesars_palace
+USA,New York State,1950,2099,watkins_glen
+USA,Phoenix,1950,2099,phoenix
+United Arab Emirates,Yas Island,1950,2099,yas_marina
+United Arab Emirates,Yas Marina,1950,2099,yas_marina
+United Kingdom,Silverstone,1950,2099,silverstone
+United States,Austin,1950,2099,cota
+United States,Las Vegas,1950,2099,las_vegas
+United States,Miami,1950,2099,miami
+United States,Miami Gardens,1950,2099,miami

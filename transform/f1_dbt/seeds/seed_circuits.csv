@@ -1,36 +1,79 @@
 circuit_id,circuit_name,country,location,track_type
+adelaide,Adelaide Street Circuit,Australia,Adelaide,Street
+ain_diab,Circuit d'Aïn-Diab,Morocco,Casablanca,Street
+aintree,Aintree Motor Racing Circuit,United Kingdom,Liverpool,Permanent
 albert_park,Albert Park Circuit,Australia,Melbourne,Street
+anderstorp,Scandinavian Raceway (Anderstorp),Sweden,Anderstorp,Permanent
+avus,AVUS,Germany,Berlin,Street
 bahrain,Bahrain International Circuit,Bahrain,Sakhir,Permanent
-shanghai,Shanghai International Circuit,China,Shanghai,Permanent
 baku_city_circuit,Baku City Circuit,Azerbaijan,Baku,Street
-miami,Miami International Autodrome,United States,Miami Gardens,Street
-imola,Autodromo Enzo e Dino Ferrari (Imola),Italy,Imola,Permanent
-monaco,Circuit de Monaco,Monaco,Monte Carlo,Street
-circuit_gilles_villeneuve,Circuit Gilles Villeneuve,Canada,Montreal,Street
-catalunya,Circuit de Barcelona-Catalunya,Spain,Barcelona,Permanent
-red_bull_ring,Red Bull Ring,Austria,Spielberg,Permanent
-silverstone,Silverstone Circuit,United Kingdom,Silverstone,Permanent
-hungaroring,Hungaroring,Hungary,Budapest,Permanent
-spa_francorchamps,Circuit de Spa-Francorchamps,Belgium,Spa-Francorchamps,Permanent
-zandvoort,Circuit Zandvoort,Netherlands,Zandvoort,Permanent
-monza,Autodromo Nazionale Monza,Italy,Monza,Permanent
-marina_bay,Marina Bay Street Circuit,Singapore,Singapore,Street
-suzuka,Suzuka International Racing Course,Japan,Suzuka,Permanent
-losail,Lusail International Circuit,Qatar,Lusail,Permanent
-cota,Circuit of the Americas,United States,Austin,Permanent
-hermanos_rodriguez,Autódromo Hermanos Rodríguez,Mexico,Mexico City,Permanent
-interlagos,Autódromo José Carlos Pace (Interlagos),Brazil,São Paulo,Permanent
-las_vegas,Las Vegas Strip Circuit,United States,Las Vegas,Street
-yas_marina,Yas Marina Circuit,United Arab Emirates,Abu Dhabi,Permanent
-jeddah,Jeddah Corniche Circuit,Saudi Arabia,Jeddah,Street
-paul_ricard,Circuit Paul Ricard,France,Le Castellet,Permanent
-hockenheimring,Hockenheimring,Germany,Hockenheim,Permanent
-nurburgring,Nürburgring,Germany,Nürburg,Permanent
-sepang,Sepang International Circuit,Malaysia,Sepang,Permanent
-sochi,Sochi Autodrom,Russia,Sochi,Permanent
-istanbul_park,Intercity Istanbul Park,Turkey,Istanbul,Permanent
-portimao,Autódromo Internacional do Algarve (Portimão),Portugal,Portimão,Permanent
-mugello,Autodromo Internazionale del Mugello,Italy,Mugello,Permanent
-korea,Korea International Circuit,South Korea,Yeongam,Permanent
+boavista,Circuito da Boavista,Portugal,Porto,Street
+brands_hatch,Brands Hatch,United Kingdom,Kent,Permanent
+bremgarten,Circuit Bremgarten,Switzerland,Bern,Street
 buddh,Buddh International Circuit,India,Greater Noida,Permanent
+buenos_aires,Autódromo Oscar y Juan Gálvez,Argentina,Buenos Aires,Permanent
+caesars_palace,Caesars Palace Grand Prix Circuit,United States,Las Vegas,Street
+catalunya,Circuit de Barcelona-Catalunya,Spain,Barcelona,Permanent
+charade,Circuit de Charade,France,Clermont-Ferrand,Street
+circuit_gilles_villeneuve,Circuit Gilles Villeneuve,Canada,Montreal,Street
+cota,Circuit of the Americas,United States,Austin,Permanent
+dallas,Fair Park Circuit (Dallas),United States,Dallas,Street
+detroit,Detroit Street Circuit,United States,Detroit,Street
+dijon,Circuit de Dijon-Prenois,France,Dijon,Permanent
+donington,Donington Park,United Kingdom,Castle Donington,Permanent
+estoril,Autódromo do Estoril,Portugal,Estoril,Permanent
+fuji,Fuji Speedway,Japan,Oyama,Permanent
+george,Prince George Circuit,South Africa,East London,Permanent
+hermanos_rodriguez,Autódromo Hermanos Rodríguez,Mexico,Mexico City,Permanent
+hockenheimring,Hockenheimring,Germany,Hockenheim,Permanent
+hungaroring,Hungaroring,Hungary,Budapest,Permanent
+imola,Autodromo Enzo e Dino Ferrari (Imola),Italy,Imola,Permanent
+indianapolis,Indianapolis Motor Speedway,United States,Indianapolis,Permanent
+interlagos,Autódromo José Carlos Pace (Interlagos),Brazil,São Paulo,Permanent
+istanbul_park,Intercity Istanbul Park,Turkey,Istanbul,Permanent
+jacarepagua,Autódromo Internacional Nelson Piquet (Jacarepaguá),Brazil,Rio de Janeiro,Permanent
+jarama,Circuito del Jarama,Spain,Madrid,Permanent
+jeddah,Jeddah Corniche Circuit,Saudi Arabia,Jeddah,Street
+jerez,Circuito de Jerez,Spain,Jerez de la Frontera,Permanent
+korea,Korea International Circuit,South Korea,Yeongam,Permanent
+kyalami,Kyalami Grand Prix Circuit,South Africa,Midrand,Permanent
+las_vegas,Las Vegas Strip Circuit,United States,Las Vegas,Street
+lemans,Circuit Bugatti (Le Mans),France,Le Mans,Permanent
+long_beach,Long Beach Street Circuit,United States,Long Beach,Street
+losail,Lusail International Circuit,Qatar,Lusail,Permanent
 madrid,Circuito de Madrid,Spain,Madrid,Street
+magny_cours,Circuit de Nevers Magny-Cours,France,Magny-Cours,Permanent
+marina_bay,Marina Bay Street Circuit,Singapore,Singapore,Street
+miami,Miami International Autodrome,United States,Miami Gardens,Street
+monaco,Circuit de Monaco,Monaco,Monte Carlo,Street
+monsanto,Circuito de Monsanto,Portugal,Lisbon,Street
+mont_tremblant,Circuit Mont-Tremblant,Canada,Mont-Tremblant,Permanent
+montjuic,Circuit de Montjuïc,Spain,Barcelona,Street
+monza,Autodromo Nazionale Monza,Italy,Monza,Permanent
+mosport,Mosport International Raceway,Canada,Bowmanville,Permanent
+mugello,Autodromo Internazionale del Mugello,Italy,Mugello,Permanent
+nivelles,Circuit de Nivelles-Baulers,Belgium,Brussels,Permanent
+nurburgring,Nürburgring,Germany,Nürburg,Permanent
+okayama,TI Circuit Aida (Okayama),Japan,Okayama,Permanent
+paul_ricard,Circuit Paul Ricard,France,Le Castellet,Permanent
+pedralbes,Circuit de Pedralbes,Spain,Barcelona,Street
+pescara,Circuito di Pescara,Italy,Pescara,Street
+phoenix,Phoenix Street Circuit,United States,Phoenix,Street
+portimao,Autódromo Internacional do Algarve (Portimão),Portugal,Portimão,Permanent
+red_bull_ring,Red Bull Ring,Austria,Spielberg,Permanent
+reims,Circuit de Reims-Gueux,France,Reims,Street
+riverside,Riverside International Raceway,United States,Riverside,Permanent
+rouen,Circuit de Rouen-Les-Essarts,France,Rouen,Street
+sebring,Sebring International Raceway,United States,Sebring,Permanent
+sepang,Sepang International Circuit,Malaysia,Sepang,Permanent
+shanghai,Shanghai International Circuit,China,Shanghai,Permanent
+silverstone,Silverstone Circuit,United Kingdom,Silverstone,Permanent
+sochi,Sochi Autodrom,Russia,Sochi,Permanent
+spa_francorchamps,Circuit de Spa-Francorchamps,Belgium,Spa-Francorchamps,Permanent
+suzuka,Suzuka International Racing Course,Japan,Suzuka,Permanent
+valencia,Valencia Street Circuit,Spain,Valencia,Street
+watkins_glen,Watkins Glen International,United States,Watkins Glen,Permanent
+yas_marina,Yas Marina Circuit,United Arab Emirates,Abu Dhabi,Permanent
+zandvoort,Circuit Zandvoort,Netherlands,Zandvoort,Permanent
+zeltweg,Zeltweg Airfield,Austria,Zeltweg,Street
+zolder,Circuit Zolder,Belgium,Heusden-Zolder,Permanent
