@@ -114,6 +114,8 @@ services:
       - GCP_PROJECT_ID=${GCP_PROJECT_ID}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-credentials.json
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
+      - F1_USERNAME=${F1_USERNAME:-}
+      - F1_PASSWORD=${F1_PASSWORD:-}
       - TZ=America/Sao_Paulo
 
   dbt:

@@ -81,6 +81,8 @@ def f1_pipeline_dag():
         "GCP_PROJECT_ID": os.getenv("GCP_PROJECT_ID", "f1-analytics-platform"),
         "GOOGLE_APPLICATION_CREDENTIALS": "/app/gcp-credentials.json",
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
+        "F1_USERNAME": os.getenv("F1_USERNAME", ""),
+        "F1_PASSWORD": os.getenv("F1_PASSWORD", ""),
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
 
