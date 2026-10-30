@@ -19,7 +19,7 @@ def f1_schedule_dag():
     env_vars = {
         "BUCKET_NAME": os.getenv("BUCKET_NAME"),
         "GCP_PROJECT_ID": os.getenv("GCP_PROJECT_ID"),
-        "GOOGLE_APPLICATION_CREDENTIALS": os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "/app/gcp-credentials.json"),
+        "GOOGLE_APPLICATION_CREDENTIALS": "/app/gcp-credentials.json",
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
