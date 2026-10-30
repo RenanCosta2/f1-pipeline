@@ -23,6 +23,26 @@ WITH event_sessions_stats AS (
         sessions.event_sk
 ),
 
+event_sessions_schedule AS (
+    SELECT
+        event_sk,
+        TO_JSON_STRING(
+            ARRAY_AGG(
+                STRUCT(
+                    session_number,
+                    session_name,
+                    session_type,
+                    FORMAT_TIMESTAMP('%Y-%m-%dT%H:%M:%SZ', session_date_utc) AS session_date_utc,
+                    FORMAT_DATETIME('%Y-%m-%dT%H:%M:%S', session_date_brt) AS session_date_brt
+                )
+                ORDER BY session_number ASC
+            )
+        ) AS sessions_schedule
+    FROM
+        {{ ref('dim_sessions') }}
+    GROUP BY
+        event_sk
+),
 
 race_winners AS (
     SELECT
@@ -149,6 +169,7 @@ SELECT
     circuits.track_type,
     schedule.official_event_name,
     schedule.event_date,
+    sessions_schedule.sessions_schedule,
 
     pole_driver,
     pole_team,
@@ -202,6 +223,9 @@ JOIN
 LEFT JOIN 
     event_sessions_stats AS stats 
     ON stats.event_sk = schedule.event_sk
+LEFT JOIN
+    event_sessions_schedule AS sessions_schedule
+    ON sessions_schedule.event_sk = schedule.event_sk
 LEFT JOIN
     race_winners
     ON race_winners.event_sk = schedule.event_sk
