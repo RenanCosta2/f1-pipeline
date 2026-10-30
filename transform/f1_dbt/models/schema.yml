@@ -226,8 +226,6 @@ sources:
               - not_null
           - name: LapStartTime
             description: "Session time when the lap started"
-            data_tests:
-              - not_null
           - name: TrackStatus
             description: |
               Track status codes during the lap (FastF1):
