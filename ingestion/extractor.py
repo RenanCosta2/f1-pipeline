@@ -42,6 +42,18 @@ class FastF1Extractor:
         else:
             logger.warning("FASTF1_CACHE_DIR not set. Telemetry downloads will not be cached!")
 
+        # Prevent FastF1 from pausing to prompt for an interactive F1 account email in terminal
+        try:
+            from fastf1.internals.f1account import _AUTHENTICATORS
+            from fastf1.internals.f1account.login import F1AuthError
+            if not os.getenv("F1_USERNAME") or not os.getenv("F1_PASSWORD"):
+                def _bypass_prompt():
+                    raise F1AuthError("No F1 account credentials configured. Continuing without authentication.")
+                _AUTHENTICATORS["password"] = _bypass_prompt
+                _AUTHENTICATORS["browser"] = _bypass_prompt
+        except Exception:
+            pass
+
         logger.info("FastF1Extractor initialized successfully!")
 
     def get_schedule(self, year: int) -> pd.DataFrame:
