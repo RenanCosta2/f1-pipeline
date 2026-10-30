@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger("f1_pipeline.ingestion.orchestration_schedule")
 
 
-def main():
+def ingest_schedule(year: int):
     load_dotenv()
 
     # Initializing GCS instance
@@ -30,28 +30,29 @@ def main():
     # Initializing extractor instance
     f1_extractor = FastF1Extractor()
 
-    # Defining parsing arguments
-    parser = argparse.ArgumentParser(description='F1 Schedule Ingestion')
-    parser.add_argument('--year', type=int, default=datetime.now().year)
-    args = parser.parse_args()
-
     # Extracting F1 schedule — runs only once per year
-    schedule_key = f"schedule/{args.year}.parquet"
+    schedule_key = f"schedule/{year}.parquet"
     if gcs_uploader.file_exists(schedule_key):
-        logger.info(f"Schedule for {args.year} already exists in GCS. Skipping ingestion.")
+        logger.info(f"Schedule for {year} already exists in GCS. Skipping ingestion.")
         return
 
-    logger.info(f"Schedule for {args.year} not found in GCS. Starting ingestion...")
-    schedule = f1_extractor.get_schedule(args.year)
-    schedule['year'] = args.year
+    logger.info(f"Schedule for {year} not found in GCS. Starting ingestion...")
+    schedule = f1_extractor.get_schedule(year)
+    schedule['year'] = year
 
     schedule_buffer = io.BytesIO()
     schedule.to_parquet(schedule_buffer, index=False)
     schedule_buffer.seek(0)
     gcs_uploader.upload_fileobj(schedule_buffer, schedule_key)
 
-    logger.info(f"Schedule for {args.year} ingested successfully.")
+    logger.info(f"Schedule for {year} ingested successfully.")
 
 
 if __name__ == "__main__":
-    main()
+    
+    # Defining parsing arguments
+    parser = argparse.ArgumentParser(description='F1 Schedule Ingestion')
+    parser.add_argument('--year', type=int, default=datetime.now().year)
+    args = parser.parse_args()
+
+    ingest_schedule(args.year)
