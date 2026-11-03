@@ -728,7 +728,7 @@ export default function SeasonStandingsExplorer({
           {activeTab === "drivers" ? (
             <LineChart data={chartDriversData} margin={{ top: 10, right: 15, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#252538" />
-              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} />
+              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval={0} />
               <YAxis stroke="#8E8EA0" fontSize={10} domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
@@ -762,7 +762,7 @@ export default function SeasonStandingsExplorer({
           ) : (
             <LineChart data={chartTeamsData} margin={{ top: 10, right: 15, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#252538" />
-              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} />
+              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval={0} />
               <YAxis stroke="#8E8EA0" fontSize={10} domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
