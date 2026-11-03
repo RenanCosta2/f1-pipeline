@@ -34,6 +34,20 @@ body {
   background: #E10600;
 }
 
+/* Utilitário para esconder barras de rolagem mantendo a rolagem ativa quando necessário */
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none !important; /* IE e Edge */
+  scrollbar-width: none !important; /* Firefox */
+}
+
 /* F1 Carbon Pattern & Glows */
 .f1-card {
   background: linear-gradient(135deg, rgba(30, 30, 44, 0.7) 0%, rgba(20, 20, 30, 0.9) 100%);

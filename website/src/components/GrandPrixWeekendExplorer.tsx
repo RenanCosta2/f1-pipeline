@@ -394,7 +394,7 @@ export default function GrandPrixWeekendExplorer({
       </div>
 
       {/* Seletor de Sessões do Fim de Semana (TL1, TL2, TL3, Quali, Sprint, Corrida) */}
-      <div className="flex items-center gap-2 overflow-x-auto border-b border-white/10 pb-3 scrollbar-thin">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-white/10 pb-3 no-scrollbar scrollbar-none">
         <span className="font-mono text-xs font-bold uppercase tracking-wider text-f1-subtle shrink-0 mr-2">
           Sessão:
         </span>
@@ -404,11 +404,10 @@ export default function GrandPrixWeekendExplorer({
             <button
               key={session}
               onClick={() => changeSession(session)}
-              className={`shrink-0 rounded-lg px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${
-                isSelected
+              className={`shrink-0 rounded-lg px-3.5 py-1.5 font-mono text-xs font-bold uppercase tracking-wider transition-colors ${isSelected
                   ? "bg-f1-red text-white"
                   : "border border-white/10 bg-white/5 text-zinc-300 hover:border-white/20 hover:text-white"
-              }`}
+                }`}
             >
               {session === "Practice 1" && "Treino Livre 1"}
               {session === "Practice 2" && "Treino Livre 2"}
@@ -767,16 +766,15 @@ export default function GrandPrixWeekendExplorer({
       </div>
 
       {/* Barra de Alternância de Abas: Dashboard Analítico vs Volta Ideal vs Tabela FIA */}
-      <div className="flex items-center justify-between border-b border-white/10 overflow-x-auto scrollbar-none gap-6">
+      <div className="flex items-center justify-between border-b border-white/10 gap-6 overflow-x-auto sm:overflow-x-visible no-scrollbar scrollbar-none">
         <div className="flex items-center gap-6">
           {/* Classificação Oficial sempre disponível em 1º lugar à esquerda */}
           <button
             onClick={() => setViewMode("table")}
-            className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${
-              effectiveViewMode === "table"
+            className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${effectiveViewMode === "table"
                 ? "border-f1-red text-white"
                 : "border-transparent text-f1-subtle hover:text-white"
-            }`}
+              }`}
           >
             <span>Classificação Oficial</span>
             <span className="font-mono text-[11px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
@@ -788,11 +786,10 @@ export default function GrandPrixWeekendExplorer({
           {isRaceSession && (
             <button
               onClick={() => setViewMode("dashboard")}
-              className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${
-                effectiveViewMode === "dashboard"
+              className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${effectiveViewMode === "dashboard"
                   ? "border-f1-red text-white"
                   : "border-transparent text-f1-subtle hover:text-white"
-              }`}
+                }`}
             >
               <span>Dashboard Analítico</span>
             </button>
@@ -802,11 +799,10 @@ export default function GrandPrixWeekendExplorer({
           {(isQualiSession || (!isRaceSession && hasIdealData)) && (
             <button
               onClick={() => setViewMode("ideal")}
-              className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${
-                effectiveViewMode === "ideal"
+              className={`pb-3 pt-1 text-xs sm:text-sm font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] ${effectiveViewMode === "ideal"
                   ? "border-f1-red text-white"
                   : "border-transparent text-f1-subtle hover:text-white"
-              }`}
+                }`}
             >
               <span>Volta Ideal Teórica</span>
               {idealLaps.length > 0 && (
@@ -824,8 +820,8 @@ export default function GrandPrixWeekendExplorer({
             {effectiveViewMode === "dashboard"
               ? "Telemetria & Estratégia"
               : effectiveViewMode === "ideal"
-              ? "Volta Ideal FIA"
-              : "Tabela Oficial FIA"}
+                ? "Volta Ideal FIA"
+                : "Tabela Oficial FIA"}
           </span>
         </div>
       </div>
@@ -946,15 +942,14 @@ export default function GrandPrixWeekendExplorer({
                           {/* Posição */}
                           <td className="py-3.5 pl-6 pr-3 text-center font-bold">
                             <span
-                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-xs ${
-                                pos === 1
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-xs ${pos === 1
                                   ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
                                   : pos === 2
-                                  ? "bg-slate-300 font-black text-black"
-                                  : pos === 3
-                                  ? "bg-amber-700 font-black text-white"
-                                  : "bg-white/5 text-gray-300"
-                              }`}
+                                    ? "bg-slate-300 font-black text-black"
+                                    : pos === 3
+                                      ? "bg-amber-700 font-black text-white"
+                                      : "bg-white/5 text-gray-300"
+                                }`}
                             >
                               {pos}
                             </span>

@@ -69,14 +69,13 @@ export default function SeasonTabsView({
       {/* Barra Superior de Controles: Seletor de Abas & Seletor de Ano */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
         {/* Seletor de Abas da Temporada: Classificação, Matriz, GPs */}
-        <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#0B0B10] p-1.5 shadow-lg overflow-x-auto">
+        <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#0B0B10] p-1.5 shadow-lg overflow-x-auto no-scrollbar scrollbar-none">
           <button
             onClick={() => setTab("standings")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${
-              currentTab === "standings"
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${currentTab === "standings"
                 ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
                 : "text-f1-subtle hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             <Trophy className="h-4 w-4" />
             <span>Classificação & Evolução</span>
@@ -84,11 +83,10 @@ export default function SeasonTabsView({
 
           <button
             onClick={() => setTab("matrix")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${
-              currentTab === "matrix"
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${currentTab === "matrix"
                 ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
                 : "text-f1-subtle hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             <Table2 className="h-4 w-4" />
             <span>Matriz de Resultados</span>
@@ -96,20 +94,18 @@ export default function SeasonTabsView({
 
           <button
             onClick={() => setTab("races")}
-            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${
-              currentTab === "races"
+            className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs sm:text-sm font-bold tracking-tight transition-all duration-200 shrink-0 ${currentTab === "races"
                 ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
                 : "text-f1-subtle hover:bg-white/5 hover:text-white"
-            }`}
+              }`}
           >
             <Flag className="h-4 w-4" />
             <span>Grandes Prêmios</span>
             <span
-              className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                currentTab === "races"
+              className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-black ${currentTab === "races"
                   ? "bg-black/30 text-white"
                   : "bg-white/10 text-f1-subtle"
-              }`}
+                }`}
             >
               {races.length}
             </span>
