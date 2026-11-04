@@ -60,8 +60,10 @@ def ingest_session(year: int, gp: int, session: str, force: bool = False):
         logger.info("Session already fully present... Skipping.")
         return
 
-    needs_results = not results_in_gcs
     needs_laps = not laps_in_gcs and year >= 2018
+    # If laps were missing (e.g. previous run fell back to Ergast without livetiming),
+    # also re-extract results so practice rookie drivers and timings stay in sync with laps.
+    needs_results = not results_in_gcs or needs_laps
 
     if needs_results or needs_laps:
         try:
