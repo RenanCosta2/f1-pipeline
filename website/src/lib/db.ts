@@ -19,6 +19,7 @@ import {
   DriverRaceLogItem,
   ConstructorCatalogItem,
   ConstructorSeasonSummaryItem,
+  ConstructorSeasonDriverLineup,
   ConstructorDriverSummaryItem,
   ConstructorRaceLogItem,
   CircuitOverviewItem
@@ -1747,7 +1748,7 @@ export async function getConstructorProfile(teamId: string): Promise<Constructor
           const res = await pool.query(sql, [teamId]);
           if (res.rows) {
             return res.rows.map((r: any) => {
-              let parsedLineup = [];
+              let parsedLineup: ConstructorSeasonDriverLineup[] = [];
               if (r.drivers_lineup) {
                 if (typeof r.drivers_lineup === "string") {
                   try {

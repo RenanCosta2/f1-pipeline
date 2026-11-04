@@ -40,6 +40,17 @@ body {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+  background: transparent !important;
+}
+
+.no-scrollbar::-webkit-scrollbar-thumb,
+.scrollbar-none::-webkit-scrollbar-thumb,
+.no-scrollbar::-webkit-scrollbar-track,
+.scrollbar-none::-webkit-scrollbar-track,
+.no-scrollbar::-webkit-scrollbar-corner,
+.scrollbar-none::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
 }
 
 .no-scrollbar,

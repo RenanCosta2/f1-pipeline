@@ -6,7 +6,8 @@ import {
   ConstructorCatalogItem,
   ConstructorSeasonSummaryItem,
   ConstructorDriverSummaryItem,
-  ConstructorRaceLogItem
+  ConstructorRaceLogItem,
+  ConstructorSeasonDriverLineup
 } from "@/types/f1";
 import {
   Trophy,
@@ -272,7 +273,7 @@ export default function ConstructorProfileTabs({
         total_dnfs: s.total_dnfs,
         fastest_laps: s.fastest_laps,
         pole_to_win_rate: s.pole_to_win_rate,
-        drivers_lineup: Array.isArray(s.drivers_lineup)
+        drivers_lineup: (Array.isArray(s.drivers_lineup)
           ? s.drivers_lineup
           : typeof s.drivers_lineup === "string"
           ? (() => {
@@ -282,7 +283,7 @@ export default function ConstructorProfileTabs({
                 return [];
               }
             })()
-          : [],
+          : []) as ConstructorSeasonDriverLineup[],
         ptsPerGp,
         winRate,
         podiumRate
@@ -533,11 +534,11 @@ export default function ConstructorProfileTabs({
   }, [drivers]);
 
   return (
-    <div className="space-y-5">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
       {/* ========================================================================= */}
-      {/* PILAR 1: PAINEL EXECUTIVO HORIZONTAL (FULL-WIDTH 4 CARDS)                 */}
+      {/* COLUNA ESQUERDA (33%): COCKPIT SIDEBAR - INSIGHTS HISTÓRICOS & EFICIÊNCIA */}
       {/* ========================================================================= */}
-      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <aside className="lg:col-span-4 space-y-4">
         {/* CARD 1: ESTATUTO HISTÓRICO ALL-TIME DA ESCUDERIA */}
         <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg flex flex-col justify-between">
           <div>
@@ -661,137 +662,128 @@ export default function ConstructorProfileTabs({
           </div>
         </div>
 
-        {/* CARD 2: RAIO-X DE EFICIÊNCIA EM PISTA */}
-        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <Gauge className="h-4 w-4 text-f1-red" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                  Eficiência em Pista
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
-                Conversão
-              </span>
+        {/* CARD 2: RAIO-X DE EFICIÊNCIA & DOMÍNIO */}
+        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg relative overflow-hidden">
+          <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-f1-red" />
+              <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                Raio-X de Eficiência
+              </h3>
             </div>
-
-            <div className="space-y-3.5 text-xs">
-              {/* Taxa de Vitórias */}
-              <div>
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-f1-subtle text-[11px]">Taxa de Vitórias (Win Rate)</span>
-                  <div className="flex items-baseline gap-1 font-mono">
-                    <span className="font-black text-amber-400 text-sm">{winRate}%</span>
-                    <span className="text-[10px] text-f1-subtle">
-                      ({profile.total_wins}/{profile.total_gps})
-                    </span>
-                  </div>
-                </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Number(winRate))}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Conversão Pole -> Vitória */}
-              <div>
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-f1-subtle text-[11px]">Conversão Pole ➔ Vitória</span>
-                  <div className="flex items-baseline gap-1 font-mono">
-                    <span className="font-black text-purple-300 text-sm">{poleToWinRate}%</span>
-                    <span className="text-[10px] text-f1-subtle">
-                      ({profile.total_poles_to_win}/{profile.race_poles})
-                    </span>
-                  </div>
-                </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-purple-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Number(poleToWinRate) || 0)}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Média Pontos/GP */}
-              <div className="flex items-center justify-between py-1 border-t border-white/5 pt-2">
-                <span className="text-f1-subtle text-[11px]">Média Histórica:</span>
-                <span className="font-mono font-black text-white text-xs">
-                  {ptsPerGp} pts / GP
-                </span>
-              </div>
-            </div>
+            <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
+              Histórico
+            </span>
           </div>
-        </div>
 
-        {/* CARD 3: DOMÍNIO & CONFIABILIDADE */}
-        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg relative overflow-hidden flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                  Domínio & Confiabilidade
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                Dupla
-              </span>
-            </div>
-
-            <div className="space-y-2.5 text-xs">
-              {/* Dobradinhas 1-2 */}
-              <div className="flex items-center justify-between py-1">
-                <span className="text-f1-subtle text-[11px]">Dobradinhas 1-2:</span>
-                <div className="text-right font-mono">
-                  <span className="font-bold text-amber-300 text-xs">{profile.total_one_two} vezes</span>
-                  <span className="text-[10px] text-zinc-400 block -mt-0.5">
-                    {profile.total_gps > 0 ? ((profile.total_one_two / profile.total_gps) * 100).toFixed(1) : 0}% dos GPs
+          <div className="space-y-3 text-xs">
+            {/* Taxa de Vitórias */}
+            <div>
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="text-f1-subtle text-[11px]">Taxa de Vitórias (Win Rate)</span>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="font-black text-amber-400 text-sm">{winRate}%</span>
+                  <span className="text-[10px] text-f1-subtle">
+                    ({profile.total_wins}/{profile.total_gps})
                   </span>
                 </div>
               </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, Number(winRate)))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Confiabilidade */}
+            <div>
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="text-f1-subtle text-[11px]">Confiabilidade (~Término)</span>
+                <div className="flex items-baseline gap-1 font-mono">
+                  <span className="font-black text-emerald-400 text-sm">{finishRate}%</span>
+                  <span className="text-[10px] text-f1-subtle">
+                    ({profile.total_dnfs} DNFs)
+                  </span>
+                </div>
+              </div>
+              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, Number(finishRate) || 0))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Grid 2x2 de Eficiência Secundária */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+              {/* Pole to Win */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                  Pole ➔ Vitória
+                </span>
+                <span className="font-mono text-sm font-black text-purple-300 block mt-0.5">
+                  {poleToWinRate ? `${poleToWinRate}%` : "—"}
+                </span>
+                <span className="text-[10px] text-f1-subtle font-mono block">
+                  {profile.total_poles_to_win} de {profile.race_poles} poles
+                </span>
+              </div>
+
+              {/* Dobradinhas 1-2 */}
+              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                  Dobradinhas 1-2
+                </span>
+                <span className="font-mono text-sm font-black text-amber-300 block mt-0.5">
+                  {profile.total_one_two} vezes
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  {profile.total_gps > 0 ? ((profile.total_one_two / profile.total_gps) * 100).toFixed(1) : 0}% dos GPs
+                </span>
+              </div>
 
               {/* Pódios Duplos */}
-              <div className="flex items-center justify-between py-1 border-t border-white/5 pt-1.5">
-                <span className="text-f1-subtle text-[11px]">Pódios Duplos:</span>
-                <span className="font-mono font-bold text-emerald-300 text-xs">
+              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                  Pódios Duplos
+                </span>
+                <span className="font-mono text-sm font-black text-emerald-300 block mt-0.5">
                   {profile.total_double_podium} GPs
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  {profile.total_gps > 0 ? ((profile.total_double_podium / profile.total_gps) * 100).toFixed(1) : 0}% dos GPs
                 </span>
               </div>
 
               {/* Pontos Duplos */}
-              <div className="flex items-center justify-between py-1 border-t border-white/5 pt-1.5">
-                <span className="text-f1-subtle text-[11px]">Pontos Duplos:</span>
-                <div className="text-right font-mono">
-                  <span className="font-bold text-sky-300 text-xs">{profile.total_double_points} GPs</span>
-                  <span className="text-[10px] text-zinc-400 block -mt-0.5">
-                    {profile.total_gps > 0 ? ((profile.total_double_points / profile.total_gps) * 100).toFixed(1) : 0}% dos GPs
-                  </span>
-                </div>
+              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                  Pontos Duplos
+                </span>
+                <span className="font-mono text-sm font-black text-sky-300 block mt-0.5">
+                  {profile.total_double_points} GPs
+                </span>
+                <span className="text-[10px] text-zinc-400 font-mono block">
+                  {profile.total_gps > 0 ? ((profile.total_double_points / profile.total_gps) * 100).toFixed(1) : 0}% dos GPs
+                </span>
               </div>
+            </div>
 
-              {/* Confiabilidade */}
-              <div className="border-t border-white/5 pt-2">
-                <div className="flex justify-between items-baseline mb-1">
-                  <span className="text-f1-subtle text-[11px]">Confiabilidade (~Término)</span>
-                  <span className="font-mono font-black text-emerald-400 text-xs">
-                    {finishRate}% ({profile.total_dnfs} DNFs)
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-emerald-400 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, Number(finishRate) || 0)}%` }}
-                  />
-                </div>
-              </div>
+            {/* Média Histórica */}
+            <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px] text-f1-subtle">
+              <span className="flex items-center gap-1.5">
+                <Award className="h-3.5 w-3.5 text-zinc-400" />
+                Média Histórica:
+              </span>
+              <span className="font-mono font-bold text-white">
+                {ptsPerGp} pts / GP
+              </span>
             </div>
           </div>
         </div>
 
-        {/* CARD 4: HALL DA FAMA (PILOTOS NOTÁVEIS) */}
+        {/* CARD 3: HALL DA FAMA (PILOTOS NOTÁVEIS) */}
         <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
@@ -871,12 +863,12 @@ export default function ConstructorProfileTabs({
             </button>
           )}
         </div>
-      </section>
+      </aside>
 
       {/* ========================================================================= */}
-      {/* ABAS EM LARGURA TOTAL (FULL-WIDTH ARCHITECTURE)                           */}
+      {/* COLUNA DIREITA (67%): PAINEL PRINCIPAL DE ANÁLISE INTERATIVA              */}
       {/* ========================================================================= */}
-      <section className="space-y-4">
+      <main className="lg:col-span-8 space-y-4">
         {/* SELETOR DE ABAS COMPACTO (Estilo Segmented Control Cockpit) */}
         <div className="flex items-center justify-between bg-[#0E0E14] border border-white/10 rounded-2xl p-1.5 shadow-md">
           <div className="flex items-center gap-1.5 w-full sm:w-auto">
@@ -1216,7 +1208,7 @@ export default function ConstructorProfileTabs({
                         Dupla de Pilotos {currentSeason.year}:
                       </span>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {currentSeason.drivers_lineup.map((d) => (
+                        {currentSeason.drivers_lineup.map((d: ConstructorSeasonDriverLineup) => (
                           <Link
                             key={d.driver_id}
                             href={getDriverProfileUrl(d.driver_id, d.driver_full_name)}
@@ -1360,7 +1352,7 @@ export default function ConstructorProfileTabs({
                           {/* Dupla Principal */}
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-1">
-                              {s.drivers_lineup?.slice(0, 3).map((d) => (
+                              {s.drivers_lineup?.slice(0, 3).map((d: ConstructorSeasonDriverLineup) => (
                                 <span
                                   key={d.driver_id}
                                   className="px-1.5 py-0.2 rounded bg-white/5 text-[10px] font-mono text-zinc-300 font-bold"
@@ -1793,7 +1785,7 @@ export default function ConstructorProfileTabs({
             </div>
           </div>
         )}
-      </section>
+      </main>
     </div>
   );
 }
