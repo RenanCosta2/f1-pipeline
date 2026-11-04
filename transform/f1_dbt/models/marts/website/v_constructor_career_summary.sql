@@ -50,7 +50,7 @@ career_base AS (
         END) AS active_season_competitive_gps,
 
         -- Títulos Mundiais (apenas temporadas concluídas)
-        COUNT(CASE WHEN championship_position = 1 AND is_season_completed THEN 1 END) AS total_world_championships,
+        COUNT(CASE WHEN year >= 1958 AND championship_position = 1 AND is_season_completed THEN 1 END) AS total_world_championships,
 
         -- Vitórias
         SUM(race_wins) AS race_wins,

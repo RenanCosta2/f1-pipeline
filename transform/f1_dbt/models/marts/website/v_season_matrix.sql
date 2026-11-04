@@ -96,13 +96,17 @@ race_results AS (
         sessions.session_name = 'Race'
 ),
 
-driver_totals AS (
+driver_event_points_ranked AS (
     SELECT
         schedule.year,
         results.driver_id,
-        SUM(results.points) AS total_driver_points,
-        COUNT(CASE WHEN results.finishing_position = 1 AND sessions.session_name = 'Race' THEN 1 END) AS total_driver_wins,
-        COUNT(CASE WHEN results.finishing_position <= 3 AND sessions.session_name = 'Race' THEN 1 END) AS total_driver_podiums
+        SUM(COALESCE(results.points, 0)) AS event_points,
+        COUNT(CASE WHEN results.finishing_position = 1 AND sessions.session_name = 'Race' THEN 1 END) AS event_wins,
+        COUNT(CASE WHEN results.finishing_position <= 3 AND sessions.session_name = 'Race' THEN 1 END) AS event_podiums,
+        ROW_NUMBER() OVER (
+            PARTITION BY schedule.year, results.driver_id
+            ORDER BY SUM(COALESCE(results.points, 0)) DESC
+        ) AS event_points_rank
     FROM 
         {{ ref('fact_results') }} AS results
     JOIN 
@@ -115,7 +119,29 @@ driver_totals AS (
         results.points IS NOT NULL
     GROUP BY 
         schedule.year, 
+        schedule.event_sk,
         results.driver_id
+),
+
+driver_totals AS (
+    SELECT
+        year,
+        driver_id,
+        SUM(event_points) AS total_driver_points,
+        SUM(CASE
+            WHEN year BETWEEN 1950 AND 1953 THEN IF(event_points_rank <= 4, event_points, 0)
+            WHEN year IN (1954, 1955, 1956, 1957, 1959, 1961, 1962, 1966) THEN IF(event_points_rank <= 5, event_points, 0)
+            WHEN year IN (1958, 1960, 1963, 1964, 1965) THEN IF(event_points_rank <= 6, event_points, 0)
+            WHEN year BETWEEN 1981 AND 1990 THEN IF(event_points_rank <= 11, event_points, 0)
+            ELSE event_points
+        END) AS valid_driver_points,
+        SUM(event_wins) AS total_driver_wins,
+        SUM(event_podiums) AS total_driver_podiums
+    FROM 
+        driver_event_points_ranked
+    GROUP BY 
+        year, 
+        driver_id
 ),
 
 driver_championship_rank AS (
@@ -127,7 +153,10 @@ driver_championship_rank AS (
         total_driver_podiums,
         DENSE_RANK() OVER (
             PARTITION BY year 
-            ORDER BY total_driver_points DESC, total_driver_wins DESC, total_driver_podiums DESC
+            ORDER BY 
+                CASE WHEN year = 1997 AND driver_id = 'michael_schumacher' THEN -1 ELSE valid_driver_points END DESC, 
+                total_driver_wins DESC, 
+                total_driver_podiums DESC
         ) AS championship_position
     FROM 
         driver_totals

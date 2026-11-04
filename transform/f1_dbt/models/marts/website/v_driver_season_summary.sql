@@ -124,6 +124,50 @@ season_fastest_laps AS (
         driver_id
 ),
 
+driver_race_points_ranked AS (
+    SELECT
+        schedule.year,
+        results.driver_id,
+        SUM(COALESCE(results.points, 0)) AS event_points,
+        ROW_NUMBER() OVER (
+            PARTITION BY schedule.year, results.driver_id
+            ORDER BY SUM(COALESCE(results.points, 0)) DESC
+        ) AS event_points_rank
+    FROM 
+        {{ ref('fact_results') }} AS results
+    JOIN 
+        {{ ref('dim_sessions') }} AS sessions 
+        USING (session_sk)
+    JOIN 
+        {{ ref('dim_schedule') }} AS schedule 
+        USING (event_sk)
+    WHERE 
+        sessions.session_name IN ('Race', 'Sprint')
+    GROUP BY
+        schedule.year,
+        schedule.event_sk,
+        results.driver_id
+),
+
+driver_valid_championship_points AS (
+    SELECT
+        year,
+        driver_id,
+        SUM(CASE
+            -- Regras historicas de descartes (Dropped Scores) da FIA (1950-1990)
+            WHEN year BETWEEN 1950 AND 1953 THEN IF(event_points_rank <= 4, event_points, 0)
+            WHEN year IN (1954, 1955, 1956, 1957, 1959, 1961, 1962, 1966) THEN IF(event_points_rank <= 5, event_points, 0)
+            WHEN year IN (1958, 1960, 1963, 1964, 1965) THEN IF(event_points_rank <= 6, event_points, 0)
+            WHEN year BETWEEN 1981 AND 1990 THEN IF(event_points_rank <= 11, event_points, 0)
+            ELSE event_points
+        END) AS valid_points
+    FROM
+        driver_race_points_ranked
+    GROUP BY
+        year,
+        driver_id
+),
+
 qualifying_sessions AS (
     SELECT
         session_sk,
@@ -234,7 +278,14 @@ SELECT
     CASE WHEN completed_seasons.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,
     DENSE_RANK() OVER (
         PARTITION BY driver_season_metrics.year 
-        ORDER BY driver_season_metrics.total_points DESC, driver_season_metrics.race_wins DESC, driver_season_metrics.race_podiums DESC
+        ORDER BY 
+            CASE 
+                -- Em 1997, Michael Schumacher foi desclassificado do Campeonato Mundial de Pilotos pela FIA
+                WHEN driver_season_metrics.year = 1997 AND driver_season_metrics.driver_id = 'michael_schumacher' THEN -1
+                ELSE COALESCE(valid_pts.valid_points, driver_season_metrics.total_points)
+            END DESC, 
+            driver_season_metrics.race_wins DESC, 
+            driver_season_metrics.race_podiums DESC
     ) AS championship_position,
     latest_driver_team.team_id,
     COALESCE(latest_driver_team.team_name, 'F1 Team') AS team_name,
@@ -258,5 +309,9 @@ LEFT JOIN
 LEFT JOIN
     completed_seasons
     ON driver_season_metrics.year = completed_seasons.year
+LEFT JOIN
+    driver_valid_championship_points AS valid_pts
+    ON driver_season_metrics.year = valid_pts.year
+    AND driver_season_metrics.driver_id = valid_pts.driver_id
 WHERE
     competitive_gps > 0

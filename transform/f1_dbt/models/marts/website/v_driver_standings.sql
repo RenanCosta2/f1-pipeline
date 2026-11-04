@@ -29,6 +29,49 @@ WITH latest_driver_team AS (
     WHERE rn = 1
 ),
 
+driver_race_points_ranked AS (
+    SELECT
+        year,
+        driver_id,
+        SUM(COALESCE(points, 0)) AS event_points,
+        ROW_NUMBER() OVER (
+            PARTITION BY year, driver_id
+            ORDER BY SUM(COALESCE(points, 0)) DESC
+        ) AS event_points_rank
+    FROM 
+        {{ ref('fact_results') }}
+    JOIN 
+        {{ ref('dim_sessions') }} 
+        USING (session_sk)
+    JOIN 
+        {{ ref('dim_schedule') }} 
+        USING (event_sk)
+    WHERE 
+        session_name IN ('Race', 'Sprint')
+    GROUP BY
+        year,
+        event_sk,
+        driver_id
+),
+
+driver_valid_championship_points AS (
+    SELECT
+        year,
+        driver_id,
+        SUM(CASE
+            WHEN year BETWEEN 1950 AND 1953 THEN IF(event_points_rank <= 4, event_points, 0)
+            WHEN year IN (1954, 1955, 1956, 1957, 1959, 1961, 1962, 1966) THEN IF(event_points_rank <= 5, event_points, 0)
+            WHEN year IN (1958, 1960, 1963, 1964, 1965) THEN IF(event_points_rank <= 6, event_points, 0)
+            WHEN year BETWEEN 1981 AND 1990 THEN IF(event_points_rank <= 11, event_points, 0)
+            ELSE event_points
+        END) AS valid_points
+    FROM
+        driver_race_points_ranked
+    GROUP BY
+        year,
+        driver_id
+),
+
 driver_standings AS (
     SELECT
         year,
@@ -104,7 +147,13 @@ SELECT
     latest_team.team_color,
     DENSE_RANK() OVER (
         PARTITION BY standings.year 
-        ORDER BY standings.total_points DESC, standings.total_wins DESC, standings.total_podiums DESC
+        ORDER BY 
+            CASE 
+                WHEN standings.year = 1997 AND standings.driver_id = 'michael_schumacher' THEN -1
+                ELSE COALESCE(valid_pts.valid_points, standings.total_points)
+            END DESC, 
+            standings.total_wins DESC, 
+            standings.total_podiums DESC
     ) AS championship_position
 FROM
     driver_standings AS standings
@@ -112,3 +161,7 @@ LEFT JOIN
     latest_driver_team AS latest_team 
     ON standings.year = latest_team.year 
     AND standings.driver_id = latest_team.driver_id
+LEFT JOIN
+    driver_valid_championship_points AS valid_pts
+    ON standings.year = valid_pts.year
+    AND standings.driver_id = valid_pts.driver_id

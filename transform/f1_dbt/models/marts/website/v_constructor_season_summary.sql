@@ -143,7 +143,14 @@ team_race_metrics AS (
         CASE WHEN COUNT(CASE WHEN results.finishing_position <= 10 THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_double_points,
 
         -- Primeira Fila (1-2 no Grid)
-        CASE WHEN COUNT(CASE WHEN results.grid_position IN (1, 2) THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_front_row_lockout
+        CASE WHEN COUNT(CASE WHEN results.grid_position IN (1, 2) THEN 1 END) = 2 THEN 1 ELSE 0 END AS is_front_row_lockout,
+
+        -- Pontuação do carro mais bem colocado na corrida (regra FIA 1958-1978)
+        MAX(COALESCE(results.points, 0)) AS best_car_race_points,
+        ROW_NUMBER() OVER (
+            PARTITION BY schedule.year, results.team_id
+            ORDER BY MAX(COALESCE(results.points, 0)) DESC
+        ) AS best_car_race_rank
     FROM 
         {{ ref('fact_results') }} AS results
     JOIN
@@ -168,7 +175,9 @@ team_race_aggregates AS (
         SUM(is_one_two) AS total_one_two,
         SUM(is_double_podium) AS total_double_podium,
         SUM(is_double_points) AS total_double_points,
-        SUM(is_front_row_lockout) AS total_front_row
+        SUM(is_front_row_lockout) AS total_front_row,
+        SUM(CASE WHEN best_car_race_rank <= 6 THEN best_car_race_points ELSE 0 END) AS top_6_best_car_points,
+        SUM(best_car_race_points) AS total_best_car_points
     FROM
         team_race_metrics
     GROUP BY
@@ -268,7 +277,19 @@ SELECT
     CASE WHEN completed.year IS NOT NULL THEN TRUE ELSE FALSE END AS is_season_completed,
     DENSE_RANK() OVER (
         PARTITION BY metrics.year 
-        ORDER BY metrics.total_points DESC, metrics.race_wins DESC, metrics.race_podiums DESC
+        ORDER BY 
+            CASE
+                -- Em 2007, a McLaren foi desclassificada do Campeonato de Construtores pela FIA (Spygate)
+                WHEN metrics.year = 2007 AND metrics.team_id = 'mclaren' THEN -1
+                -- De 1958 a 1965: apenas o melhor carro pontuava por corrida e valiam os 6 melhores resultados
+                WHEN metrics.year BETWEEN 1958 AND 1965 THEN COALESCE(race_agg.top_6_best_car_points, 0)
+                -- De 1966 a 1978: apenas o melhor carro de cada construtor pontuava por corrida
+                WHEN metrics.year BETWEEN 1966 AND 1978 THEN COALESCE(race_agg.total_best_car_points, 0)
+                -- Demais temporadas: soma total de pontos de ambos os carros
+                ELSE metrics.total_points
+            END DESC, 
+            metrics.race_wins DESC, 
+            metrics.race_podiums DESC
     ) AS championship_position,
     lineup.drivers_lineup,
     COALESCE(lineup.drivers_used_count, 0) AS drivers_used_count
