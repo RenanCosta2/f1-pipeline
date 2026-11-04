@@ -69,7 +69,7 @@ export default function Sidebar() {
             F1
           </div>
           <span className="text-sm font-black uppercase tracking-wider text-white">
-            Analytics <span className="text-f1-red">Hub</span>
+            Pit<span className="text-f1-red">wall</span>
           </span>
         </Link>
 
@@ -111,10 +111,10 @@ export default function Sidebar() {
               </div>
               <div className="flex flex-col">
                 <span className="text-sm font-black uppercase tracking-wider text-white leading-none">
-                  Analytics <span className="text-f1-red">Hub</span>
+                  Pit<span className="text-f1-red">wall</span>
                 </span>
                 <span className="text-[10px] text-f1-subtle font-mono tracking-tight mt-1">
-                  Data Pipeline & dbt Marts
+                  Motorsport Intelligence
                 </span>
               </div>
             </Link>
@@ -212,30 +212,30 @@ export default function Sidebar() {
             </nav>
           </div>
 
-          {/* Quick Technical Context Widget */}
-          <div className="rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent p-4 space-y-2.5">
-            <div className="flex items-center gap-1.5 text-amber-400 text-xs font-black uppercase tracking-wider">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>Arquitetura ELT</span>
+          {/* Quick Platform Info Widget */}
+          <div className="rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.04] to-transparent p-4 space-y-2">
+            <div className="flex items-center gap-1.5 text-zinc-300 text-xs font-black uppercase tracking-wider">
+              <Activity className="h-3.5 w-3.5 text-f1-red" />
+              <span>Pitwall Intelligence</span>
             </div>
             <p className="text-[11px] text-f1-subtle leading-relaxed">
-              Pipeline Medallion com Airflow, dbt Marts e banco analítico Supabase em nuvem.
+              Plataforma independente de telemetria, tempos de volta e análise estatística oficial da Fórmula 1.
             </p>
             <div className="flex items-center gap-2 pt-1 text-[10px] font-mono text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span>Sync com FastF1 ativo</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Feed de Telemetria Operacional</span>
             </div>
           </div>
         </div>
 
-        {/* Bottom Section: Pipeline Health & GitHub */}
+        {/* Bottom Section: System Health & GitHub */}
         <div className="p-4 border-t border-white/10 space-y-3 bg-black/40">
           <div className="flex items-center justify-between text-xs text-f1-subtle">
             <div className="flex items-center gap-2">
-              <Database className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="font-semibold text-white/80">Supabase Live</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="font-semibold text-white/80">Sistemas Online</span>
             </div>
-            <span className="text-[10px] font-mono text-white/40">v1.2.0</span>
+            <span className="text-[10px] font-mono text-white/40">v1.0.0</span>
           </div>
 
           <a
@@ -245,7 +245,7 @@ export default function Sidebar() {
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-white hover:bg-white/10 hover:border-f1-red/40 transition-all group"
           >
             <Github className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
-            <span>Repositório GitHub</span>
+            <span>Código Aberto (GitHub)</span>
           </a>
         </div>
       </aside>

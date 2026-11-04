@@ -114,7 +114,7 @@ export default async function GrandPrixDetailsPage({ params, searchParams }: Pro
           </div>
 
           <div className="max-w-md mx-auto rounded-xl border border-white/5 bg-white/[0.02] p-4 text-xs text-f1-subtle leading-relaxed">
-            Esta etapa ainda não foi realizada. Os dados de classificação oficial, ritmo de corrida, telemetria e estratégias de pneus estarão disponíveis aqui assim que as sessões forem finalizadas e processadas pelo pipeline.
+            Esta etapa ainda não foi realizada. Os dados de classificação oficial, ritmo de corrida, telemetria e estratégias de pneus estarão disponíveis aqui assim que as sessões forem finalizadas e os dados oficiais consolidados.
           </div>
 
           <div className="pt-2">

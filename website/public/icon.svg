@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="pwRed" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E10600" />
+      <stop offset="100%" stop-color="#B80000" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background container -->
+  <rect width="256" height="256" rx="58" fill="url(#pwRed)" />
+
+  <!-- Subtle inner border highlight -->
+  <rect x="3" y="3" width="250" height="250" rx="55" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="3" />
+
+  <!-- Stylized racing "P" -->
+  <path
+    d="M 68 196 L 102 60 H 158 C 190 60 210 75 202 106 C 194 136 172 150 140 150 H 112 L 100 196 H 68 Z M 119 122 H 140 C 156 122 168 116 172 101 C 176 87 167 84 151 84 H 128 L 119 122 Z"
+    fill="#FFFFFF"
+  />
+
+  <!-- High-tech telemetry indicator bar at bottom right -->
+  <path d="M 134 180 L 176 180" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" />
+  <path d="M 148 196 L 176 196" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round" opacity="0.6" />
+</svg>
+

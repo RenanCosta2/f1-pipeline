@@ -6,8 +6,15 @@ import NavigationProgressBar from "@/components/NavigationProgressBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "F1 Analytics Hub | Formula 1 Data Pipeline",
-  description: "Dashboard analítico de Fórmula 1 alimentado por pipeline ELT Medallion, dbt e FastF1.",
+  title: "Pitwall",
+  description: "Plataforma analítica e telemetria de Fórmula 1 com dados históricos, tempos de volta, estratégias de pneus e estatísticas oficiais.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

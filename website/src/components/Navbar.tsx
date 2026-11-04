@@ -26,10 +26,10 @@ export default function Navbar() {
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-black tracking-wider text-white uppercase">
-                Analytics <span className="text-f1-red">Hub</span>
+                Pit<span className="text-f1-red">wall</span>
               </span>
               <span className="text-[10px] text-f1-subtle tracking-tight">
-                Data Pipeline & dbt Marts
+                Motorsport Intelligence
               </span>
             </div>
           </Link>
@@ -66,8 +66,7 @@ export default function Navbar() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <Database className="h-3 w-3" />
-            <span>Supabase Live</span>
+            <span>Feed Operacional</span>
           </div>
 
           {/* GitHub link */}

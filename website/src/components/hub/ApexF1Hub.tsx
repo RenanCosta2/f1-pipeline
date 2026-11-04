@@ -61,11 +61,11 @@ export default function ApexF1Hub({
           </div>
           <div>
             <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
-              Apex <span className="text-f1-red">F1</span>
-              <span className="text-xs font-normal text-white/40">| Live Hub & Analytics</span>
+              Pit<span className="text-f1-red">wall</span>
+              <span className="text-xs font-normal text-white/40">| Central de Inteligência & Telemetria</span>
             </h1>
             <p className="text-[11px] text-f1-subtle font-medium">
-              Temporada Oficial {year} · Dados integrados em tempo real às views analíticas dbt
+              Temporada Oficial {year} · Central analítica de telemetria, resultados e estatísticas oficiais
             </p>
           </div>
         </div>
