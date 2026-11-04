@@ -66,16 +66,8 @@ WHERE
   AND (
     results.year IS NULL 
     OR (
-      sessions.year >= 2018
-      AND laps.year IS NULL 
-      AND NOT EXISTS (
-        SELECT 1 
-        FROM `f1-analytics-platform.bronze.results` r 
-        WHERE r.year = sessions.year 
-          AND r.gp = sessions.gp 
-          AND r.session = sessions.session
-          AND (r.Laps IS NULL OR r.Laps = 0)
-      )
+      sessions.year >= 2022
+      AND laps.year IS NULL
     )
   )
 ORDER BY sessions.year ASC, sessions.gp ASC, sessions.session ASC
