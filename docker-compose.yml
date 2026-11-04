@@ -76,6 +76,8 @@ x-airflow-common:
     AIRFLOW_CONFIG: '/opt/airflow/config/airflow.cfg'
     GOOGLE_APPLICATION_CREDENTIALS: '/opt/airflow/config/gcp-credentials.json'
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: 'google-cloud-platform://?key_path=%2Fopt%2Fairflow%2Fconfig%2Fgcp-credentials.json&project=${GCP_PROJECT_ID:-}'
+    F1_USERNAME: ${F1_USERNAME:-}
+    F1_PASSWORD: ${F1_PASSWORD:-}
   volumes:
     - ./orchestration/dags:/opt/airflow/dags
     - ./orchestration/logs:/opt/airflow/logs
