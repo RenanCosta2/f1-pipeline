@@ -272,7 +272,17 @@ export default function ConstructorProfileTabs({
         total_dnfs: s.total_dnfs,
         fastest_laps: s.fastest_laps,
         pole_to_win_rate: s.pole_to_win_rate,
-        drivers_lineup: s.drivers_lineup,
+        drivers_lineup: Array.isArray(s.drivers_lineup)
+          ? s.drivers_lineup
+          : typeof s.drivers_lineup === "string"
+          ? (() => {
+              try {
+                return JSON.parse(s.drivers_lineup);
+              } catch {
+                return [];
+              }
+            })()
+          : [],
         ptsPerGp,
         winRate,
         podiumRate

@@ -1746,39 +1746,55 @@ export async function getConstructorProfile(teamId: string): Promise<Constructor
         if (pool) {
           const res = await pool.query(sql, [teamId]);
           if (res.rows) {
-            return res.rows.map((r: any) => ({
-              ...r,
-              year: Number(r.year),
-              total_gps: Number(r.total_gps) || 0,
-              competitive_gps: Number(r.competitive_gps) || 0,
-              race_wins: Number(r.race_wins) || 0,
-              sprint_wins: Number(r.sprint_wins) || 0,
-              total_wins: Number(r.total_wins) || 0,
-              race_poles: Number(r.race_poles) || 0,
-              sprint_poles: Number(r.sprint_poles) || 0,
-              poles_to_win: Number(r.poles_to_win) || 0,
-              race_podiums: Number(r.race_podiums) || 0,
-              sprint_podiums: Number(r.sprint_podiums) || 0,
-              total_podiums: Number(r.total_podiums) || 0,
-              q2_appearences: Number(r.q2_appearences) || 0,
-              q3_appearences: Number(r.q3_appearences) || 0,
-              race_points: Number(r.race_points) || 0,
-              sprint_points: Number(r.sprint_points) || 0,
-              total_points: Number(r.total_points) || 0,
-              best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-              best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-              total_dnfs: Number(r.total_dnfs) || 0,
-              total_one_two: Number(r.total_one_two) || 0,
-              total_double_podium: Number(r.total_double_podium) || 0,
-              total_double_points: Number(r.total_double_points) || 0,
-              total_front_row: Number(r.total_front_row) || 0,
-              fastest_laps: Number(r.fastest_laps) || 0,
-              pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
-              is_season_completed: Boolean(r.is_season_completed),
-              championship_position: Number(r.championship_position) || 0,
-              drivers_used_count: Number(r.drivers_used_count) || 0,
-              team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-            }));
+            return res.rows.map((r: any) => {
+              let parsedLineup = [];
+              if (r.drivers_lineup) {
+                if (typeof r.drivers_lineup === "string") {
+                  try {
+                    parsedLineup = JSON.parse(r.drivers_lineup);
+                  } catch {
+                    parsedLineup = [];
+                  }
+                } else if (Array.isArray(r.drivers_lineup)) {
+                  parsedLineup = r.drivers_lineup;
+                }
+              }
+
+              return {
+                ...r,
+                year: Number(r.year),
+                total_gps: Number(r.total_gps) || 0,
+                competitive_gps: Number(r.competitive_gps) || 0,
+                race_wins: Number(r.race_wins) || 0,
+                sprint_wins: Number(r.sprint_wins) || 0,
+                total_wins: Number(r.total_wins) || 0,
+                race_poles: Number(r.race_poles) || 0,
+                sprint_poles: Number(r.sprint_poles) || 0,
+                poles_to_win: Number(r.poles_to_win) || 0,
+                race_podiums: Number(r.race_podiums) || 0,
+                sprint_podiums: Number(r.sprint_podiums) || 0,
+                total_podiums: Number(r.total_podiums) || 0,
+                q2_appearences: Number(r.q2_appearences) || 0,
+                q3_appearences: Number(r.q3_appearences) || 0,
+                race_points: Number(r.race_points) || 0,
+                sprint_points: Number(r.sprint_points) || 0,
+                total_points: Number(r.total_points) || 0,
+                best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+                best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+                total_dnfs: Number(r.total_dnfs) || 0,
+                total_one_two: Number(r.total_one_two) || 0,
+                total_double_podium: Number(r.total_double_podium) || 0,
+                total_double_points: Number(r.total_double_points) || 0,
+                total_front_row: Number(r.total_front_row) || 0,
+                fastest_laps: Number(r.fastest_laps) || 0,
+                pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
+                is_season_completed: Boolean(r.is_season_completed),
+                championship_position: Number(r.championship_position) || 0,
+                drivers_lineup: parsedLineup,
+                drivers_used_count: Number(r.drivers_used_count) || 0,
+                team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+              };
+            });
           }
         }
       } catch (e) {
