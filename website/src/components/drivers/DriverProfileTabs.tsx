@@ -26,6 +26,8 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Award,
   Crosshair,
   ExternalLink,
@@ -454,6 +456,37 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
   }, [seasonPositionData, selectedSeasonYear]);
 
   // ---------------------------------------------------------------------------
+  // NAVEGAÇÃO ENTRE PERÍODOS DE TEMPORADAS (12 colunas por período para legibilidade ideal)
+  // ---------------------------------------------------------------------------
+  const PERIOD_SIZE = 12;
+  const totalPeriods = Math.max(1, Math.ceil(seasonPositionData.length / PERIOD_SIZE));
+
+  const getPeriodIndexForYear = (year: number) => {
+    const index = seasonPositionData.findIndex((s) => s.yearNum === year);
+    if (index === -1) return totalPeriods - 1;
+    if (index >= seasonPositionData.length - PERIOD_SIZE) {
+      return totalPeriods - 1;
+    }
+    return Math.floor(index / PERIOD_SIZE);
+  };
+
+  const [chartPeriod, setChartPeriod] = useState<number>(() => {
+    return getPeriodIndexForYear(selectedSeasonYear);
+  });
+
+  const visibleSeasonData = useMemo(() => {
+    if (seasonPositionData.length <= PERIOD_SIZE) {
+      return seasonPositionData;
+    }
+    const isLast = chartPeriod === totalPeriods - 1;
+    const start = isLast
+      ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+      : chartPeriod * PERIOD_SIZE;
+    const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+    return seasonPositionData.slice(start, end);
+  }, [seasonPositionData, chartPeriod, totalPeriods]);
+
+  // ---------------------------------------------------------------------------
   // CÁLCULOS DO RAIO-X DE CARREIRA
   // ---------------------------------------------------------------------------
   const careerStats = useMemo(() => {
@@ -524,7 +557,7 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
   // Label do gráfico
   const renderCustomBarLabel = (props: any) => {
     const { x, y, width, index } = props;
-    const item = seasonPositionData[index];
+    const item = visibleSeasonData[index];
     if (!item || !item.position) return <g />;
 
     const isP1 = item.position === 1;
@@ -1068,7 +1101,11 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                   </span>
                   <select
                     value={selectedSeasonYear}
-                    onChange={(e) => setSelectedSeasonYear(Number(e.target.value))}
+                    onChange={(e) => {
+                      const y = Number(e.target.value);
+                      setSelectedSeasonYear(y);
+                      setChartPeriod(getPeriodIndexForYear(y));
+                    }}
                     className="bg-[#1b1b26] border border-white/15 text-white text-xs font-bold font-mono rounded-lg px-2.5 py-1 focus:outline-none focus:border-f1-red cursor-pointer hover:border-white/30 transition-colors"
                     title="Selecionar Temporada"
                   >
@@ -1096,7 +1133,10 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                       <button
                         key={s.yearNum}
                         type="button"
-                        onClick={() => setSelectedSeasonYear(s.yearNum)}
+                        onClick={() => {
+                          setSelectedSeasonYear(s.yearNum);
+                          setChartPeriod(getPeriodIndexForYear(s.yearNum));
+                        }}
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all shrink-0 ${isSelected
                             ? "bg-f1-red text-white shadow-sm shadow-f1-red/30 scale-105"
                             : "bg-white/5 text-f1-subtle hover:bg-white/10 hover:text-white"
@@ -1109,25 +1149,97 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                   })}
               </div>
 
+              {/* Barra de Navegação entre Períodos / Eras */}
+              {totalPeriods > 1 && (
+                <div className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-mono">
+                  {/* Botão Período Anterior */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newPeriod = Math.max(0, chartPeriod - 1);
+                      setChartPeriod(newPeriod);
+                      const isLast = newPeriod === totalPeriods - 1;
+                      const start = isLast
+                        ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+                        : newPeriod * PERIOD_SIZE;
+                      const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+                      const slice = seasonPositionData.slice(start, end);
+                      if (slice.length > 0) {
+                        setSelectedSeasonYear(slice[slice.length - 1].yearNum);
+                      }
+                    }}
+                    disabled={chartPeriod === 0}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      chartPeriod === 0
+                        ? "opacity-30 cursor-not-allowed text-zinc-600"
+                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                    }`}
+                    title="Ver período anterior (temporadas mais antigas)"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline">Anterior</span>
+                  </button>
+
+                  {/* Indicador do Período Atual */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-f1-subtle uppercase tracking-wider hidden md:inline">
+                      Período:
+                    </span>
+                    <span className="text-xs font-bold text-white bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md shadow-sm">
+                      {visibleSeasonData[0]?.year} — {visibleSeasonData[visibleSeasonData.length - 1]?.year}
+                    </span>
+                    <span className="text-[10px] text-f1-subtle font-mono">
+                      ({chartPeriod + 1} de {totalPeriods})
+                    </span>
+                  </div>
+
+                  {/* Botão Próximo Período */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newPeriod = Math.min(totalPeriods - 1, chartPeriod + 1);
+                      setChartPeriod(newPeriod);
+                      const isLast = newPeriod === totalPeriods - 1;
+                      const start = isLast
+                        ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+                        : newPeriod * PERIOD_SIZE;
+                      const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+                      const slice = seasonPositionData.slice(start, end);
+                      if (slice.length > 0) {
+                        setSelectedSeasonYear(slice[slice.length - 1].yearNum);
+                      }
+                    }}
+                    disabled={chartPeriod === totalPeriods - 1}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${
+                      chartPeriod === totalPeriods - 1
+                        ? "opacity-30 cursor-not-allowed text-zinc-600"
+                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                    }`}
+                    title="Ver próximo período (temporadas mais recentes)"
+                  >
+                    <span className="hidden sm:inline">Próximo</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Gráfico de Colunas de Trajetória */}
               <div className="h-48 w-full pt-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={seasonPositionData}
+                    data={visibleSeasonData}
                     margin={{ top: 20, right: 10, left: 10, bottom: 15 }}
-                    barCategoryGap={seasonPositionData.length > 14 ? "4%" : "10%"}
+                    barCategoryGap="12%"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
                     <XAxis
                       dataKey="year"
                       stroke="#888888"
-                      fontSize={seasonPositionData.length > 14 ? 9 : 10}
+                      fontSize={10}
                       tickLine={false}
                       axisLine={{ stroke: "#ffffff15" }}
                       interval={0}
-                      tickFormatter={(yearStr) =>
-                        seasonPositionData.length > 12 ? `'${yearStr.slice(-2)}` : yearStr
-                      }
+                      tickFormatter={(yearStr) => `'${yearStr.slice(-2)}`}
                     />
                     <YAxis hide={true} />
                     <Tooltip
@@ -1137,7 +1249,7 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                     <Bar
                       dataKey="heightScore"
                       radius={[4, 4, 0, 0]}
-                      maxBarSize={seasonPositionData.length > 14 ? 24 : 32}
+                      maxBarSize={30}
                       label={renderCustomBarLabel}
                       onClick={(data) => {
                         if (data && data.yearNum) {
@@ -1145,7 +1257,7 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                         }
                       }}
                     >
-                      {seasonPositionData.map((entry, index) => {
+                      {visibleSeasonData.map((entry, index) => {
                         const isSelected = entry.yearNum === selectedSeasonYear;
                         let barFill = "#334155";
                         let barStroke = isSelected ? "#FFFFFF" : "#475569";
@@ -1166,7 +1278,7 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
 
                         return (
                           <Cell
-                            key={`cell-${index}`}
+                            key={`cell-${entry.yearNum}-${index}`}
                             fill={barFill}
                             stroke={barStroke}
                             strokeWidth={isSelected ? 2.5 : 1}
