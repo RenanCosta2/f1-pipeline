@@ -22,7 +22,8 @@ import {
   ConstructorSeasonDriverLineup,
   ConstructorDriverSummaryItem,
   ConstructorRaceLogItem,
-  CircuitOverviewItem
+  CircuitOverviewItem,
+  CircuitTeamPerformanceItem
 } from '@/types/f1';
 import {
   mockDriverStandings,
@@ -2151,3 +2152,65 @@ export async function getConstructorProfile(teamId: string): Promise<Constructor
       return [];
     }
 
+
+export async function getCircuitTeams(circuitId: string): Promise<CircuitTeamPerformanceItem[]> {
+  const sql = `
+    WITH team_latest_color AS (
+      SELECT DISTINCT ON (team_name)
+        team_name,
+        team_color
+      FROM website.v_sessions_summary
+      WHERE circuit_id = $1 AND team_name IS NOT NULL AND team_color IS NOT NULL
+      ORDER BY team_name, year DESC
+    )
+    SELECT
+      $1 AS circuit_id,
+      s.team_name,
+      COALESCE(tlc.team_color, MAX(s.team_color)) AS team_color,
+      COUNT(DISTINCT CASE WHEN s.session_name = 'Race' THEN s.year || '_' || s.round_number END) AS total_gps,
+      MIN(s.year) AS first_year,
+      MAX(s.year) AS last_year,
+      COUNT(CASE WHEN s.session_name = 'Race' AND s.finishing_position = 1 THEN 1 END) AS race_wins,
+      COUNT(CASE WHEN s.session_name = 'Sprint' AND s.finishing_position = 1 THEN 1 END) AS sprint_wins,
+      COUNT(CASE WHEN s.session_name IN ('Race', 'Sprint') AND s.finishing_position = 1 THEN 1 END) AS total_wins,
+      COUNT(CASE WHEN s.session_name = 'Race' AND s.finishing_position <= 3 THEN 1 END) AS race_podiums,
+      COUNT(CASE WHEN s.session_name = 'Sprint' AND s.finishing_position <= 3 THEN 1 END) AS sprint_podiums,
+      COUNT(CASE WHEN s.session_name IN ('Race', 'Sprint') AND s.finishing_position <= 3 THEN 1 END) AS total_podiums,
+      COUNT(CASE WHEN s.session_name = 'Race' AND s.grid_position = 1 THEN 1 END) AS race_poles,
+      COUNT(CASE WHEN s.session_name = 'Sprint' AND s.grid_position = 1 THEN 1 END) AS sprint_poles,
+      SUM(COALESCE(s.points, 0)) AS total_points
+    FROM website.v_sessions_summary s
+    LEFT JOIN team_latest_color tlc USING (team_name)
+    WHERE s.circuit_id = $1
+      AND s.team_name IS NOT NULL
+    GROUP BY s.team_name, tlc.team_color
+    ORDER BY total_wins DESC, total_podiums DESC, race_poles DESC, total_points DESC;
+  `;
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [circuitId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          circuit_id: r.circuit_id,
+          team_name: r.team_name,
+          team_color: r.team_color ? (String(r.team_color).startsWith('#') ? String(r.team_color) : `#${r.team_color}`) : '#E10600',
+          total_gps: Number(r.total_gps) || 0,
+          first_year: Number(r.first_year) || 0,
+          last_year: Number(r.last_year) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_points: Number(r.total_points) || 0,
+        }));
+      }
+    }
+  } catch (e) {
+    console.warn(`Failed to fetch circuit teams for ${circuitId}:`, e);
+  }
+  return [];
+}

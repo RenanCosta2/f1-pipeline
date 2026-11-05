@@ -751,3 +751,21 @@ export interface CircuitOverviewItem {
     quali_lap_record_formatted?: string | null;
 }
 
+
+export interface CircuitTeamPerformanceItem {
+    circuit_id: string;
+    team_name: string;
+    team_color: string;
+    total_gps: number;
+    first_year: number;
+    last_year: number;
+    total_wins: number;
+    race_wins: number;
+    sprint_wins: number;
+    total_podiums: number;
+    race_podiums: number;
+    sprint_podiums: number;
+    race_poles: number;
+    sprint_poles: number;
+    total_points: number;
+}

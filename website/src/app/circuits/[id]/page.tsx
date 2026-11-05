@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import {
   getCircuitOverview,
   getCircuitSeasons,
-  getCircuitDrivers
+  getCircuitDrivers,
+  getCircuitTeams
 } from "@/lib/db";
 import CircuitProfileHero from "@/components/circuits/CircuitProfileHero";
 import CircuitProfileTabs from "@/components/circuits/CircuitProfileTabs";
@@ -27,10 +28,11 @@ export default async function CircuitProfilePage({ params }: Props) {
 
   const circuitId = overview.circuit_id;
 
-  // Busca dados de edições e pilotos em paralelo
-  const [seasons, drivers] = await Promise.all([
+  // Busca dados de edições, pilotos e equipes em paralelo
+  const [seasons, drivers, teams] = await Promise.all([
     getCircuitSeasons(circuitId),
-    getCircuitDrivers(circuitId)
+    getCircuitDrivers(circuitId),
+    getCircuitTeams(circuitId)
   ]);
 
   return (
@@ -44,6 +46,7 @@ export default async function CircuitProfilePage({ params }: Props) {
           overview={overview}
           seasons={seasons}
           drivers={drivers}
+          teams={teams}
         />
       </Suspense>
     </div>

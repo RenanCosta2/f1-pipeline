@@ -5,7 +5,8 @@ import Link from "next/link";
 import {
   CircuitOverviewItem,
   SeasonRaceSummary,
-  DriverCircuitPerformanceItem
+  DriverCircuitPerformanceItem,
+  CircuitTeamPerformanceItem
 } from "@/types/f1";
 import DriverLink, { getDriverProfileUrl } from "@/lib/driverUtils";
 import { TeamLink } from "@/lib/teamUtils";
@@ -50,6 +51,116 @@ interface Props {
   overview: CircuitOverviewItem;
   seasons: SeasonRaceSummary[];
   drivers: DriverCircuitPerformanceItem[];
+  teams?: CircuitTeamPerformanceItem[];
+}
+
+function TableSortHeader({
+  label,
+  columnKey,
+  subKeys = [],
+  currentSortKey,
+  currentSortDir,
+  onSort,
+  align = "left",
+  className = "",
+  colSpan,
+  rowSpan
+}: {
+  label: string;
+  columnKey: string;
+  subKeys?: string[];
+  currentSortKey: string | null;
+  currentSortDir: "asc" | "desc";
+  onSort: (key: string) => void;
+  align?: "left" | "center" | "right";
+  className?: string;
+  colSpan?: number;
+  rowSpan?: number;
+}) {
+  const isExactActive = currentSortKey === columnKey;
+  const isChildActive = Boolean(currentSortKey && subKeys.includes(currentSortKey));
+  const isActive = isExactActive || isChildActive;
+  const justifyClass =
+    align === "center"
+      ? "justify-center"
+      : align === "right"
+        ? "justify-end"
+        : "justify-start";
+
+  return (
+    <th
+      colSpan={colSpan}
+      rowSpan={rowSpan}
+      onClick={() => onSort(columnKey)}
+      className={`py-3 px-3 cursor-pointer select-none transition-colors group hover:text-white ${
+        isActive ? "text-white bg-white/[0.08]" : "text-f1-subtle"
+      } ${className}`}
+      title={`Clique para ordenar por ${label}`}
+    >
+      <div className={`inline-flex items-center gap-1 w-full ${justifyClass}`}>
+        <span>{label}</span>
+        {isExactActive ? (
+          currentSortDir === "asc" ? (
+            <ArrowUp className="h-3 w-3 text-f1-red shrink-0" />
+          ) : (
+            <ArrowDown className="h-3 w-3 text-f1-red shrink-0" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-25 group-hover:opacity-80 transition-opacity shrink-0" />
+        )}
+      </div>
+    </th>
+  );
+}
+
+function TableSubSortHeader({
+  label,
+  title,
+  columnKey,
+  currentSortKey,
+  currentSortDir,
+  onSort,
+  isSprint = false,
+  className = ""
+}: {
+  label: string;
+  title: string;
+  columnKey: string;
+  currentSortKey: string | null;
+  currentSortDir: "asc" | "desc";
+  onSort: (key: string) => void;
+  isSprint?: boolean;
+  className?: string;
+}) {
+  const isActive = currentSortKey === columnKey;
+  const baseColor = isSprint
+    ? isActive
+      ? "text-purple-200 bg-purple-500/15"
+      : "text-purple-400 hover:text-purple-200"
+    : isActive
+      ? "text-white bg-white/10"
+      : "text-white/70 hover:text-white";
+
+  return (
+    <th
+      onClick={() => onSort(columnKey)}
+      className={`pt-1 pb-1.5 px-1 text-center w-11 min-w-[40px] cursor-pointer select-none transition-colors group ${baseColor} ${className}`}
+      title={`Clique para ordenar por ${title}`}
+    >
+      <div className="inline-flex items-center justify-center gap-0.5 w-full">
+        <span>{label}</span>
+        {isActive ? (
+          currentSortDir === "asc" ? (
+            <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+          ) : (
+            <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+          )
+        ) : (
+          <ArrowUpDown className="h-2.5 w-2.5 opacity-25 group-hover:opacity-80 transition-opacity shrink-0" />
+        )}
+      </div>
+    </th>
+  );
 }
 
 function TablePagination({
@@ -106,7 +217,7 @@ const SEASONS_PER_PAGE = 8;
 const DRIVERS_PER_PAGE = 10;
 const TEAMS_PER_PAGE = 10;
 
-export default function CircuitProfileTabs({ overview, seasons, drivers }: Props) {
+export default function CircuitProfileTabs({ overview, seasons, drivers, teams = [] }: Props) {
   // Aba inicial: Edições da Temporada (o Overview agora está na Sidebar Cockpit à esquerda)
   const [activeTab, setActiveTab] = useState<"seasons" | "drivers" | "teams">("seasons");
 
@@ -284,8 +395,14 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
     }
 
     result.sort((a: any, b: any) => {
-      let valA = a[driverSortKey];
-      let valB = b[driverSortKey];
+      let valA =
+        driverSortKey === "total_poles"
+          ? (a.race_poles || 0) + (a.sprint_poles || 0)
+          : a[driverSortKey];
+      let valB =
+        driverSortKey === "total_poles"
+          ? (b.race_poles || 0) + (b.sprint_poles || 0)
+          : b[driverSortKey];
 
       if (valA === undefined || valA === null) valA = 0;
       if (valB === undefined || valB === null) valB = 0;
@@ -296,7 +413,10 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
           : valB.localeCompare(valA);
       }
 
-      return driverSortDir === "asc" ? valA - valB : valB - valA;
+      if (valA !== valB) {
+        return driverSortDir === "asc" ? valA - valB : valB - valA;
+      }
+      return (b.total_points || 0) - (a.total_points || 0);
     });
 
     return result;
@@ -311,70 +431,112 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
   }, [overview.race_lap_record_seconds, overview.quali_lap_record_seconds]);
 
   // Estatísticas agregadas de equipes na pista
-  const teamStats = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        team_name: string;
-        team_color: string;
-        wins: number;
-        poles: number;
-        fastest_laps: number;
-        first_win_year?: number;
-        last_win_year?: number;
-      }
-    >();
+  const [teamSearch, setTeamSearch] = useState("");
+  const [teamSortKey, setTeamSortKey] = useState<string>("total_wins");
+  const [teamSortDir, setTeamSortDir] = useState<"asc" | "desc">("desc");
 
+  const handleSortTeam = (key: string) => {
+    setTeamsPage(1);
+    if (teamSortKey === key) {
+      setTeamSortDir(teamSortDir === "asc" ? "desc" : "asc");
+    } else {
+      setTeamSortKey(key);
+      setTeamSortDir("desc");
+    }
+  };
+
+  const baseTeams = useMemo<CircuitTeamPerformanceItem[]>(() => {
+    if (teams && teams.length > 0) return teams;
+
+    const map = new Map<string, CircuitTeamPerformanceItem>();
     seasons.forEach((s) => {
+      const registerTeam = (name: string, color?: string | null) => {
+        if (!map.has(name)) {
+          map.set(name, {
+            circuit_id: overview.circuit_id,
+            team_name: name,
+            team_color: color || "#E10600",
+            total_gps: 0,
+            first_year: s.year,
+            last_year: s.year,
+            total_wins: 0,
+            race_wins: 0,
+            sprint_wins: 0,
+            total_podiums: 0,
+            race_podiums: 0,
+            sprint_podiums: 0,
+            race_poles: 0,
+            sprint_poles: 0,
+            total_points: 0
+          });
+        }
+        const curr = map.get(name)!;
+        if (s.year < curr.first_year) curr.first_year = s.year;
+        if (s.year > curr.last_year) curr.last_year = s.year;
+        return curr;
+      };
+
       if (s.race_winner_team) {
-        const team = s.race_winner_team;
-        const color = s.race_winner_team_color || "#E10600";
-        const curr = map.get(team) || {
-          team_name: team,
-          team_color: color,
-          wins: 0,
-          poles: 0,
-          fastest_laps: 0,
-          first_win_year: s.year,
-          last_win_year: s.year
-        };
-        curr.wins += 1;
-        if (!curr.first_win_year || s.year < curr.first_win_year) curr.first_win_year = s.year;
-        if (!curr.last_win_year || s.year > curr.last_win_year) curr.last_win_year = s.year;
-        map.set(team, curr);
+        const curr = registerTeam(s.race_winner_team, s.race_winner_team_color);
+        curr.race_wins += 1;
+        curr.total_wins += 1;
+        curr.race_podiums += 1;
+        curr.total_podiums += 1;
+      }
+      if (s.sprint_winner_team) {
+        const curr = registerTeam(s.sprint_winner_team, s.sprint_winner_team_color);
+        curr.sprint_wins += 1;
+        curr.total_wins += 1;
+        curr.sprint_podiums += 1;
+        curr.total_podiums += 1;
       }
       if (s.pole_team) {
-        const team = s.pole_team;
-        const curr = map.get(team) || {
-          team_name: team,
-          team_color: "#E10600",
-          wins: 0,
-          poles: 0,
-          fastest_laps: 0
-        };
-        curr.poles += 1;
-        map.set(team, curr);
-      }
-      if (s.fastest_lap_team) {
-        const team = s.fastest_lap_team;
-        const curr = map.get(team) || {
-          team_name: team,
-          team_color: s.fastest_lap_team_color || "#E10600",
-          wins: 0,
-          poles: 0,
-          fastest_laps: 0
-        };
-        curr.fastest_laps += 1;
-        map.set(team, curr);
+        const curr = registerTeam(s.pole_team);
+        curr.race_poles += 1;
       }
     });
 
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      if (b.poles !== a.poles) return b.poles - a.poles;
-      return b.fastest_laps - a.fastest_laps;
+    return Array.from(map.values());
+  }, [teams, seasons, overview.circuit_id]);
+
+  const teamStats = useMemo(() => {
+    let result: CircuitTeamPerformanceItem[] = [...baseTeams];
+
+    if (teamSearch.trim()) {
+      const q = teamSearch.toLowerCase().trim();
+      result = result.filter((t) => t.team_name.toLowerCase().includes(q));
+    }
+
+    result.sort((a: any, b: any) => {
+      let valA =
+        teamSortKey === "total_poles"
+          ? (a.race_poles || 0) + (a.sprint_poles || 0)
+          : a[teamSortKey];
+      let valB =
+        teamSortKey === "total_poles"
+          ? (b.race_poles || 0) + (b.sprint_poles || 0)
+          : b[teamSortKey];
+
+      if (valA === undefined || valA === null) valA = 0;
+      if (valB === undefined || valB === null) valB = 0;
+
+      if (typeof valA === "string") {
+        return teamSortDir === "asc"
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+      }
+
+      if (valA !== valB) {
+        return teamSortDir === "asc" ? valA - valB : valB - valA;
+      }
+      if ((b.total_wins || 0) !== (a.total_wins || 0)) {
+        return (b.total_wins || 0) - (a.total_wins || 0);
+      }
+      return (b.total_points || 0) - (a.total_points || 0);
     });
-  }, [seasons]);
+
+    return result;
+  }, [baseTeams, teamSearch, teamSortKey, teamSortDir]);
 
   // Paginações
   const totalSeasonPages = Math.ceil(seasons.length / SEASONS_PER_PAGE) || 1;
@@ -1366,42 +1528,121 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
                     <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
-                      <th
-                        onClick={() => handleSortDriver("driver_full_name")}
-                        className="py-3 px-3 cursor-pointer hover:text-white select-none"
-                      >
-                        Piloto
-                      </th>
-                      <th
-                        onClick={() => handleSortDriver("total_gps")}
-                        className="py-3 px-3 text-center cursor-pointer hover:text-white select-none"
-                      >
-                        GPs
-                      </th>
-                      <th
-                        onClick={() => handleSortDriver("total_wins")}
-                        className="py-3 px-3 text-center cursor-pointer hover:text-white select-none"
-                      >
-                        Vitórias
-                      </th>
-                      <th
-                        onClick={() => handleSortDriver("total_podiums")}
-                        className="py-3 px-3 text-center cursor-pointer hover:text-white select-none"
-                      >
-                        Pódios
-                      </th>
-                      <th
-                        onClick={() => handleSortDriver("race_poles")}
-                        className="py-3 px-3 text-center cursor-pointer hover:text-white select-none"
-                      >
-                        Poles
-                      </th>
-                      <th
-                        onClick={() => handleSortDriver("total_points")}
-                        className="py-3 px-3 text-right cursor-pointer hover:text-white select-none"
-                      >
-                        Pontos
-                      </th>
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="Piloto"
+                        columnKey="driver_full_name"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                      />
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="GPs"
+                        columnKey="total_gps"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        align="center"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Vitórias"
+                        columnKey="total_wins"
+                        subKeys={["race_wins", "sprint_wins"]}
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Pódios"
+                        columnKey="total_podiums"
+                        subKeys={["race_podiums", "sprint_podiums"]}
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Poles"
+                        columnKey="total_poles"
+                        subKeys={["race_poles", "sprint_poles"]}
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="Pontos"
+                        columnKey="total_points"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        align="right"
+                      />
+                    </tr>
+                    <tr className="border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Vitórias GP"
+                        columnKey="race_wins"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Vitórias Sprint"
+                        columnKey="sprint_wins"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        isSprint
+                      />
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Pódios GP"
+                        columnKey="race_podiums"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Pódios Sprint"
+                        columnKey="sprint_podiums"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        isSprint
+                      />
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Poles GP"
+                        columnKey="race_poles"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Poles Sprint"
+                        columnKey="sprint_poles"
+                        currentSortKey={driverSortKey}
+                        currentSortDir={driverSortDir}
+                        onSort={handleSortDriver}
+                        isSprint
+                      />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -1413,7 +1654,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
                           key={driver.driver_id}
                           className="hover:bg-white/[0.03] transition-colors"
                         >
-                          <td className="py-3 px-3">
+                          <td className="py-2.5 px-3">
                             <Link href={profileUrl} className="flex items-center gap-2 group font-sans">
                               <div className="w-7 h-7 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
                                 {driver.driver_headshot_url ? (
@@ -1437,29 +1678,56 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
                             </Link>
                           </td>
 
-                          <td className="py-3 px-3 text-center font-bold text-white">
+                          <td className="py-2.5 px-2 text-center font-bold text-white">
                             {driver.total_gps}
                           </td>
 
-                          <td className="py-3 px-3 text-center">
-                            <span className={driver.total_wins > 0 ? "text-amber-400 font-bold" : "text-white/30"}>
-                              {driver.total_wins}
-                            </span>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                            {driver.race_wins > 0 ? (
+                              <span className="text-amber-400">{driver.race_wins}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                            {driver.sprint_wins > 0 ? (
+                              <span className="text-purple-300">{driver.sprint_wins}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
                           </td>
 
-                          <td className="py-3 px-3 text-center">
-                            <span className={driver.total_podiums > 0 ? "text-blue-300 font-bold" : "text-white/30"}>
-                              {driver.total_podiums}
-                            </span>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                            {driver.race_podiums > 0 ? (
+                              <span className="text-blue-300">{driver.race_podiums}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                            {driver.sprint_podiums > 0 ? (
+                              <span className="text-purple-300">{driver.sprint_podiums}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
                           </td>
 
-                          <td className="py-3 px-3 text-center">
-                            <span className={driver.race_poles > 0 ? "text-purple-300 font-bold" : "text-white/30"}>
-                              {driver.race_poles}
-                            </span>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                            {driver.race_poles > 0 ? (
+                              <span className="text-purple-300">{driver.race_poles}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                            {driver.sprint_poles > 0 ? (
+                              <span className="text-purple-300">{driver.sprint_poles}</span>
+                            ) : (
+                              <span className="text-white/20">0</span>
+                            )}
                           </td>
 
-                          <td className="py-3 px-3 text-right font-black text-white">
+                          <td className="py-2.5 px-3 text-right font-black text-white">
                             {driver.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
                           </td>
                         </tr>
@@ -1485,80 +1753,241 @@ export default function CircuitProfileTabs({ overview, seasons, drivers }: Props
         {/* ABA 3: HISTÓRICO DE EQUIPES NO CIRCUITO                                   */}
         {/* ========================================================================= */}
         {activeTab === "teams" && (
-          <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs font-mono">
-                <thead>
-                  <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
-                    <th className="py-3 px-3">Equipe / Construtor</th>
-                    <th className="py-3 px-3 text-center">Vitórias</th>
-                    <th className="py-3 px-3 text-center">Poles</th>
-                    <th className="py-3 px-3 text-center">Voltas Mais Rápidas</th>
-                    <th className="py-3 px-3 text-right">Período Vencedor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {paginatedTeams.map((team) => (
-                    <tr key={team.team_name} className="hover:bg-white/[0.03] transition-colors">
-                      <td className="py-3 px-3 font-sans">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: team.team_color }}
-                          />
-                          <TeamLink
-                            teamName={team.team_name}
-                            className="font-bold text-white text-xs hover:underline decoration-white/30 underline-offset-2 hover:text-white transition-colors"
-                            title={`Ver perfil de ${team.team_name}`}
-                          >
-                            {team.team_name}
-                          </TeamLink>
-                        </div>
-                      </td>
+          <div className="space-y-4">
+            {/* Barra de Busca de Equipe */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-white/10 bg-[#12121A]">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-f1-subtle" />
+                <input
+                  type="text"
+                  value={teamSearch}
+                  onChange={(e) => {
+                    setTeamSearch(e.target.value);
+                    setTeamsPage(1);
+                  }}
+                  placeholder="Buscar equipe por nome..."
+                  className="w-full bg-[#0A0A10] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-white/30"
+                />
+              </div>
 
-                      <td className="py-3 px-3 text-center font-bold">
-                        <span className={team.wins > 0 ? "text-amber-400" : "text-white/30"}>
-                          {team.wins}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-3 text-center font-bold">
-                        <span className={team.poles > 0 ? "text-purple-300" : "text-white/30"}>
-                          {team.poles}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-3 text-center font-bold">
-                        <span className={team.fastest_laps > 0 ? "text-emerald-400" : "text-white/30"}>
-                          {team.fastest_laps}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-3 text-right text-f1-subtle font-mono text-[11px]">
-                        {team.first_win_year && team.last_win_year ? (
-                          team.first_win_year === team.last_win_year ? (
-                            team.first_win_year
-                          ) : (
-                            `${team.first_win_year} – ${team.last_win_year}`
-                          )
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <span className="text-xs font-mono text-f1-subtle">
+                {teamStats.length} de {baseTeams.length} equipes
+              </span>
             </div>
 
-            <TablePagination
-              currentPage={teamsPage}
-              totalPages={totalTeamPages}
-              totalItems={teamStats.length}
-              pageSize={TEAMS_PER_PAGE}
-              onPageChange={setTeamsPage}
-              itemName="equipes"
-            />
+            <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs font-mono">
+                  <thead>
+                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="Equipe / Construtor"
+                        columnKey="team_name"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                      />
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="GPs"
+                        columnKey="total_gps"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        align="center"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Vitórias"
+                        columnKey="total_wins"
+                        subKeys={["race_wins", "sprint_wins"]}
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Pódios"
+                        columnKey="total_podiums"
+                        subKeys={["race_podiums", "sprint_podiums"]}
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        colSpan={2}
+                        label="Poles"
+                        columnKey="total_poles"
+                        subKeys={["race_poles", "sprint_poles"]}
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        align="center"
+                        className="border-l border-white/10"
+                      />
+                      <TableSortHeader
+                        rowSpan={2}
+                        label="Pontos"
+                        columnKey="total_points"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        align="right"
+                      />
+                    </tr>
+                    <tr className="border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Vitórias GP"
+                        columnKey="race_wins"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Vitórias Sprint"
+                        columnKey="sprint_wins"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        isSprint
+                      />
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Pódios GP"
+                        columnKey="race_podiums"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Pódios Sprint"
+                        columnKey="sprint_podiums"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        isSprint
+                      />
+                      <TableSubSortHeader
+                        label="GP"
+                        title="Poles GP"
+                        columnKey="race_poles"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        className="border-l border-white/10"
+                      />
+                      <TableSubSortHeader
+                        label="Spr"
+                        title="Poles Sprint"
+                        columnKey="sprint_poles"
+                        currentSortKey={teamSortKey}
+                        currentSortDir={teamSortDir}
+                        onSort={handleSortTeam}
+                        isSprint
+                      />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {paginatedTeams.map((team) => (
+                      <tr key={team.team_name} className="hover:bg-white/[0.03] transition-colors">
+                        <td className="py-2.5 px-3 font-sans">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: team.team_color }}
+                            />
+                            <div>
+                              <TeamLink
+                                teamName={team.team_name}
+                                className="font-bold text-white text-xs hover:underline decoration-white/30 underline-offset-2 hover:text-white transition-colors block"
+                                title={`Ver perfil de ${team.team_name}`}
+                              >
+                                {team.team_name}
+                              </TeamLink>
+                              <span className="text-[10px] text-f1-subtle font-mono">
+                                {team.first_year}–{team.last_year}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-2.5 px-2 text-center font-bold text-white">
+                          {team.total_gps}
+                        </td>
+
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                          {team.race_wins > 0 ? (
+                            <span className="text-amber-400">{team.race_wins}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                          {team.sprint_wins > 0 ? (
+                            <span className="text-purple-300">{team.sprint_wins}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                          {team.race_podiums > 0 ? (
+                            <span className="text-blue-300">{team.race_podiums}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                          {team.sprint_podiums > 0 ? (
+                            <span className="text-purple-300">{team.sprint_podiums}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
+                          {team.race_poles > 0 ? (
+                            <span className="text-purple-300">{team.race_poles}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
+                          {team.sprint_poles > 0 ? (
+                            <span className="text-purple-300">{team.sprint_poles}</span>
+                          ) : (
+                            <span className="text-white/20">0</span>
+                          )}
+                        </td>
+
+                        <td className="py-2.5 px-3 text-right font-black text-white">
+                          {team.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <TablePagination
+                currentPage={teamsPage}
+                totalPages={totalTeamPages}
+                totalItems={teamStats.length}
+                pageSize={TEAMS_PER_PAGE}
+                onPageChange={setTeamsPage}
+                itemName="equipes"
+              />
+            </div>
           </div>
         )}
       </main>
