@@ -1,10 +1,10 @@
 # Formula 1 Data Pipeline
 
-[![Live Demo - Pitwall](https://img.shields.io/badge/🏎️_Live_Demo-Pitwall_(f1--analytics--hub.vercel.app)-E10600?style=for-the-badge&logo=vercel&logoColor=white)](https://f1-analytics-hub.vercel.app)
+[![Live Demo - Pitwall](https://img.shields.io/badge/🏎️_Live_Demo-Pitwall_(f1--pitwall--hub.vercel.app)-E10600?style=for-the-badge&logo=vercel&logoColor=white)](https://f1-pitwall-hub.vercel.app)
 
 Este projeto implementa um pipeline de dados ponta a ponta (*end-to-end*) focado na ingestão, estruturação, modelagem analítica e visualização de dados históricos e recentes da **Fórmula 1** (desde 1950 até a temporada atual).
 
-> 🌐 **Acesse a plataforma ao vivo:** **[f1-analytics-hub.vercel.app](https://f1-analytics-hub.vercel.app)**
+> 🌐 **Acesse a plataforma ao vivo:** **[f1-pitwall-hub.vercel.app](https://f1-pitwall-hub.vercel.app)**
 
 O pipeline foi desenhado para operar de forma **incremental e automatizada**. À medida que o campeonato avança e novas sessões de Grandes Prêmios acontecem, o fluxo detecta, extrai, transforma e sincroniza apenas os novos dados, mantendo toda a plataforma atualizada.
 
@@ -26,7 +26,7 @@ O projeto combina uma arquitetura moderna de **Cloud Data Warehouse (OLAP)** com
 * ![Google Cloud](https://img.shields.io/badge/Google%20Cloud-4285F4?style=flat-square&logo=google-cloud&logoColor=white) **Data Lake & Data Warehouse (GCS & BigQuery)** — **Google Cloud Storage** para armazenamento imutável de arquivos brutos (`.parquet`) e **Google BigQuery** como Data Warehouse analítico para as camadas *Bronze*, *Silver*, *Gold* e *Marts*.
 * ![dbt](https://img.shields.io/badge/dbt-FF694B?style=flat-square&logo=dbt&logoColor=white) **Transformação** — Modelagem dimensional (*Snowflake Schema*), regras de negócio históricas e testes automatizados de qualidade de dados no BigQuery.
 * ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=flat-square&logo=supabase&logoColor=white) **Serving Layer (PostgreSQL)** — Banco de dados relacional contendo as tabelas analíticas materializadas e indexadas (B-Tree) para consultas de baixíssima latência pela aplicação web.
-* ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) / ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) / ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white) **Web App & Visualização** — Interface web interativa ([**Pitwall**](https://f1-analytics-hub.vercel.app)) desenvolvida em Next.js e hospedada na Vercel.
+* ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat-square&logo=nextdotjs&logoColor=white) / ![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB) / ![Vercel](https://img.shields.io/badge/Vercel-000000?style=flat-square&logo=vercel&logoColor=white) **Web App & Visualização** — Interface web interativa ([**Pitwall**](https://f1-pitwall-hub.vercel.app)) desenvolvida em Next.js e hospedada na Vercel.
 * ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white) / ![Docker Compose](https://img.shields.io/badge/Docker%20Compose-2496ED?style=flat-square&logo=docker&logoColor=white) **Ambiente & Infraestrutura** — Containerização completa garantindo reprodutibilidade e isolamento entre orquestrador, ingestão, `dbt` e front-end.
 
 

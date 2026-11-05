@@ -172,7 +172,7 @@ docker compose --profile tools run --rm ingestion python ingestion/sync_serving_
 
 ## 📊 7. Acessando o Web App (Pitwall)
 
-Com a *Serving Layer* sincronizada no Supabase, acesse a aplicação web interativa localmente (ou na versão em produção em **[f1-analytics-hub.vercel.app](https://f1-analytics-hub.vercel.app)**):
+Com a *Serving Layer* sincronizada no Supabase, acesse a aplicação web interativa localmente (ou na versão em produção em **[f1-pitwall-hub.vercel.app](https://f1-pitwall-hub.vercel.app)**):
 
 👉 **[http://localhost:3000](http://localhost:3000)**
 
