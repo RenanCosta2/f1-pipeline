@@ -22,7 +22,7 @@ WITH driver_team_race_metrics AS (
         COUNT(CASE WHEN (sessions.session_name = 'Race' OR sessions.session_name = 'Sprint') AND results.finishing_position = 1 THEN 1 END) AS total_wins,
 
         -- Pole Positions
-        COUNT(CASE WHEN sessions.session_name = 'Qualifying' AND results.grid_position = 1 THEN 1 END) AS race_poles,
+        COUNT(CASE WHEN sessions.session_name = 'Race' AND results.grid_position = 1 THEN 1 END) AS race_poles,
         COUNT(CASE WHEN sessions.session_name = 'Sprint' AND results.grid_position = 1 THEN 1 END) AS sprint_poles,
 
         -- Pódios

@@ -121,12 +121,12 @@ poles AS (
         {{ ref('dim_constructors') }} AS constructors
         USING (team_id)
     WHERE
-        sessions.session_name = 'Qualifying'
-        AND results.finishing_position = 1
-    GROUP BY
-        sessions.event_sk,
-        drivers.driver_full_name,
-        constructors.team_name
+        (sessions.session_name = 'Race' AND results.grid_position = 1)
+        OR (sessions.session_name = 'Qualifying' AND results.finishing_position = 1)
+        QUALIFY ROW_NUMBER() OVER (
+            PARTITION BY sessions.event_sk
+            ORDER BY CASE WHEN sessions.session_name = 'Race' THEN 0 ELSE 1 END
+        ) = 1
 ),
 
 fastest_laps AS (
