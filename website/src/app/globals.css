@@ -6,6 +6,12 @@
   --background: #0D0D12;
   --foreground: #EDEDED;
   --f1-red: #E10600;
+
+  /* Tipografia Fluida Global (Adaptativa de acordo com a resolução/densidade da tela)
+     - Telas compactas (320px - 390px): base 14px (evita quebras de linha e overflow em dados densos de F1)
+     - Telas médias (tablets/laptops 768px - 1024px): transição suave proporcional ao viewport
+     - Telas grandes (desktops 1280px+): estabiliza em 16px (1rem padrão da web) */
+  font-size: clamp(14px, 0.85rem + 0.35vw, 16px);
 }
 
 body {
@@ -181,6 +187,70 @@ body {
   border-color: #ff2e2e;
 }
 
+/* Ergonomia Touch: Aumenta o alvo de toque dos sliders em celulares e tablets (>= 24px thumb) */
+@media (pointer: coarse) {
+  .range-slider-input::-webkit-slider-thumb {
+    width: 24px;
+    height: 24px;
+  }
+  .range-slider-input::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Animação suave de Bottom Sheet para gavetas e modais no mobile */
+@keyframes slideUpSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideUpSheet {
+  animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideLeft {
+  animation: slideLeft 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slideUpSheet,
+  .animate-fadeIn,
+  .animate-slideLeft {
+    animation: none !important;
+  }
+}
+
 /* Navigation Top Laser Loader */
 @keyframes f1Laser {
   0% {
@@ -199,4 +269,25 @@ body {
 
 .f1-laser-bar {
   animation: f1Laser 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* ========================================================================= */
+/* UTILITÁRIOS DE TIPOGRAFIA FLUIDA (Escala suave proporcional ao viewport) */
+/* ========================================================================= */
+@layer utilities {
+  .text-fluid-hero {
+    font-size: clamp(1.5rem, 3.8vw, 2.75rem);
+    line-height: 1.15;
+  }
+  .text-fluid-title {
+    font-size: clamp(1.15rem, 2.2vw, 1.65rem);
+    line-height: 1.25;
+  }
+  .text-fluid-metric {
+    font-size: clamp(1.25rem, 3vw, 2rem);
+    line-height: 1.1;
+  }
+  .text-fluid-sub {
+    font-size: clamp(0.7rem, 0.9vw, 0.85rem);
+  }
 }

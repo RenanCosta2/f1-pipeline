@@ -52,23 +52,23 @@ function TablePagination({
       <span className="text-f1-subtle font-mono text-[11px]">
         Exibindo <strong className="text-white">{startItem}–{endItem}</strong> de <strong className="text-white">{totalItems}</strong> {itemName}
       </span>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-[11px]"
+          className="px-3.5 py-2.5 sm:py-1 min-h-[44px] sm:min-h-0 flex-1 sm:flex-initial flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-xs sm:text-[11px] active:scale-95"
         >
           Anterior
         </button>
-        <span className="px-2 font-mono text-[11px] font-bold text-white/80">
-          Pág. {currentPage} de {totalPages}
+        <span className="px-2 font-mono text-xs sm:text-[11px] font-bold text-white/80 shrink-0">
+          {currentPage} / {totalPages}
         </span>
         <button
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-[11px]"
+          className="px-3.5 py-2.5 sm:py-1 min-h-[44px] sm:min-h-0 flex-1 sm:flex-initial flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-xs sm:text-[11px] active:scale-95"
         >
           Próxima
         </button>
@@ -227,21 +227,21 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
       {/* ========================================================================= */}
       {/* BARRA DE CONTROLES COMPACTA (TOOLBAR ANALÍTICA)                           */}
       {/* ========================================================================= */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 rounded-2xl border border-white/10 bg-[#0E0E14] shadow-md">
-        {/* Lado Esquerdo: Campo de Busca Instantâneo */}
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border border-white/10 bg-[#0E0E14] shadow-md">
+        {/* Lado Esquerdo: Campo de Busca Instantâneo com min-h-[44px] e text-base para evitar auto-zoom */}
+        <div className="relative flex-1 xl:max-w-sm 2xl:max-w-md w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-f1-subtle" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Buscar por equipe, sigla ou identificador..."
-            className="w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-8 py-1.5 text-xs text-white placeholder-f1-subtle outline-none transition-colors hover:border-white/20 focus:border-f1-red font-medium"
+            className="w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-10 py-2 min-h-[44px] text-base sm:text-xs text-white placeholder-f1-subtle outline-none transition-colors hover:border-white/20 focus:border-f1-red font-medium"
           />
           {searchTerm && (
             <button
               onClick={() => handleSearchChange("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-f1-subtle hover:text-white"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-sm text-f1-subtle hover:text-white active:scale-90"
               title="Limpar busca"
             >
               ✕
@@ -250,61 +250,65 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
         </div>
 
         {/* Lado Direito: Filtros Rápidos + Alternador Grid/Tabela */}
-        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
-          {/* Filtros em Pílulas */}
-          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/5">
+        <div className="flex items-center justify-between gap-2 w-full xl:w-auto">
+          {/* Filtros em Pílulas com scroll horizontal suave no mobile */}
+          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/5 overflow-x-auto no-scrollbar flex-1 min-w-0">
             <button
               type="button"
               onClick={() => handleFilterChange("active")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
                 filter === "active"
                   ? "bg-f1-red text-white shadow-sm shadow-f1-red/30"
                   : "text-f1-subtle hover:text-white"
               }`}
             >
-              Grid 2026 ({activeCount})
+              <span>Grid 2026</span>
+              <span className="ml-1 text-[11px] font-mono opacity-80">({activeCount})</span>
             </button>
             <button
               type="button"
               onClick={() => handleFilterChange("champions")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
                 filter === "champions"
                   ? "bg-f1-red text-white shadow-sm shadow-f1-red/30"
                   : "text-f1-subtle hover:text-white"
               }`}
             >
-              Campeãs ({championsCount})
+              <span>Campeãs</span>
+              <span className="ml-1 text-[11px] font-mono opacity-80">({championsCount})</span>
             </button>
             <button
               type="button"
               onClick={() => handleFilterChange("winners")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
                 filter === "winners"
                   ? "bg-f1-red text-white shadow-sm shadow-f1-red/30"
                   : "text-f1-subtle hover:text-white"
               }`}
             >
-              Vencedoras ({winnersCount})
+              <span>Vencedoras</span>
+              <span className="ml-1 text-[11px] font-mono opacity-80">({winnersCount})</span>
             </button>
             <button
               type="button"
               onClick={() => handleFilterChange("all")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
                 filter === "all"
                   ? "bg-f1-red text-white shadow-sm shadow-f1-red/30"
                   : "text-f1-subtle hover:text-white"
               }`}
             >
-              Todas ({constructors.length})
+              <span>Todas</span>
+              <span className="ml-1 text-[11px] font-mono opacity-80">({constructors.length})</span>
             </button>
           </div>
 
           {/* Alternador de Modo: Cards vs Tabela */}
-          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/5">
+          <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl border border-white/5 shrink-0">
             <button
               type="button"
               onClick={() => setViewMode("grid")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 min-h-[36px] sm:min-h-[32px] rounded-lg text-xs font-bold transition-all active:scale-95 leading-none ${
                 viewMode === "grid"
                   ? "bg-white/10 text-white"
                   : "text-f1-subtle hover:text-white"
@@ -317,7 +321,7 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
             <button
               type="button"
               onClick={() => setViewMode("table")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`inline-flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 min-h-[36px] sm:min-h-[32px] rounded-lg text-xs font-bold transition-all active:scale-95 leading-none ${
                 viewMode === "table"
                   ? "bg-white/10 text-white"
                   : "text-f1-subtle hover:text-white"
@@ -366,11 +370,11 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
       )}
 
       {/* ========================================================================= */}
-      {/* MODO 1: CARDS COMPACTOS (40% MENORES COM ALTA DENSIDADE)                  */}
+      {/* MODO 1: CARDS COMPACTOS DE ALTA DENSIDADE                                 */}
       {/* ========================================================================= */}
       {viewMode === "grid" && filteredConstructors.length > 0 && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+          <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {paginatedConstructors.map((team) => {
               const teamColor = team.team_color || "#E10600";
               const isChampion = team.total_world_championships > 0;
@@ -381,7 +385,7 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
                 <Link
                   key={team.team_id}
                   href={profileUrl}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E14] p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 hover:shadow-xl"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E14] p-3 sm:p-4 transition-all duration-200 hover:-translate-y-1 hover:border-white/25 hover:shadow-xl active:scale-[0.98]"
                 >
                   {/* Linha superior com a cor da equipe */}
                   <div
@@ -390,16 +394,16 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
                   />
 
                   {/* Topo do Card: Badge de Título/Status e Sigla */}
-                  <div className="flex items-center justify-between gap-1.5 mb-2.5 pt-0.5">
+                  <div className="flex items-center justify-between gap-1 mb-2 pt-0.5">
                     {isChampion ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.2 text-[10px] font-black uppercase text-amber-400">
-                        <Trophy className="h-2.5 w-2.5" />
-                        {team.total_world_championships}x Campeã
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-amber-400">
+                        <Trophy className="h-3 w-3" />
+                        <span>{team.total_world_championships}x <span className="hidden sm:inline">Campeã</span></span>
                       </span>
                     ) : team.is_active ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.2 text-[10px] font-bold text-emerald-400">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Grid 2026
+                        <span>Grid 2026</span>
                       </span>
                     ) : (
                       <span className="text-[10px] font-mono text-f1-subtle">
@@ -408,31 +412,31 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
                     )}
 
                     <div className="flex items-center gap-1 text-[10px] font-mono font-bold text-white/50">
-                      <span className="bg-white/5 px-1.5 py-0.2 rounded border border-white/5 text-white/70">
+                      <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5 text-white/70">
                         {teamAbbr}
                       </span>
                     </div>
                   </div>
 
                   {/* Emblema Estilizado e Nome */}
-                  <div className="flex items-center gap-3 my-1">
+                  <div className="flex items-center gap-3 my-1 min-w-0">
                     <div
-                      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B10] flex flex-col items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-inner"
+                      className="relative h-11 w-11 sm:h-12 sm:w-12 lg:h-14 lg:w-14 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B10] flex flex-col items-center justify-center transition-transform duration-200 group-hover:scale-105 shadow-inner"
                       style={{
                         background: `linear-gradient(135deg, #181824 0%, ${teamColor}33 100%)`
                       }}
                     >
                       <div
-                        className="h-1 w-4 rounded-full mb-0.5"
+                        className="h-1 w-3.5 rounded-full mb-0.5"
                         style={{ backgroundColor: teamColor }}
                       />
-                      <span className="text-xs font-black text-white font-mono tracking-wider">
+                      <span className="text-xs sm:text-sm font-black text-white font-mono tracking-wider">
                         {teamAbbr}
                       </span>
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-black text-white tracking-tight truncate group-hover:underline decoration-white/40 transition-colors">
+                      <h3 className="text-xs sm:text-sm lg:text-base font-black text-white tracking-tight truncate group-hover:underline decoration-white/40 transition-colors leading-snug">
                         {team.team_name}
                       </h3>
                       <div className="flex items-center gap-1.5 mt-0.5">
@@ -440,7 +444,7 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
                           className="h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: teamColor }}
                         />
-                        <span className="text-[11px] font-semibold text-f1-subtle truncate">
+                        <span className="text-[11px] sm:text-xs font-medium text-f1-subtle truncate">
                           {team.total_seasons} {team.total_seasons === 1 ? "temporada" : "temporadas"}
                         </span>
                       </div>
@@ -448,32 +452,34 @@ export default function ConstructorsCatalogView({ constructors }: Props) {
                   </div>
 
                   {/* Mini Régua de 3 Estatísticas */}
-                  <div className="mt-2.5 grid grid-cols-3 gap-1 rounded-xl bg-black/40 p-1.5 border border-white/5 text-center font-mono">
+                  <div className="mt-2.5 grid grid-cols-3 gap-1 rounded-xl bg-black/40 p-1.5 sm:p-2 border border-white/5 text-center font-mono">
                     <div>
-                      <span className="block text-[9px] uppercase font-bold text-f1-subtle">GPs</span>
-                      <span className="text-xs font-bold text-white">{team.total_gps}</span>
+                      <span className="block text-[8px] sm:text-[9px] uppercase font-bold text-f1-subtle leading-tight">GPs</span>
+                      <span className="text-xs sm:text-sm font-bold text-white">{team.total_gps}</span>
                     </div>
                     <div className="border-x border-white/5">
-                      <span className="block text-[9px] uppercase font-bold text-f1-subtle">Vitórias</span>
-                      <span className={`text-xs font-black ${team.total_wins > 0 ? "text-amber-400" : "text-white/60"}`}>
+                      <span className="block text-[8px] sm:text-[9px] uppercase font-bold text-f1-subtle leading-tight">Vitórias</span>
+                      <span className={`text-xs sm:text-sm font-black ${team.total_wins > 0 ? "text-amber-400" : "text-white/60"}`}>
                         {team.total_wins}
                       </span>
                     </div>
                     <div>
-                      <span className="block text-[9px] uppercase font-bold text-f1-subtle">Dobradinhas</span>
-                      <span className={`text-xs font-black ${team.total_one_two > 0 ? "text-purple-300" : "text-white/60"}`}>
+                      <span className="block text-[8px] sm:text-[9px] uppercase font-bold text-f1-subtle leading-tight">Dobradinhas</span>
+                      <span className={`text-xs sm:text-sm font-black ${team.total_one_two > 0 ? "text-purple-300" : "text-white/60"}`}>
                         {team.total_one_two}
                       </span>
                     </div>
                   </div>
 
                   {/* Rodapé do Card */}
-                  <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-f1-subtle">
-                    <span className="font-mono text-zinc-400">
+                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] sm:text-xs text-f1-subtle">
+                    <span className="font-mono text-zinc-400 truncate">
                       {team.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} pts
                     </span>
-                    <span className="flex items-center gap-0.5 font-bold text-white group-hover:underline decoration-white/40 transition-colors">
-                      Acessar <ChevronRight className="h-3 w-3 text-f1-subtle group-hover:text-white" />
+                    <span className="flex items-center gap-0.5 font-bold text-white/90 group-hover:text-white transition-colors shrink-0">
+                      <span className="hidden sm:inline">Acessar</span>
+                      <span className="sm:hidden">Ver</span>
+                      <ChevronRight className="h-3 w-3 text-f1-subtle group-hover:text-white" />
                     </span>
                   </div>
                 </Link>

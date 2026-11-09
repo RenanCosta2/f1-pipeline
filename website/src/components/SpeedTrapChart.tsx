@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { MaxSpeed } from "@/types/f1";
 import DriverLink from "@/lib/driverUtils";
-import { Zap, Award, ArrowUpRight, ShieldCheck, Flame } from "lucide-react";
+import { Zap, Award, ArrowUpRight, ShieldCheck, Flame, ChevronDown, ExternalLink } from "lucide-react";
 
 interface Props {
   data: MaxSpeed[];
@@ -11,6 +11,7 @@ interface Props {
 
 export default function SpeedTrapChart({ data }: Props) {
   const [viewMode, setViewMode] = useState<"drivers" | "teams">("drivers");
+  const [expandedDriver, setExpandedDriver] = useState<string | null>(null);
 
   if (!data || data.length === 0) {
     return (
@@ -54,7 +55,7 @@ export default function SpeedTrapChart({ data }: Props) {
   const sortedTeams = Array.from(teamMap.values()).sort((a, b) => b.maxTrap - a.maxTrap);
 
   return (
-    <div className="rounded-2xl border border-f1-border bg-[#14141F] p-6 shadow-xl">
+    <div className="rounded-2xl border border-f1-border bg-[#14141F] p-4 sm:p-6 shadow-xl">
       {/* Header & View Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-f1-border/50 pb-5 mb-6 gap-4">
         <div>
@@ -93,7 +94,7 @@ export default function SpeedTrapChart({ data }: Props) {
 
       {/* Podium Cards for Top 3 Fastest Cars */}
       {sortedDrivers.length >= 3 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-6">
           {sortedDrivers.slice(0, 3).map((driver, idx) => {
             const isFirst = idx === 0;
             return (
@@ -134,80 +135,148 @@ export default function SpeedTrapChart({ data }: Props) {
 
       {/* Drivers View */}
       {viewMode === "drivers" && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-f1-border/40 text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
-                <th className="pb-3 w-10 text-center">Pos</th>
-                <th className="pb-3">Piloto & Equipe</th>
-                <th className="pb-3 text-center">Inter 1 (I1)</th>
-                <th className="pb-3 text-center">Inter 2 (I2)</th>
-                <th className="pb-3 text-center">Linha Chegada (FL)</th>
-                <th className="pb-3 text-right">Speed Trap Oficial</th>
-                <th className="pb-3 w-32 hidden sm:table-cell">Radar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-f1-border/20 text-xs">
-              {sortedDrivers.map((item, idx) => {
-                const speed = Number(item.max_speed_trap || 0);
-                const percent = Math.min(Math.round((speed / (topSpeed + 5)) * 100), 100);
-                const deltaToLeader = speed - topSpeed;
+        <div className="space-y-2">
+          <div className="md:hidden flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
+            <span className="flex items-center gap-1.5">
+              <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+              <span>Toque em qualquer linha para expandir parciais (I1, I2, FL) e perfil</span>
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-f1-border/40 text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
+                  <th className="pb-3 w-10 text-center">Pos</th>
+                  <th className="pb-3">Piloto & Equipe</th>
+                  <th className="pb-3 text-center hidden md:table-cell">Inter 1 (I1)</th>
+                  <th className="pb-3 text-center hidden md:table-cell">Inter 2 (I2)</th>
+                  <th className="pb-3 text-center hidden sm:table-cell">Linha Chegada (FL)</th>
+                  <th className="pb-3 text-right">Speed Trap</th>
+                  <th className="pb-3 w-32 hidden lg:table-cell">Radar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-f1-border/20 text-xs">
+                {sortedDrivers.map((item, idx) => {
+                  const speed = Number(item.max_speed_trap || 0);
+                  const percent = Math.min(Math.round((speed / (topSpeed + 5)) * 100), 100);
+                  const deltaToLeader = speed - topSpeed;
+                  const isExpanded = expandedDriver === item.driver_full_name;
 
-                return (
-                  <tr key={item.driver_full_name} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 text-center font-black">
-                      <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-mono ${
-                        idx === 0 ? "bg-amber-400 text-black font-bold" : "text-f1-subtle"
-                      }`}>
-                        {idx + 1}
-                      </span>
-                    </td>
+                  return (
+                    <React.Fragment key={item.driver_full_name}>
+                      <tr
+                        onClick={() => setExpandedDriver(isExpanded ? null : item.driver_full_name)}
+                        className={`group transition-colors cursor-pointer md:cursor-default ${
+                          isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.02]"
+                        }`}
+                      >
+                        <td className="py-3 text-center font-black">
+                          <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-mono ${
+                            idx === 0 ? "bg-amber-400 text-black font-bold" : "text-f1-subtle"
+                          }`}>
+                            {idx + 1}
+                          </span>
+                        </td>
 
-                    <td className="py-3">
-                      <DriverLink driverName={item.driver_full_name}>
-                        <span className="font-bold text-white text-sm block hover:text-f1-red transition-colors">
-                          {item.driver_full_name}
-                        </span>
-                      </DriverLink>
-                      <span className="text-[11px] text-f1-subtle">{item.team_name}</span>
-                    </td>
+                        <td className="py-3 pr-2 max-w-[175px] sm:max-w-none">
+                          <div className="flex items-center justify-between gap-1.5 min-w-0">
+                            <DriverLink
+                              driverName={item.driver_full_name}
+                              className="pointer-events-none md:pointer-events-auto min-w-0 truncate"
+                            >
+                              <span className="font-bold text-white text-sm block truncate hover:text-f1-red transition-colors">
+                                {item.driver_full_name}
+                              </span>
+                            </DriverLink>
+                            <span
+                              className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                                isExpanded
+                                  ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                  : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                              }`}
+                              aria-hidden="true"
+                            >
+                              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-f1-subtle block truncate">{item.team_name}</span>
+                        </td>
 
-                    <td className="py-3 text-center font-mono text-f1-subtle">
-                      {item.max_speed_i1 ? `${Number(item.max_speed_i1).toFixed(1)}` : "—"}
-                    </td>
+                        <td className="py-3 text-center font-mono text-f1-subtle hidden md:table-cell">
+                          {item.max_speed_i1 ? `${Number(item.max_speed_i1).toFixed(1)}` : "—"}
+                        </td>
 
-                    <td className="py-3 text-center font-mono text-f1-subtle">
-                      {item.max_speed_i2 ? `${Number(item.max_speed_i2).toFixed(1)}` : "—"}
-                    </td>
+                        <td className="py-3 text-center font-mono text-f1-subtle hidden md:table-cell">
+                          {item.max_speed_i2 ? `${Number(item.max_speed_i2).toFixed(1)}` : "—"}
+                        </td>
 
-                    <td className="py-3 text-center font-mono text-slate-300 font-semibold">
-                      {item.max_speed_fl ? `${Number(item.max_speed_fl).toFixed(1)}` : "—"}
-                    </td>
+                        <td className="py-3 text-center font-mono text-slate-300 font-semibold hidden sm:table-cell">
+                          {item.max_speed_fl ? `${Number(item.max_speed_fl).toFixed(1)}` : "—"}
+                        </td>
 
-                    <td className="py-3 text-right font-mono">
-                      <span className="font-black text-amber-400 text-sm block">
-                        {speed > 0 ? `${speed.toFixed(1)} km/h` : "—"}
-                      </span>
-                      {idx > 0 && speed > 0 && (
-                        <span className="text-[10px] text-f1-subtle">
-                          {deltaToLeader.toFixed(1)} km/h
-                        </span>
+                        <td className="py-3 text-right font-mono whitespace-nowrap">
+                          <span className="font-black text-amber-400 text-sm block">
+                            {speed > 0 ? `${speed.toFixed(1)} km/h` : "—"}
+                          </span>
+                          {idx > 0 && speed > 0 && (
+                            <span className="text-[10px] text-f1-subtle">
+                              {deltaToLeader.toFixed(1)} km/h
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="py-3 hidden lg:table-cell">
+                          <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-f1-red"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                          <td colSpan={7} className="p-3">
+                            <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                              <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">Inter 1 (I1)</span>
+                                  <span className="text-xs font-black text-white">
+                                    {item.max_speed_i1 ? `${Number(item.max_speed_i1).toFixed(1)} km/h` : "—"}
+                                  </span>
+                                </div>
+                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">Inter 2 (I2)</span>
+                                  <span className="text-xs font-black text-white">
+                                    {item.max_speed_i2 ? `${Number(item.max_speed_i2).toFixed(1)} km/h` : "—"}
+                                  </span>
+                                </div>
+                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">Chegada (FL)</span>
+                                  <span className="text-xs font-black text-white">
+                                    {item.max_speed_fl ? `${Number(item.max_speed_fl).toFixed(1)} km/h` : "—"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <DriverLink
+                                driverName={item.driver_full_name}
+                                className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                              >
+                                <span>Ver Perfil Completo do Piloto</span>
+                                <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                              </DriverLink>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-
-                    <td className="py-3 hidden sm:table-cell">
-                      <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-amber-500 via-orange-500 to-f1-red"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

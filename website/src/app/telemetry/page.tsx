@@ -10,7 +10,7 @@ import {
 import SpeedTrapChart from "@/components/SpeedTrapChart";
 import IdealLapCard from "@/components/IdealLapCard";
 import DriverLink from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
+import TeamLink from "@/lib/teamUtils";
 import { Gauge, Zap, Timer, Target, Sparkles, ArrowUpRight } from "lucide-react";
 
 interface Props {
@@ -64,8 +64,8 @@ export default async function TelemetryPage({ searchParams }: Props) {
   return (
     <div className="space-y-10">
       {/* Header with Round & Session Selectors */}
-      <div className="border-b border-f1-border/50 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      <div className="border-b border-f1-border/50 pb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">
             <Gauge className="h-3.5 w-3.5" /> Performance & Telemetria • {year} • Round {round}
           </div>
@@ -85,7 +85,7 @@ export default async function TelemetryPage({ searchParams }: Props) {
                   <Link
                     key={s}
                     href={`/telemetry?year=${year}&round=${round}&session=${s}`}
-                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 min-h-[36px] sm:min-h-0 inline-flex items-center justify-center rounded-md text-xs font-bold transition-all ${
                       session === s
                         ? "bg-purple-600 text-white shadow"
                         : "text-f1-subtle hover:text-white"
@@ -101,12 +101,12 @@ export default async function TelemetryPage({ searchParams }: Props) {
 
         {/* Round Selector Chips */}
         {availableRounds && availableRounds.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 max-w-md">
+          <div className="flex sm:flex-wrap items-center gap-1.5 overflow-x-auto sm:overflow-visible no-scrollbar pb-1 sm:pb-0 w-full xl:w-auto xl:max-w-md">
             {availableRounds.map((rnd) => (
               <Link
                 key={rnd.round_number}
                 href={`/telemetry?year=${year}&round=${rnd.round_number}${session ? `&session=${session}` : ""}`}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md border transition-all ${
+                className={`px-2.5 py-1.5 sm:py-1 min-h-[38px] min-w-[38px] sm:min-h-0 sm:min-w-0 shrink-0 inline-flex items-center justify-center text-xs font-bold rounded-md border transition-all ${
                   rnd.round_number === round
                     ? "bg-purple-600 text-white border-purple-600 shadow"
                     : "bg-[#14141F] text-f1-subtle border-f1-border hover:text-white hover:border-white/20"
@@ -121,7 +121,7 @@ export default async function TelemetryPage({ searchParams }: Props) {
       </div>
 
       {/* KPI Cards Highlights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Top Speed Card */}
         <div className="rounded-xl border border-f1-border bg-[#14141F] p-5">
           <div className="flex items-center justify-between text-amber-400 mb-2">

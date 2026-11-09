@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Calendar } from "lucide-react";
 import { RaceWeekendInfo } from "@/types/f1";
@@ -14,6 +14,22 @@ interface Props {
 }
 
 export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: Props) {
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || typeof document === "undefined") return null;
 
   const sessions = upcomingRace?.sessions || [];
@@ -21,14 +37,17 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
   return createPortal(
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[9999] !m-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn"
+      className="fixed inset-0 z-[9999] !m-0 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-fadeIn"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12121A] p-6 shadow-2xl"
+        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border-t sm:border border-white/15 bg-[#12121A] p-5 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-6 shadow-2xl max-h-[88dvh] overflow-y-auto animate-slideUpSheet sm:animate-none"
       >
-        <div className="flex items-center justify-between border-b border-white/10 pb-4">
-          <div>
+        {/* Mobile Bottom Sheet Pill Indicator */}
+        <div className="w-12 h-1.5 rounded-full bg-white/20 mx-auto mb-4 sm:hidden" />
+
+        <div className="flex items-start justify-between border-b border-white/10 pb-4 gap-3">
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5 text-f1-red text-xs font-bold uppercase mb-1">
               <Calendar className="h-3.5 w-3.5" /> Programação Oficial
             </div>
@@ -42,13 +61,14 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
                 {upcomingRace?.circuit_name || "Circuito"}
               </h3>
             </CircuitLink>
-            <p className="text-xs text-f1-subtle mt-0.5">
+            <p className="text-xs text-f1-subtle mt-0.5 truncate">
               {upcomingRace?.official_event_name || `Temporada ${year}`}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg border border-white/10 text-white/60 hover:text-white"
+            aria-label="Fechar programação"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:text-white active:scale-95 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -58,24 +78,26 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
           {sessions.map((sess, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] p-3.5 text-xs hover:border-white/15 transition-all"
+              className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.03] p-3.5 text-xs hover:border-white/15 transition-all min-h-[54px]"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                    sess.completed 
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                      : sess.waiting_data
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/35"
-                      : "bg-white/10 text-f1-subtle"
-                  }`}>
+              <div className="min-w-0 pr-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                      sess.completed
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : sess.waiting_data
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/35"
+                          : "bg-white/10 text-f1-subtle"
+                    }`}
+                  >
                     {sess.completed ? (
                       "Finalizado"
                     ) : sess.waiting_data ? (
                       <>
                         <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
                         </span>
                         <span>Aguardando Dados</span>
                       </>
@@ -83,11 +105,15 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
                       "Programado"
                     )}
                   </span>
-                  <p className="font-bold text-white">{sess.name}</p>
+                  <p className="font-bold text-white truncate">{sess.name}</p>
                 </div>
-                <p className="text-[10px] text-f1-subtle mt-1">{sess.date} {year}</p>
+                <p className="text-[11px] text-f1-subtle mt-1">
+                  {sess.date} {year}
+                </p>
               </div>
-              <span className="font-mono font-bold text-white text-xs">{sess.time}</span>
+              <span className="font-mono font-bold text-white text-xs sm:text-sm shrink-0 bg-black/40 px-2.5 py-1 rounded-lg border border-white/5">
+                {sess.time}
+              </span>
             </div>
           ))}
         </div>

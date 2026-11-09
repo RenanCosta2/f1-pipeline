@@ -58,9 +58,14 @@ if (connectionString) {
         },
         min: 0,
         max: 10,
-        idleTimeoutMillis: 10000,
+        idleTimeoutMillis: 2000,
         connectionTimeoutMillis: 10000,
         statement_timeout: 15000,
+      });
+
+      // Evita unhandled error quando o PgBouncer/Supabase encerra conexoes ociosas
+      globalForDb.pool.on('error', (err) => {
+        console.warn('PgBouncer idle client closed unexpectedly:', err.message);
       });
     } catch (e) {
       console.warn("Database connection pool creation failed, falling back to mock data.", e);
@@ -88,7 +93,16 @@ async function queryOrFallback<T>(sql: string, params: any[], fallback: T, ttlMs
     return fallback;
   }
   try {
-    const res = await pool.query(sql, params);
+    let res;
+    try {
+      res = await pool.query(sql, params);
+    } catch (connErr: any) {
+      if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
+        res = await pool.query(sql, params);
+      } else {
+        throw connErr;
+      }
+    }
     if (res.rows && res.rows.length > 0) {
       const data = res.rows as unknown as T;
       cache.set(cacheKey, { data, expiresAt: now + ttlMs });
@@ -1553,7 +1567,16 @@ export async function getConstructorProfile(teamId: string): Promise<Constructor
 
       try {
         if (pool) {
-          const res = await pool.query(sql, [teamId]);
+          let res;
+          try {
+            res = await pool.query(sql, [teamId]);
+          } catch (connErr: any) {
+            if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
+              res = await pool.query(sql, [teamId]);
+            } else {
+              throw connErr;
+            }
+          }
           if (res.rows && res.rows.length > 0) {
             const r = res.rows[0];
             return {
@@ -2049,6 +2072,7 @@ export async function getConstructorProfile(teamId: string): Promise<Constructor
 
         return {
           ...r,
+          year: Number(r.year),
           round_number: Number(r.round_number),
           total_dnfs: r.total_dnfs != null ? Number(r.total_dnfs) : 0,
           completed_sessions_count: r.completed_sessions_count != null ? Number(r.completed_sessions_count) : 0,

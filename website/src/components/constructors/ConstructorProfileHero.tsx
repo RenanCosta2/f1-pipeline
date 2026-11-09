@@ -22,13 +22,13 @@ export default function ConstructorProfileHero({ profile }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Botão Voltar */}
+      {/* Botão Voltar com touch target mínimo de 44px */}
       <div className="flex items-center justify-between">
         <Link
           href="/teams"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-f1-subtle hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 min-h-[44px] py-2 px-1 text-xs font-bold text-f1-subtle hover:text-white transition-colors active:scale-95"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-4 w-4" />
           <span>Voltar para Galeria de Equipes</span>
         </Link>
       </div>
@@ -41,7 +41,7 @@ export default function ConstructorProfileHero({ profile }: Props) {
           style={{ backgroundColor: teamColor }}
         />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           {/* Lado Esquerdo: Emblema Compacto + Identificação Oficial em Linha */}
           <div className="flex items-center gap-4 min-w-0">
             {/* Emblema Compacto com moldura na cor da equipe */}
@@ -85,7 +85,7 @@ export default function ConstructorProfileHero({ profile }: Props) {
               </div>
 
               {/* Nome da Construtora */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <h1 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white truncate">
                   {profile.team_name}
                 </h1>
@@ -113,74 +113,74 @@ export default function ConstructorProfileHero({ profile }: Props) {
             </div>
           </div>
 
-          {/* Lado Direito: Régua de KPIs em Linha Compacta (1 única linha) */}
-          <div className="grid grid-cols-5 gap-2 sm:gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 lg:border-l border-white/5 lg:pl-6">
+          {/* Lado Direito: Régua de KPIs Responsiva (Grid 3+2 no mobile, 5 em linha a partir de sm) */}
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-3 shrink-0 pt-3 xl:pt-0 border-t xl:border-t-0 xl:border-l border-white/5 xl:pl-6">
             {/* GPs */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[64px] sm:min-w-[80px]">
-              <span className="block text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[80px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
                 GPs
               </span>
-              <span className="text-base sm:text-lg font-black text-white font-mono block">
+              <span className="text-sm sm:text-lg font-black text-white font-mono block">
                 {profile.total_gps}
               </span>
               {profile.rank_gps && (
-                <span className="text-[10px] text-f1-subtle font-mono block -mt-0.5">
+                <span className="text-[9px] sm:text-[10px] text-f1-subtle font-mono block -mt-0.5">
                   #{profile.rank_gps}
                 </span>
               )}
             </div>
 
             {/* Vitórias */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[64px] sm:min-w-[80px]">
-              <span className="block text-[10px] font-bold uppercase text-amber-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[80px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-amber-400 tracking-wider">
                 Vitórias
               </span>
-              <span className="text-base sm:text-lg font-black text-amber-400 font-mono block">
+              <span className="text-sm sm:text-lg font-black text-amber-400 font-mono block">
                 {profile.total_wins}
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5" title={`${raceWins} GP · ${sprintWins} Sprint`}>
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5" title={`${raceWins} GP · ${sprintWins} Sprint`}>
                 {raceWins} GP
               </span>
             </div>
 
             {/* Pódios */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[64px] sm:min-w-[80px]">
-              <span className="block text-[10px] font-bold uppercase text-blue-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[80px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-blue-400 tracking-wider">
                 Pódios
               </span>
-              <span className="text-base sm:text-lg font-black text-blue-300 font-mono block">
+              <span className="text-sm sm:text-lg font-black text-blue-300 font-mono block">
                 {profile.total_podiums}
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5" title={`${racePodiums} GP · ${sprintPodiums} Sprint`}>
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5" title={`${racePodiums} GP · ${sprintPodiums} Sprint`}>
                 {racePodiums} GP
               </span>
             </div>
 
             {/* Poles */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[64px] sm:min-w-[80px]">
-              <span className="block text-[10px] font-bold uppercase text-purple-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[80px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-purple-400 tracking-wider">
                 Poles
               </span>
-              <span className="text-base sm:text-lg font-black text-purple-300 font-mono block">
+              <span className="text-sm sm:text-lg font-black text-purple-300 font-mono block">
                 {profile.race_poles}
               </span>
               {profile.rank_poles && (
-                <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5">
+                <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5">
                   #{profile.rank_poles}
                 </span>
               )}
             </div>
 
             {/* Pontos Totais */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[70px] sm:min-w-[90px]">
-              <span className="block text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
+            <div className="col-span-2 sm:col-span-1 rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[90px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
                 Pontos
               </span>
-              <span className="text-base sm:text-lg font-black text-white font-mono block">
+              <span className="text-sm sm:text-lg font-black text-white font-mono block">
                 {Math.round(profile.total_points).toLocaleString("pt-BR")}
               </span>
               {profile.rank_points && (
-                <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5">
+                <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5">
                   #{profile.rank_points}
                 </span>
               )}

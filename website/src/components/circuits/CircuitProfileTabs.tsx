@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   CircuitOverviewItem,
@@ -9,7 +9,7 @@ import {
   CircuitTeamPerformanceItem
 } from "@/types/f1";
 import DriverLink, { getDriverProfileUrl } from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
+import TeamLink from "@/lib/teamUtils";
 import { getTrackTypeBadge, formatSeasonsRanges } from "@/lib/circuitUtils";
 import {
   ResponsiveContainer,
@@ -41,6 +41,7 @@ import {
   Crown,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   AlertTriangle,
   RotateCcw,
   Gauge,
@@ -193,7 +194,7 @@ function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-[11px]"
+          className="px-3 py-1.5 min-h-[44px] inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-xs active:scale-95"
         >
           Anterior
         </button>
@@ -204,7 +205,7 @@ function TablePagination({
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="px-2.5 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-[11px]"
+          className="px-3 py-1.5 min-h-[44px] inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 disabled:opacity-25 disabled:cursor-not-allowed text-white font-bold transition-all text-xs active:scale-95"
         >
           Próxima
         </button>
@@ -218,31 +219,45 @@ const DRIVERS_PER_PAGE = 10;
 const TEAMS_PER_PAGE = 10;
 
 export default function CircuitProfileTabs({ overview, seasons, drivers, teams = [] }: Props) {
-  // Aba inicial: Edições da Temporada (o Overview agora está na Sidebar Cockpit à esquerda)
-  const [activeTab, setActiveTab] = useState<"seasons" | "drivers" | "teams">("seasons");
+  // Aba inicial: Raio-X no mobile ("overview") e Edições da Temporada no desktop (onde a Sidebar Cockpit já está fixa à esquerda)
+  const [activeTab, setActiveTab] = useState<"seasons" | "drivers" | "teams" | "overview">("seasons");
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1280px)");
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      if (e.matches) {
+        setActiveTab((prev) => (prev === "overview" ? "seasons" : prev));
+      }
+    };
+    handleChange(mq);
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
+  const [mobileSeasonSubView, setMobileSeasonSubView] = useState<"table" | "chart">("chart");
 
   // Paginação
   const [seasonsPage, setSeasonsPage] = useState<number>(1);
   const [driversPage, setDriversPage] = useState<number>(1);
   const [teamsPage, setTeamsPage] = useState<number>(1);
 
-  // Edição selecionada no gráfico e mini Raio-X
+  // Edição selecionada no gráfico e mini Raio-X (garantindo conversão estrita para número)
   const [selectedEditionYear, setSelectedEditionYear] = useState<number>(() => {
-    return seasons.length > 0 ? seasons[0].year : 2026;
+    return seasons.length > 0 ? Number(seasons[0].year) : 2026;
   });
 
   const editionsChartData = useMemo(() => {
-    const sorted = seasons.slice().sort((a, b) => a.year - b.year);
+    const sorted = seasons.slice().sort((a, b) => Number(a.year) - Number(b.year));
     return sorted.map((s) => {
       const winner = s.race_winner_driver || "A definir";
       const winnerCode = s.race_winner_code || (s.race_winner_driver ? s.race_winner_driver.split(" ").pop()?.slice(0, 3).toUpperCase() : "—");
       const teamColor = s.race_winner_team_color || "#334155";
       const dnfs = Number(s.total_dnfs) || 0;
+      const yNum = Number(s.year);
 
       return {
-        year: s.year.toString(),
-        yearNum: s.year,
-        round: s.round_number,
+        year: yNum.toString(),
+        yearNum: yNum,
+        round: Number(s.round_number),
         winner,
         winnerCode,
         winnerTeam: s.race_winner_team || "—",
@@ -260,30 +275,73 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
 
   const currentEdition = useMemo(() => {
     return (
-      editionsChartData.find((e) => e.yearNum === selectedEditionYear) ||
+      editionsChartData.find((e) => Number(e.yearNum) === Number(selectedEditionYear)) ||
       editionsChartData[editionsChartData.length - 1] ||
       null
     );
   }, [editionsChartData, selectedEditionYear]);
 
   // ---------------------------------------------------------------------------
-  // NAVEGAÇÃO ENTRE PERÍODOS DE TEMPORADAS (12 colunas por período para legibilidade ideal)
+  // NAVEGAÇÃO ENTRE PERÍODOS DE TEMPORADAS (Responsivo: 6 no mobile, 8 no tablet, 12 no desktop)
   // ---------------------------------------------------------------------------
-  const PERIOD_SIZE = 12;
+  const [periodSize, setPeriodSize] = useState<number>(12);
+
+  useEffect(() => {
+    const updatePeriodSize = () => {
+      if (window.innerWidth < 640) {
+        setPeriodSize(6);
+      } else if (window.innerWidth < 1024) {
+        setPeriodSize(8);
+      } else {
+        setPeriodSize(12);
+      }
+    };
+    updatePeriodSize();
+    window.addEventListener("resize", updatePeriodSize);
+    return () => window.removeEventListener("resize", updatePeriodSize);
+  }, []);
+
+  const PERIOD_SIZE = periodSize;
   const totalPeriods = Math.max(1, Math.ceil(editionsChartData.length / PERIOD_SIZE));
 
-  const getPeriodIndexForYear = (year: number) => {
-    const index = editionsChartData.findIndex((e) => e.yearNum === year);
-    if (index === -1) return totalPeriods - 1;
-    if (index >= editionsChartData.length - PERIOD_SIZE) {
-      return totalPeriods - 1;
+  const getPeriodIndexForYear = (year: number, size = PERIOD_SIZE) => {
+    const tot = Math.max(1, Math.ceil(editionsChartData.length / size));
+    const index = editionsChartData.findIndex((e) => Number(e.yearNum) === Number(year));
+    if (index === -1) return tot - 1;
+    if (index >= editionsChartData.length - size) {
+      return tot - 1;
     }
-    return Math.floor(index / PERIOD_SIZE);
+    return Math.floor(index / size);
+  };
+
+  // Handler unificado de seleção de edição de GP: sincroniza Gráfico, Mini Raio-X e Paginação da Tabela
+  const handleSelectEditionYear = (yearVal: number | string) => {
+    const y = Number(yearVal);
+    if (!y || isNaN(y)) return;
+
+    setSelectedEditionYear(y);
+    setChartPeriod(getPeriodIndexForYear(y));
+
+    // Navega automaticamente a tabela de edições para a página onde a temporada está
+    const seasonIndex = seasons.findIndex((s) => Number(s.year) === y);
+    if (seasonIndex !== -1) {
+      const targetPage = Math.floor(seasonIndex / SEASONS_PER_PAGE) + 1;
+      setSeasonsPage(targetPage);
+    }
+
+    // Se estiver no mobile na aba Raio-X exclusiva, alterna para as Edições para visualização imediata
+    if (activeTab === "overview") {
+      setActiveTab("seasons");
+    }
   };
 
   const [chartPeriod, setChartPeriod] = useState<number>(() => {
     return getPeriodIndexForYear(selectedEditionYear);
   });
+
+  useEffect(() => {
+    setChartPeriod(getPeriodIndexForYear(selectedEditionYear, PERIOD_SIZE));
+  }, [PERIOD_SIZE]);
 
   const visibleEditionsData = useMemo(() => {
     if (editionsChartData.length <= PERIOD_SIZE) {
@@ -295,7 +353,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
       : chartPeriod * PERIOD_SIZE;
     const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
     return editionsChartData.slice(start, end);
-  }, [editionsChartData, chartPeriod, totalPeriods]);
+  }, [editionsChartData, chartPeriod, totalPeriods, PERIOD_SIZE]);
 
   // Label no topo das colunas do gráfico (Código do Vencedor)
   const renderCustomCircuitBarLabel = (props: any) => {
@@ -367,6 +425,9 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
   const [driverSearch, setDriverSearch] = useState("");
   const [driverSortKey, setDriverSortKey] = useState<string>("total_wins");
   const [driverSortDir, setDriverSortDir] = useState<"asc" | "desc">("desc");
+  const [expandedEditionKey, setExpandedEditionKey] = useState<string | null>(null);
+  const [expandedDriverId, setExpandedDriverId] = useState<string | null>(null);
+  const [expandedTeamName, setExpandedTeamName] = useState<string | null>(null);
 
   const trackBadge = getTrackTypeBadge(overview.track_type);
 
@@ -558,11 +619,11 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
   }, [teamStats, teamsPage]);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+    <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
       {/* ========================================================================= */}
-      {/* COLUNA ESQUERDA (33%): COCKPIT SIDEBAR - RECORDES & LENDAS DO AUTÓDROMO   */}
+      {/* COLUNA ESQUERDA (33% no Desktop xl+, Aba "Raio-X" Exclusiva em < xl)      */}
       {/* ========================================================================= */}
-      <aside className="lg:col-span-4 space-y-4">
+      <aside className={`order-2 xl:order-1 xl:col-span-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 min-w-0 ${activeTab === "overview" ? "grid" : "hidden xl:grid"}`}>
         {/* CARD 1: LENDAS DO AUTÓDROMO (HALL OF FAME) */}
         <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg">
           <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
@@ -854,25 +915,26 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
               </div>
               {/* Pills com todos os anos individuais onde houve GP no circuito */}
               {((overview.years_held && overview.years_held.length > 0) || (overview.seasons_list)) && (
-                <div className="flex flex-wrap items-center gap-1 pt-0.5 max-h-20 overflow-y-auto scrollbar-thin">
+                <div className="flex flex-wrap items-center gap-1 pt-0.5 max-h-24 overflow-y-auto scrollbar-thin">
                   {(overview.years_held && overview.years_held.length > 0
                     ? overview.years_held
                     : overview.seasons_list!.split(",").map((s) => Number(s.trim()))
                   ).map((y) => {
-                    const isSelected = y === selectedEditionYear;
+                    const yNum = Number(y);
+                    const isSelected = yNum === Number(selectedEditionYear);
                     return (
                       <button
-                        key={y}
+                        key={yNum}
                         type="button"
-                        onClick={() => setSelectedEditionYear(y)}
+                        onClick={() => handleSelectEditionYear(yNum)}
                         className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
                           isSelected
                             ? "bg-f1-red text-white shadow-sm shadow-f1-red/30 scale-105"
                             : "bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
                         }`}
-                        title={`Clique para selecionar o GP de ${y}`}
+                        title={`Clique para selecionar e abrir o GP de ${yNum}`}
                       >
-                        {y}
+                        {yNum}
                       </button>
                     );
                   })}
@@ -884,25 +946,39 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
       </aside>
 
       {/* ========================================================================= */}
-      {/* COLUNA DIREITA (67%): PAINEL ANALÍTICO PRINCIPAL COM ABAS COMPACTAS       */}
+      {/* COLUNA DIREITA (67% no Desktop xl+, Largura Total em < xl): PAINEL PRINCIPAL */}
       {/* ========================================================================= */}
-      <main className="lg:col-span-8 space-y-4">
+      <main className="order-1 xl:order-2 xl:col-span-8 space-y-4 min-w-0">
         {/* SELETOR DE ABAS COMPACTO (Estilo Segmented Control Cockpit) */}
-        <div className="flex items-center justify-between bg-[#0E0E14] border border-white/10 rounded-2xl p-1.5 shadow-md">
-          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+        <div className="flex items-center justify-between bg-[#0E0E14] border border-white/10 rounded-2xl p-1 sm:p-1.5 shadow-md overflow-x-auto no-scrollbar">
+          <div className="grid grid-cols-4 sm:flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
+            {/* 1ª Aba Mobile/Tablet (< xl): Raio-X & Recordes da Sidebar */}
+            <button
+              type="button"
+              onClick={() => setActiveTab("overview")}
+              className={`xl:hidden inline-flex items-center justify-center gap-1 px-2 py-2 min-h-[44px] rounded-xl text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${
+                activeTab === "overview"
+                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+              }`}
+            >
+              <span>Raio-X</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab("seasons")}
-              className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              className={`inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 min-h-[44px] rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${
                 activeTab === "seasons"
                   ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
                   : "text-f1-subtle hover:text-white hover:bg-white/5"
               }`}
             >
-              <Calendar className="h-3.5 w-3.5 shrink-0" />
-              <span>Edições da Temporada</span>
+              <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 hidden sm:inline" />
+              <span className="sm:hidden">Edições</span>
+              <span className="hidden sm:inline">Edições da Temporada</span>
               <span
-                className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${
                   activeTab === "seasons" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
                 }`}
               >
@@ -913,16 +989,17 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
             <button
               type="button"
               onClick={() => setActiveTab("drivers")}
-              className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              className={`inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 min-h-[44px] rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${
                 activeTab === "drivers"
                   ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
                   : "text-f1-subtle hover:text-white hover:bg-white/5"
               }`}
             >
-              <Users className="h-3.5 w-3.5 shrink-0" />
-              <span>Histórico de Pilotos</span>
+              <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 hidden sm:inline" />
+              <span className="sm:hidden">Pilotos</span>
+              <span className="hidden sm:inline">Histórico de Pilotos</span>
               <span
-                className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${
                   activeTab === "drivers" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
                 }`}
               >
@@ -933,16 +1010,17 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
             <button
               type="button"
               onClick={() => setActiveTab("teams")}
-              className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+              className={`inline-flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 min-h-[44px] rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${
                 activeTab === "teams"
                   ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
                   : "text-f1-subtle hover:text-white hover:bg-white/5"
               }`}
             >
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              <span>Histórico de Equipes</span>
+              <Shield className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0 hidden sm:inline" />
+              <span className="sm:hidden">Equipes</span>
+              <span className="hidden sm:inline">Histórico de Equipes</span>
               <span
-                className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${
                   activeTab === "teams" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
                 }`}
               >
@@ -952,13 +1030,39 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
           </div>
         </div>
 
-                {/* ========================================================================= */}
+        {/* ========================================================================= */}
         {/* ABA 1: EDIÇÕES DO GP (TEMPORADA A TEMPORADA NO CIRCUITO)                  */}
         {/* ========================================================================= */}
         {activeTab === "seasons" && (
           <div className="space-y-4">
+            {/* Sub-seletor Mobile (< md): Alterna entre Gráfico/Raio-X da Edição (1ª aba) e Tabela sem empilhar */}
+            <div className="grid grid-cols-2 md:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
+              <button
+                type="button"
+                onClick={() => setMobileSeasonSubView("chart")}
+                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${
+                  mobileSeasonSubView === "chart"
+                    ? "bg-white/15 text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                }`}
+              >
+                Gráfico & Raio-X ({selectedEditionYear})
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSeasonSubView("table")}
+                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${
+                  mobileSeasonSubView === "table"
+                    ? "bg-white/15 text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                }`}
+              >
+                Edições ({seasons.length})
+              </button>
+            </div>
+
             {/* Bloco Unificado: Gráfico de Vencedores & Atrito + Mini Raio-X da Edição */}
-            <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg space-y-4">
+            <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg space-y-4 ${mobileSeasonSubView === "chart" ? "block" : "hidden md:block"}`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
@@ -978,9 +1082,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                   <select
                     value={selectedEditionYear}
                     onChange={(e) => {
-                      const y = Number(e.target.value);
-                      setSelectedEditionYear(y);
-                      setChartPeriod(getPeriodIndexForYear(y));
+                      handleSelectEditionYear(e.target.value);
                     }}
                     className="bg-[#1b1b26] border border-white/15 text-white text-xs font-bold font-mono rounded-lg px-2.5 py-1 focus:outline-none focus:border-f1-red cursor-pointer hover:border-white/30 transition-colors"
                     title="Selecionar Edição"
@@ -1003,14 +1105,13 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                   .slice()
                   .reverse()
                   .map((s) => {
-                    const isSelected = s.yearNum === selectedEditionYear;
+                    const isSelected = Number(s.yearNum) === Number(selectedEditionYear);
                     return (
                       <button
                         key={s.yearNum}
                         type="button"
                         onClick={() => {
-                          setSelectedEditionYear(s.yearNum);
-                          setChartPeriod(getPeriodIndexForYear(s.yearNum));
+                          handleSelectEditionYear(s.yearNum);
                         }}
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all shrink-0 ${
                           isSelected
@@ -1045,7 +1146,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
                       const slice = editionsChartData.slice(start, end);
                       if (slice.length > 0) {
-                        setSelectedEditionYear(slice[slice.length - 1].yearNum);
+                        handleSelectEditionYear(slice[slice.length - 1].yearNum);
                       }
                     }}
                     disabled={chartPeriod === 0}
@@ -1086,7 +1187,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
                       const slice = editionsChartData.slice(start, end);
                       if (slice.length > 0) {
-                        setSelectedEditionYear(slice[slice.length - 1].yearNum);
+                        handleSelectEditionYear(slice[slice.length - 1].yearNum);
                       }
                     }}
                     disabled={chartPeriod === totalPeriods - 1}
@@ -1138,14 +1239,15 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       radius={[4, 4, 0, 0]}
                       maxBarSize={30}
                       label={renderCustomCircuitBarLabel}
-                      onClick={(data) => {
-                        if (data && data.yearNum) {
-                          setSelectedEditionYear(data.yearNum);
+                      onClick={(data: any) => {
+                        const y = data?.yearNum ?? data?.payload?.yearNum ?? data?.activePayload?.[0]?.payload?.yearNum;
+                        if (y) {
+                          handleSelectEditionYear(y);
                         }
                       }}
                     >
                       {visibleEditionsData.map((entry, index) => {
-                        const isSelected = entry.yearNum === selectedEditionYear;
+                        const isSelected = Number(entry.yearNum) === Number(selectedEditionYear);
                         return (
                           <Cell
                             key={`cell-${entry.yearNum}-${index}`}
@@ -1153,6 +1255,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                             stroke={isSelected ? "#FFFFFF" : `${entry.winnerColor}aa`}
                             strokeWidth={isSelected ? 2.5 : 1}
                             className="cursor-pointer transition-opacity hover:opacity-80"
+                            onClick={() => handleSelectEditionYear(entry.yearNum)}
                           />
                         );
                       })}
@@ -1317,12 +1420,12 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
             </div>
 
             {/* TABELA DETALHADA DE EDIÇÕES (ALTA DENSIDADE COM PAGINAÇÃO) */}
-            <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg">
+            <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg ${mobileSeasonSubView === "table" ? "block" : "hidden md:block"}`}>
               <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-white/10 bg-white/[0.01]">
                 <div className="flex items-center gap-2">
                   <Table2 className="h-4 w-4 text-f1-subtle" />
                   <span className="text-xs font-black uppercase tracking-wider text-white">
-                    Tabela Detalhada de Grandes Prêmios ({seasons.length} edições)
+                    Tabela Detalhada ({seasons.length} edições)
                   </span>
                 </div>
                 <span className="text-[11px] text-f1-subtle font-mono hidden sm:inline">
@@ -1330,154 +1433,236 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                 </span>
               </div>
 
+              {/* Dica visual de expansão no mobile (< md) */}
+              <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                <span className="flex items-center gap-1.5">
+                  <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                  <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+                </span>
+              </div>
+
               {/* Tabela de Edições */}
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
-                      <th className="py-2.5 px-3">Temporada</th>
-                      <th className="py-2.5 px-3">Vencedor do GP</th>
-                      <th className="py-2.5 px-3">Equipe</th>
-                      <th className="py-2.5 px-3">Pole Position</th>
-                      <th className="py-2.5 px-3">Volta Mais Rápida</th>
-                      <th className="py-2.5 px-3 text-center">DNFs</th>
-                      <th className="py-2.5 px-3 text-right">Ação</th>
+                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[10px] sm:text-[11px]">
+                      <th className="py-2.5 px-2.5 sm:px-3">Ano</th>
+                      <th className="py-2.5 px-2.5 sm:px-3">Vencedor</th>
+                      <th className="py-2.5 px-3 hidden md:table-cell">Equipe</th>
+                      <th className="py-2.5 px-2.5 sm:px-3">Pole Position</th>
+                      <th className="py-2.5 px-3 hidden md:table-cell">Volta Mais Rápida</th>
+                      <th className="py-2.5 px-3 text-center hidden md:table-cell">DNFs</th>
+                      <th className="py-2.5 px-2.5 sm:px-3 text-right hidden md:table-cell">GP</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {paginatedSeasons.map((race) => {
-                      const isSelected = race.year === selectedEditionYear;
+                      const isSelected = Number(race.year) === Number(selectedEditionYear);
+                      const editionKey = `${race.year}-${race.round_number}`;
+                      const isExpanded = expandedEditionKey === editionKey;
                       return (
-                        <tr
-                          key={`${race.year}-${race.round_number}`}
-                          onClick={() => setSelectedEditionYear(race.year)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected
-                              ? "bg-white/[0.08] border-l-4 border-l-f1-red"
-                              : "hover:bg-white/5"
-                          }`}
-                        >
-                          {/* Temporada e Evento */}
-                          <td className="py-2.5 px-3 whitespace-nowrap font-mono">
-                            <div className="flex items-center gap-2">
-                              <span className="rounded bg-f1-red/10 border border-f1-red/30 px-1.5 py-0.5 text-xs font-black text-f1-red">
-                                {race.year}
-                              </span>
-                              <span className="font-bold text-white text-xs font-sans">
-                                R{race.round_number}
-                              </span>
-                            </div>
-                          </td>
+                        <React.Fragment key={editionKey}>
+                          <tr
+                            onClick={() => {
+                              handleSelectEditionYear(race.year);
+                              setExpandedEditionKey(isExpanded ? null : editionKey);
+                            }}
+                            className={`group cursor-pointer transition-colors ${
+                              isSelected
+                                ? "bg-white/[0.08] border-l-4 border-l-f1-red"
+                                : isExpanded
+                                  ? "bg-white/[0.06] md:bg-transparent"
+                                  : "hover:bg-white/5"
+                            }`}
+                          >
+                            {/* Temporada e Evento */}
+                            <td className="py-2.5 px-2.5 sm:px-3 whitespace-nowrap font-mono">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
+                                <span className="rounded bg-f1-red/10 border border-f1-red/30 px-1.5 py-0.5 text-xs font-black text-f1-red">
+                                  {race.year}
+                                </span>
+                                <span className="font-bold text-white text-[11px] sm:text-xs font-sans">
+                                  R{race.round_number}
+                                </span>
+                              </div>
+                            </td>
 
-                          {/* Vencedor do GP */}
-                          <td className="py-2.5 px-3 whitespace-nowrap">
-                            {race.race_winner_driver ? (
-                              <div className="flex items-center gap-2 font-sans">
-                                {race.race_winner_headshot_url && (
-                                  <img
-                                    src={race.race_winner_headshot_url}
-                                    alt={race.race_winner_driver}
-                                    className="h-6 w-6 rounded-full object-cover bg-white/5 border border-white/10 shrink-0"
-                                    onError={(e) => {
-                                      (e.target as HTMLElement).style.display = "none";
-                                    }}
-                                  />
-                                )}
-                                <div>
-                                  {race.race_winner_driver_id ? (
-                                    <Link
-                                      href={getDriverProfileUrl(race.race_winner_driver_id)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="font-bold text-white hover:text-white hover:underline decoration-white/30 transition-colors text-xs block"
-                                    >
-                                      {race.race_winner_driver}
-                                    </Link>
-                                  ) : (
-                                    <span className="font-bold text-white text-xs block">
-                                      {race.race_winner_driver}
-                                    </span>
+                            {/* Vencedor do GP */}
+                            <td className="py-2.5 px-2.5 sm:px-3 max-w-[155px] sm:max-w-none">
+                              {race.race_winner_driver ? (
+                                <div className="flex items-center gap-2 font-sans min-w-0">
+                                  {race.race_winner_headshot_url && (
+                                    <img
+                                      src={race.race_winner_headshot_url}
+                                      alt={race.race_winner_driver}
+                                      className="h-6 w-6 rounded-full object-cover bg-white/5 border border-white/10 shrink-0 hidden sm:block"
+                                      onError={(e) => {
+                                        (e.target as HTMLElement).style.display = "none";
+                                      }}
+                                    />
                                   )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                      {race.race_winner_driver_id ? (
+                                        <Link
+                                          href={getDriverProfileUrl(race.race_winner_driver_id)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="font-bold text-white hover:text-white hover:underline decoration-white/30 transition-colors text-xs block truncate pointer-events-none md:pointer-events-auto"
+                                        >
+                                          {race.race_winner_driver}
+                                        </Link>
+                                      ) : (
+                                        <span className="font-bold text-white text-xs block truncate">
+                                          {race.race_winner_driver}
+                                        </span>
+                                      )}
+                                      <span
+                                        className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                                          isExpanded
+                                            ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                            : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                        }`}
+                                        aria-hidden="true"
+                                      >
+                                        <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                      </span>
+                                    </div>
+                                    {race.race_winner_team && (
+                                      <div className="flex md:hidden items-center gap-1 mt-0.5">
+                                        <span
+                                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                                          style={{ backgroundColor: race.race_winner_team_color || "#E10600" }}
+                                        />
+                                        <span className="text-[10px] text-f1-subtle truncate">{race.race_winner_team}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ) : (
-                              <span className="text-white/20">—</span>
-                            )}
-                          </td>
+                              ) : (
+                                <span className="text-white/20">—</span>
+                              )}
+                            </td>
 
-                          {/* Equipe Vencedora */}
-                          <td className="py-2.5 px-3 whitespace-nowrap font-sans">
-                            {race.race_winner_team ? (
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="h-2 w-2 rounded-full shrink-0"
-                                  style={{ backgroundColor: race.race_winner_team_color || "#E10600" }}
-                                />
-                                <span className="text-white font-medium text-xs truncate max-w-[120px]">
-                                  {race.race_winner_team}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-white/20 font-mono">—</span>
-                            )}
-                          </td>
+                            {/* Equipe Vencedora */}
+                            <td className="py-2.5 px-3 whitespace-nowrap font-sans hidden md:table-cell">
+                              {race.race_winner_team ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span
+                                    className="h-2 w-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: race.race_winner_team_color || "#E10600" }}
+                                  />
+                                  <span className="text-white font-medium text-xs truncate max-w-[120px]">
+                                    {race.race_winner_team}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white/20 font-mono">—</span>
+                              )}
+                            </td>
 
-                          {/* Pole Position */}
-                          <td className="py-2.5 px-3 whitespace-nowrap font-sans">
-                            {race.pole_driver ? (
-                              <div>
-                                <span className="font-bold text-white text-xs block">
-                                  {race.pole_driver}
-                                </span>
-                                <span className="text-[10px] text-f1-subtle block">
-                                  {race.pole_team || "—"}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-white/20 font-mono">—</span>
-                            )}
-                          </td>
+                            {/* Pole Position */}
+                            <td className="py-2.5 px-2.5 sm:px-3 font-sans max-w-[125px] sm:max-w-none">
+                              {race.pole_driver ? (
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white text-xs block truncate">
+                                    {race.pole_driver}
+                                  </span>
+                                  <span className="text-[10px] text-f1-subtle block truncate">
+                                    {race.pole_team || "—"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white/20 font-mono">—</span>
+                              )}
+                            </td>
 
-                          {/* Volta Mais Rápida */}
-                          <td className="py-2.5 px-3 whitespace-nowrap">
-                            {race.fastest_lap_driver ? (
-                              <div>
-                                <span className="font-bold text-purple-300 text-xs block font-sans">
-                                  {race.fastest_lap_driver}
-                                </span>
-                                <span className="text-[10px] text-f1-subtle font-mono block">
-                                  {race.fastest_lap_time_formatted || "—"}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-white/20">—</span>
-                            )}
-                          </td>
+                            {/* Volta Mais Rápida */}
+                            <td className="py-2.5 px-3 whitespace-nowrap hidden md:table-cell">
+                              {race.fastest_lap_driver ? (
+                                <div>
+                                  <span className="font-bold text-purple-300 text-xs block font-sans">
+                                    {race.fastest_lap_driver}
+                                  </span>
+                                  <span className="text-[10px] text-f1-subtle font-mono block">
+                                    {race.fastest_lap_time_formatted || "—"}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-white/20">—</span>
+                              )}
+                            </td>
 
-                          {/* DNFs */}
-                          <td className="py-2.5 px-3 whitespace-nowrap text-center">
-                            <span
-                              className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-mono font-bold ${
-                                Number(race.total_dnfs) > 3
-                                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                  : "bg-white/5 text-zinc-400"
-                              }`}
-                            >
-                              {race.total_dnfs}
-                            </span>
-                          </td>
+                            {/* DNFs */}
+                            <td className="py-2.5 px-3 whitespace-nowrap text-center hidden md:table-cell">
+                              <span
+                                className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-mono font-bold ${
+                                  Number(race.total_dnfs) > 3
+                                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                    : "bg-white/5 text-zinc-400"
+                                }`}
+                              >
+                                {race.total_dnfs}
+                              </span>
+                            </td>
 
-                          {/* Ação */}
-                          <td className="py-2.5 px-3 whitespace-nowrap text-right">
-                            <Link
-                              href={`/season/round/${race.round_number}?year=${race.year}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-bold text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
-                            >
-                              <span>Ver GP</span>
-                              <ChevronRight className="h-3 w-3 text-f1-subtle" />
-                            </Link>
-                          </td>
-                        </tr>
+                            {/* Ação */}
+                            <td className="py-2.5 px-2 sm:px-3 whitespace-nowrap text-right hidden md:table-cell">
+                              <Link
+                                href={`/season/round/${race.round_number}?year=${race.year}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-0.5 sm:gap-1 rounded-lg border border-white/10 bg-white/5 px-1.5 sm:px-2 py-1 text-[10px] sm:text-[11px] font-bold text-zinc-300 hover:bg-white/10 hover:text-white transition-colors"
+                              >
+                                <span className="hidden sm:inline">Ver GP</span>
+                                <ChevronRight className="h-3 w-3 text-f1-subtle" />
+                              </Link>
+                            </td>
+                          </tr>
+
+                          {isExpanded && (
+                            <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
+                              <td colSpan={7} className="p-3">
+                                <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                  <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Volta Mais Rápida</span>
+                                      <span className="text-xs font-black text-purple-300 block truncate">
+                                        {race.fastest_lap_driver || "—"}
+                                      </span>
+                                      <span className="text-[10px] text-white/60">
+                                        {race.fastest_lap_time_formatted || "—"}
+                                      </span>
+                                    </div>
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Abandonos (DNFs)</span>
+                                      <span className="text-xs font-black text-white block mt-1">
+                                        {race.total_dnfs ?? 0} pilotos
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {race.race_winner_driver_id && (
+                                      <Link
+                                        href={getDriverProfileUrl(race.race_winner_driver_id)}
+                                        className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                      >
+                                        <span>Perfil de {race.race_winner_driver}</span>
+                                        <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                                      </Link>
+                                    )}
+                                    <Link
+                                      href={`/season/round/${race.round_number}?year=${race.year}`}
+                                      className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
+                                    >
+                                      <span>Abrir Análise do GP ({race.year})</span>
+                                      <ChevronRight className="h-3.5 w-3.5 text-f1-red" />
+                                    </Link>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1513,7 +1698,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                     setDriversPage(1);
                   }}
                   placeholder="Buscar piloto por nome ou país..."
-                  className="w-full bg-[#0A0A10] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-white/30"
+                  className="w-full bg-[#0A0A10] border border-white/10 rounded-xl pl-9 pr-4 py-2 min-h-[44px] text-base sm:text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-white/30"
                 />
               </div>
 
@@ -1524,10 +1709,16 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
 
             {/* Tabela de Pilotos */}
             <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-xl">
+              <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                <span className="flex items-center gap-1.5">
+                  <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                  <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+                </span>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
+                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[10px] sm:text-[11px]">
                       <TableSortHeader
                         rowSpan={2}
                         label="Piloto"
@@ -1547,7 +1738,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       />
                       <TableSortHeader
                         colSpan={2}
-                        label="Vitórias"
+                        label="Vit."
                         columnKey="total_wins"
                         subKeys={["race_wins", "sprint_wins"]}
                         currentSortKey={driverSortKey}
@@ -1565,7 +1756,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         currentSortDir={driverSortDir}
                         onSort={handleSortDriver}
                         align="center"
-                        className="border-l border-white/10"
+                        className="border-l border-white/10 hidden md:table-cell"
                       />
                       <TableSortHeader
                         colSpan={2}
@@ -1576,11 +1767,11 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         currentSortDir={driverSortDir}
                         onSort={handleSortDriver}
                         align="center"
-                        className="border-l border-white/10"
+                        className="border-l border-white/10 hidden md:table-cell"
                       />
                       <TableSortHeader
                         rowSpan={2}
-                        label="Pontos"
+                        label="Pts"
                         columnKey="total_points"
                         currentSortKey={driverSortKey}
                         currentSortDir={driverSortDir}
@@ -1588,7 +1779,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         align="right"
                       />
                     </tr>
-                    <tr className="border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                    <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
                       <TableSubSortHeader
                         label="GP"
                         title="Vitórias GP"
@@ -1648,89 +1839,153 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                   <tbody className="divide-y divide-white/5">
                     {paginatedDrivers.map((driver) => {
                       const profileUrl = getDriverProfileUrl(driver.driver_id, driver.driver_full_name);
+                      const isExpanded = expandedDriverId === driver.driver_id;
 
                       return (
-                        <tr
-                          key={driver.driver_id}
-                          className="hover:bg-white/[0.03] transition-colors"
-                        >
-                          <td className="py-2.5 px-3">
-                            <Link href={profileUrl} className="flex items-center gap-2 group font-sans">
-                              <div className="w-7 h-7 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
-                                {driver.driver_headshot_url ? (
-                                  <img
-                                    src={driver.driver_headshot_url}
-                                    alt={driver.driver_full_name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  driver.driver_abbreviation || driver.driver_full_name.slice(0, 3).toUpperCase()
-                                )}
-                              </div>
-                              <div>
-                                <span className="font-bold text-white group-hover:text-white group-hover:underline decoration-white/30 transition-colors block text-xs">
-                                  {driver.driver_full_name}
-                                </span>
-                                <span className="text-[10px] text-f1-subtle font-mono">
-                                  {driver.first_year}–{driver.last_year} ({driver.driver_nationality})
-                                </span>
-                              </div>
-                            </Link>
-                          </td>
+                        <React.Fragment key={driver.driver_id}>
+                          <tr
+                            onClick={() => setExpandedDriverId(isExpanded ? null : driver.driver_id)}
+                            className={`group cursor-pointer md:cursor-default transition-colors ${
+                              isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                            }`}
+                          >
+                            <td className="py-2.5 px-2.5 sm:px-3 max-w-[175px] sm:max-w-none">
+                              <Link
+                                href={profileUrl}
+                                className="flex items-center gap-2 group/link font-sans min-w-0 pointer-events-none md:pointer-events-auto"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
+                                  {driver.driver_headshot_url ? (
+                                    <img
+                                      src={driver.driver_headshot_url}
+                                      alt={driver.driver_full_name}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    driver.driver_abbreviation || driver.driver_full_name.slice(0, 3).toUpperCase()
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                    <span className="font-bold text-white group-hover/link:text-white group-hover/link:underline decoration-white/30 transition-colors block text-xs truncate">
+                                      {driver.driver_full_name}
+                                    </span>
+                                    <span
+                                      className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                                        isExpanded
+                                          ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                          : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                      }`}
+                                      aria-hidden="true"
+                                    >
+                                      <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-f1-subtle font-mono block truncate">
+                                    {driver.first_year}–{driver.last_year} ({driver.driver_nationality})
+                                  </span>
+                                </div>
+                              </Link>
+                            </td>
 
-                          <td className="py-2.5 px-2 text-center font-bold text-white">
-                            {driver.total_gps}
-                          </td>
+                            <td className="py-2.5 px-2 text-center font-bold text-white">
+                              {driver.total_gps}
+                            </td>
 
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                            {driver.race_wins > 0 ? (
-                              <span className="text-amber-400">{driver.race_wins}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                            {driver.sprint_wins > 0 ? (
-                              <span className="text-purple-300">{driver.sprint_wins}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
+                            <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
+                              {driver.race_wins > 0 ? (
+                                <span className="text-amber-400">{driver.race_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {driver.race_wins > 0 ? (
+                                <span className="text-amber-400">{driver.race_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {driver.sprint_wins > 0 ? (
+                                <span className="text-purple-300">{driver.sprint_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                            {driver.race_podiums > 0 ? (
-                              <span className="text-blue-300">{driver.race_podiums}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                            {driver.sprint_podiums > 0 ? (
-                              <span className="text-purple-300">{driver.sprint_podiums}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {driver.race_podiums > 0 ? (
+                                <span className="text-blue-300">{driver.race_podiums}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {driver.sprint_podiums > 0 ? (
+                                <span className="text-purple-300">{driver.sprint_podiums}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                            {driver.race_poles > 0 ? (
-                              <span className="text-purple-300">{driver.race_poles}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                            {driver.sprint_poles > 0 ? (
-                              <span className="text-purple-300">{driver.sprint_poles}</span>
-                            ) : (
-                              <span className="text-white/20">0</span>
-                            )}
-                          </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {driver.race_poles > 0 ? (
+                                <span className="text-purple-300">{driver.race_poles}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {driver.sprint_poles > 0 ? (
+                                <span className="text-purple-300">{driver.sprint_poles}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                          <td className="py-2.5 px-3 text-right font-black text-white">
-                            {driver.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-                          </td>
-                        </tr>
+                            <td className="py-2.5 px-2.5 sm:px-3 text-right font-black text-white whitespace-nowrap">
+                              {driver.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                            </td>
+                          </tr>
+
+                          {isExpanded && (
+                            <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
+                              <td colSpan={9} className="p-3">
+                                <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Vitórias GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {driver.race_wins} / <span className="text-purple-300">{driver.sprint_wins}</span>
+                                      </span>
+                                    </div>
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {driver.race_podiums} / <span className="text-purple-300">{driver.sprint_podiums}</span>
+                                      </span>
+                                    </div>
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {driver.race_poles} / <span className="text-purple-300">{driver.sprint_poles}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <Link
+                                    href={profileUrl}
+                                    className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                  >
+                                    <span>Ver Perfil Completo do Piloto</span>
+                                    <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                                  </Link>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })}
                   </tbody>
@@ -1766,7 +2021,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                     setTeamsPage(1);
                   }}
                   placeholder="Buscar equipe por nome..."
-                  className="w-full bg-[#0A0A10] border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-white/30"
+                  className="w-full bg-[#0A0A10] border border-white/10 rounded-xl pl-9 pr-4 py-2 min-h-[44px] text-base sm:text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-white/30"
                 />
               </div>
 
@@ -1776,13 +2031,19 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-xl">
+              <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                <span className="flex items-center gap-1.5">
+                  <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                  <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+                </span>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[11px]">
+                    <tr className="border-b border-white/10 bg-[#12121A] text-f1-subtle uppercase text-[10px] sm:text-[11px]">
                       <TableSortHeader
                         rowSpan={2}
-                        label="Equipe / Construtor"
+                        label="Equipe"
                         columnKey="team_name"
                         currentSortKey={teamSortKey}
                         currentSortDir={teamSortDir}
@@ -1799,7 +2060,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       />
                       <TableSortHeader
                         colSpan={2}
-                        label="Vitórias"
+                        label="Vit."
                         columnKey="total_wins"
                         subKeys={["race_wins", "sprint_wins"]}
                         currentSortKey={teamSortKey}
@@ -1817,7 +2078,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         currentSortDir={teamSortDir}
                         onSort={handleSortTeam}
                         align="center"
-                        className="border-l border-white/10"
+                        className="border-l border-white/10 hidden md:table-cell"
                       />
                       <TableSortHeader
                         colSpan={2}
@@ -1828,11 +2089,11 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         currentSortDir={teamSortDir}
                         onSort={handleSortTeam}
                         align="center"
-                        className="border-l border-white/10"
+                        className="border-l border-white/10 hidden md:table-cell"
                       />
                       <TableSortHeader
                         rowSpan={2}
-                        label="Pontos"
+                        label="Pts"
                         columnKey="total_points"
                         currentSortKey={teamSortKey}
                         currentSortDir={teamSortDir}
@@ -1840,7 +2101,7 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         align="right"
                       />
                     </tr>
-                    <tr className="border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                    <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
                       <TableSubSortHeader
                         label="GP"
                         title="Vitórias GP"
@@ -1898,83 +2159,149 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {paginatedTeams.map((team) => (
-                      <tr key={team.team_name} className="hover:bg-white/[0.03] transition-colors">
-                        <td className="py-2.5 px-3 font-sans">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: team.team_color }}
-                            />
-                            <div>
-                              <TeamLink
-                                teamName={team.team_name}
-                                className="font-bold text-white text-xs hover:underline decoration-white/30 underline-offset-2 hover:text-white transition-colors block"
-                                title={`Ver perfil de ${team.team_name}`}
-                              >
-                                {team.team_name}
-                              </TeamLink>
-                              <span className="text-[10px] text-f1-subtle font-mono">
-                                {team.first_year}–{team.last_year}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
+                    {paginatedTeams.map((team) => {
+                      const isExpanded = expandedTeamName === team.team_name;
+                      return (
+                        <React.Fragment key={team.team_name}>
+                          <tr
+                            onClick={() => setExpandedTeamName(isExpanded ? null : team.team_name)}
+                            className={`group cursor-pointer md:cursor-default transition-colors ${
+                              isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                            }`}
+                          >
+                            <td className="py-2.5 px-2.5 sm:px-3 font-sans max-w-[175px] sm:max-w-none">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full shrink-0"
+                                  style={{ backgroundColor: team.team_color }}
+                                />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                    <TeamLink
+                                      teamName={team.team_name}
+                                      className="font-bold text-white text-xs hover:underline decoration-white/30 underline-offset-2 hover:text-white transition-colors block truncate pointer-events-none md:pointer-events-auto"
+                                      title={`Ver perfil de ${team.team_name}`}
+                                    >
+                                      {team.team_name}
+                                    </TeamLink>
+                                    <span
+                                      className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                                        isExpanded
+                                          ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                          : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                      }`}
+                                      aria-hidden="true"
+                                    >
+                                      <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-f1-subtle font-mono block truncate">
+                                    {team.first_year}–{team.last_year}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
 
-                        <td className="py-2.5 px-2 text-center font-bold text-white">
-                          {team.total_gps}
-                        </td>
+                            <td className="py-2.5 px-2 text-center font-bold text-white">
+                              {team.total_gps}
+                            </td>
 
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                          {team.race_wins > 0 ? (
-                            <span className="text-amber-400">{team.race_wins}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                          {team.sprint_wins > 0 ? (
-                            <span className="text-purple-300">{team.sprint_wins}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
+                            <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
+                              {team.race_wins > 0 ? (
+                                <span className="text-amber-400">{team.race_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {team.race_wins > 0 ? (
+                                <span className="text-amber-400">{team.race_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {team.sprint_wins > 0 ? (
+                                <span className="text-purple-300">{team.sprint_wins}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                          {team.race_podiums > 0 ? (
-                            <span className="text-blue-300">{team.race_podiums}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                          {team.sprint_podiums > 0 ? (
-                            <span className="text-purple-300">{team.sprint_podiums}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {team.race_podiums > 0 ? (
+                                <span className="text-blue-300">{team.race_podiums}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {team.sprint_podiums > 0 ? (
+                                <span className="text-purple-300">{team.sprint_podiums}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5">
-                          {team.race_poles > 0 ? (
-                            <span className="text-purple-300">{team.race_poles}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-1.5 text-center font-mono font-bold">
-                          {team.sprint_poles > 0 ? (
-                            <span className="text-purple-300">{team.sprint_poles}</span>
-                          ) : (
-                            <span className="text-white/20">0</span>
-                          )}
-                        </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                              {team.race_poles > 0 ? (
+                                <span className="text-purple-300">{team.race_poles}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                              {team.sprint_poles > 0 ? (
+                                <span className="text-purple-300">{team.sprint_poles}</span>
+                              ) : (
+                                <span className="text-white/20">0</span>
+                              )}
+                            </td>
 
-                        <td className="py-2.5 px-3 text-right font-black text-white">
-                          {team.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-                        </td>
-                      </tr>
-                    ))}
+                            <td className="py-2.5 px-2.5 sm:px-3 text-right font-black text-white whitespace-nowrap">
+                              {team.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                            </td>
+                          </tr>
+
+                          {isExpanded && (
+                            <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
+                              <td colSpan={9} className="p-3">
+                                <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Vitórias GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {team.race_wins} / <span className="text-purple-300">{team.sprint_wins}</span>
+                                      </span>
+                                    </div>
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {team.race_podiums} / <span className="text-purple-300">{team.sprint_podiums}</span>
+                                      </span>
+                                    </div>
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
+                                      <span className="text-xs font-black text-white">
+                                        {team.race_poles} / <span className="text-purple-300">{team.sprint_poles}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <TeamLink
+                                    teamName={team.team_name}
+                                    className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                  >
+                                    <span>Ver Perfil Completo da Equipe</span>
+                                    <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                                  </TeamLink>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

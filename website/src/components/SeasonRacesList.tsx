@@ -5,9 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { SeasonRaceSummary } from "@/types/f1";
 import { ChevronRight, Calendar, Flag, Trophy, Clock, CheckCircle2, Clock3 } from "lucide-react";
-import { DriverLink } from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
-import { CircuitLink } from "@/lib/circuitUtils";
+import DriverLink from "@/lib/driverUtils";
+import TeamLink from "@/lib/teamUtils";
+import CircuitLink from "@/lib/circuitUtils";
 
 interface SeasonRacesListProps {
   races: SeasonRaceSummary[];
@@ -68,14 +68,14 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
 
       {/* Container Principal da Lista estilo F1 */}
       <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
-        {/* Cabeçalho da Lista */}
-        <div className="grid grid-cols-12 items-center border-b border-white/10 px-6 py-3.5 text-[11px] font-black uppercase tracking-wider text-f1-subtle bg-white/[0.02]">
-          <div className="col-span-3 sm:col-span-3">Grand Prix</div>
-          <div className="col-span-2 sm:col-span-2">Data</div>
-          <div className="col-span-3 sm:col-span-3">Vencedor / Status</div>
-          <div className="col-span-2 sm:col-span-2">Equipe / Sessões</div>
-          <div className="col-span-1 text-center hidden sm:block">Voltas</div>
-          <div className="col-span-2 sm:col-span-1 text-right">Tempo / Ação</div>
+        {/* Cabeçalho da Lista (Visível a partir de md) */}
+        <div className="hidden md:grid grid-cols-12 items-center border-b border-white/10 px-6 py-3.5 text-[11px] font-black uppercase tracking-wider text-f1-subtle bg-white/[0.02]">
+          <div className="col-span-3">Grand Prix</div>
+          <div className="col-span-2">Data</div>
+          <div className="col-span-3">Vencedor / Status</div>
+          <div className="col-span-2">Equipe / Sessões</div>
+          <div className="col-span-1 text-center">Voltas</div>
+          <div className="col-span-1 text-right">Tempo / Ação</div>
         </div>
 
         {/* Linhas / Strips de Cada GP */}
@@ -88,8 +88,102 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
 
             const rowContent = (
               <>
+                {/* ========================================================= */}
+                {/* LAYOUT MOBILE (< md): Linha Única Enxuta (Single-Line)    */}
+                {/* ========================================================= */}
+                <div className="flex items-center justify-between gap-2 md:hidden w-full py-0.5">
+                  {/* Bloco Esquerda: Round + País + Circuito */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/5 font-mono tabular-nums text-[10px] font-bold ${
+                        isInProgress
+                          ? "text-emerald-400"
+                          : isCompleted
+                          ? "text-white"
+                          : "text-f1-subtle"
+                      }`}
+                    >
+                      {String(race.round_number).padStart(2, "0")}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="block truncate text-xs font-black text-white leading-tight">
+                        {race.country || race.official_event_name}
+                      </span>
+                      <CircuitLink
+                        circuitId={race.circuit_id}
+                        circuitName={race.circuit_name || race.location}
+                        stopPropagation={true}
+                        className="block truncate text-[10px] text-f1-subtle hover:text-white"
+                      >
+                        {race.location || race.circuit_name}
+                      </CircuitLink>
+                    </div>
+                  </div>
+
+                  {/* Bloco Direita: Vencedor / Status + Seta (na Mesma Linha) */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isCompleted && race.winner_name ? (
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
+                          style={{ borderColor: teamColor }}
+                        >
+                          {race.winner_headshot_url ? (
+                            <img
+                              src={race.winner_headshot_url}
+                              alt={race.winner_name}
+                              className="h-full w-full object-cover object-top"
+                            />
+                          ) : (
+                            <span className="font-mono text-[8px] font-black text-white">
+                              {race.winner_code || race.winner_name.slice(0, 3).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className="block truncate text-[11px] font-bold text-white leading-tight max-w-[85px] xs:max-w-[110px]">
+                            {race.winner_name.split(" ").slice(-1)[0]}
+                          </span>
+                          {(race.team_name || race.race_winner_team) && (
+                            <span className="flex items-center justify-end gap-1 text-[9px] text-f1-subtle">
+                              <span
+                                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                                style={{ backgroundColor: teamColor }}
+                              />
+                              <span className="truncate max-w-[75px] xs:max-w-[100px]">
+                                {race.team_name || race.race_winner_team}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : isInProgress ? (
+                      <div className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Ao Vivo</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-[10px] font-mono text-f1-subtle bg-white/[0.03] px-2 py-0.5 rounded">
+                        <Calendar className="h-2.5 w-2.5 text-f1-subtle/70" />
+                        <span>{formatDate(race.event_date)}</span>
+                      </div>
+                    )}
+
+                    {isAvailable && (
+                      <ChevronRight
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          isInProgress ? "text-emerald-400" : "text-f1-subtle"
+                        }`}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* ========================================================= */}
+                {/* LAYOUT DESKTOP (md+): 12 Colunas Clássico                 */}
+                {/* ========================================================= */}
                 {/* 1. GRAND PRIX (País & Rodada) */}
-                <div className="col-span-3 sm:col-span-3 flex items-center gap-3 pr-2">
+                <div className="hidden md:flex col-span-3 items-center gap-3 pr-2">
                   <div
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/5 font-mono tabular-nums text-[11px] font-bold ${
                       isInProgress
@@ -126,13 +220,13 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
                 </div>
 
                 {/* 2. DATE */}
-                <div className="col-span-2 sm:col-span-2 flex items-center gap-1.5 text-xs font-medium text-gray-300">
+                <div className="hidden md:flex col-span-2 items-center gap-1.5 text-xs font-medium text-gray-300">
                   <Calendar className="h-3.5 w-3.5 text-f1-subtle/70 shrink-0" />
                   <span>{formatDate(race.event_date)}</span>
                 </div>
 
                 {/* 3. WINNER / STATUS */}
-                <div className="col-span-3 sm:col-span-3 flex items-center gap-2.5 pr-2">
+                <div className="hidden md:flex col-span-3 items-center gap-2.5 pr-2">
                   {isCompleted && race.winner_name ? (
                     <DriverLink
                       driverId={race.driver_id}
@@ -182,7 +276,7 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
                 </div>
 
                 {/* 4. TEAM / SESSÕES */}
-                <div className="col-span-2 sm:col-span-2 flex items-center gap-2 pr-2">
+                <div className="hidden md:flex col-span-2 items-center gap-2 pr-2">
                   {isCompleted && (race.team_name || race.race_winner_team) ? (
                     <TeamLink
                       teamId={race.race_winner_team_id}
@@ -211,12 +305,12 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
                 </div>
 
                 {/* 5. LAPS */}
-                <div className="col-span-1 text-center font-mono tabular-nums text-xs font-medium text-gray-300 hidden sm:block">
+                <div className="hidden md:block col-span-1 text-center font-mono tabular-nums text-xs font-medium text-gray-300">
                   {isCompleted && race.laps_completed ? race.laps_completed : "—"}
                 </div>
 
                 {/* 6. TIME / ACTION */}
-                <div className="col-span-2 sm:col-span-1 flex items-center justify-end gap-2 text-right">
+                <div className="hidden md:flex col-span-1 items-center justify-end gap-2 text-right">
                   {isCompleted ? (
                     <span className="font-mono tabular-nums text-xs font-semibold text-white tracking-tight">
                       {race.time_formatted ? race.time_formatted : "—"}
@@ -248,7 +342,7 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
                 <Link
                   key={`${race.year}-${race.round_number}`}
                   href={`/season/round/${race.round_number}?year=${race.year}`}
-                  className={`group grid grid-cols-12 items-center px-6 py-4 transition-all duration-200 hover:bg-white/[0.04] cursor-pointer ${
+                  className={`group block md:grid md:grid-cols-12 md:items-center p-3.5 sm:px-6 sm:py-4 transition-all duration-200 hover:bg-white/[0.04] cursor-pointer ${
                     isInProgress
                       ? "hover:border-l-4 hover:border-l-emerald-500 bg-emerald-500/[0.02]"
                       : "hover:border-l-4 hover:border-l-f1-red"
@@ -262,7 +356,7 @@ export default function SeasonRacesList({ races, selectedYear }: SeasonRacesList
             return (
               <div
                 key={`${race.year}-${race.round_number}`}
-                className="grid grid-cols-12 items-center px-6 py-4 opacity-60 bg-black/10 cursor-default"
+                className="block md:grid md:grid-cols-12 md:items-center p-3.5 sm:px-6 sm:py-4 opacity-60 bg-black/10 cursor-default"
                 title="Corrida ainda não realizada"
               >
                 {rowContent}

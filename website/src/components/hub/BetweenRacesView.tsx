@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Flag, ChevronRight, Zap, Award, Clock, Timer, TrendingUp, ArrowUpRight } from "lucide-react";
+import { Flag, ChevronRight, ChevronDown, Zap, Award, Clock, Timer, TrendingUp, ArrowUpRight } from "lucide-react";
 import { SessionSummary, RaceWeekendInfo } from "@/types/f1";
 import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
@@ -57,6 +57,7 @@ export default function BetweenRacesView({
   year,
   onOpenSchedule
 }: Props) {
+  const [highlightsOpen, setHighlightsOpen] = useState(false);
   const lastRaceWinner = lastRaceResults[0];
   const lastRacePodium = lastRaceResults.slice(0, 3);
 
@@ -86,30 +87,31 @@ export default function BetweenRacesView({
   }, [lastRaceResults]);
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-5 sm:space-y-8 animate-fadeIn">
       {/* Previous Grand Prix Recap */}
-      <div className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-f1-subtle">
-            <Flag className="h-4 w-4 text-emerald-400" />
-            <span>Último Grande Prêmio Concluído</span>
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5 sm:pb-3">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-f1-subtle">
+            <Flag className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
+            <span>Último GP Concluído</span>
           </div>
           {lastRaceWinner && (
             <Link
               href={`/season/round/${lastRaceWinner.round_number}?year=${year || lastRaceWinner.year}`}
-              className="group flex items-center gap-1.5 text-xs font-bold text-f1-red hover:text-red-400 transition-colors"
+              className="group inline-flex min-h-[44px] sm:min-h-0 items-center gap-1 rounded-xl sm:rounded-none border sm:border-0 border-f1-red/30 bg-f1-red/10 sm:bg-transparent px-3 sm:px-0 py-1.5 sm:py-0 text-[11px] sm:text-xs font-bold text-f1-red hover:text-red-400 active:scale-[0.98] transition-all"
             >
-              <span>Ver análise completa da corrida</span>
+              <span className="sm:hidden">Análise completa</span>
+              <span className="hidden sm:inline">Ver análise completa da corrida</span>
               <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
             </Link>
           )}
         </div>
 
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black uppercase text-white">
+          <h2 className="text-xl sm:text-3xl font-black uppercase text-white leading-tight">
             {lastRaceWinner?.official_event_name || "Formula 1 Grand Prix"}
           </h2>
-          <div className="flex items-center gap-1.5 text-xs text-f1-subtle font-medium mt-1">
+          <div className="flex items-center gap-1.5 text-xs text-f1-subtle font-medium mt-0.5 sm:mt-1">
             <CircuitLink
               circuitName={lastRaceWinner?.location || lastRaceWinner?.country}
               className="hover:text-white hover:underline transition-colors"
@@ -122,20 +124,20 @@ export default function BetweenRacesView({
           </div>
         </div>
 
-        {/* Visual Podium (P2, P1, P3) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+        {/* Visual Podium (Compacto em < lg para proteger tablets com sidebar, P2-P1-P3 completo em lg+) */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 pt-1 sm:pt-2">
           {/* P2 */}
           {lastRacePodium[1] && (
-            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#13131A] p-5 sm:order-1 flex flex-col justify-between">
+            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#13131A] p-3 lg:p-4 2xl:p-5 order-2 lg:order-1 flex flex-col justify-between min-w-0">
               <div
                 className="absolute inset-x-0 top-0 h-1"
                 style={{ backgroundColor: getTeamColor(lastRacePodium[1].team_name, lastRacePodium[1].team_color) }}
               />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-2 2xl:gap-3">
                   <DriverLink driverId={lastRacePodium[1].driver_id} driverName={lastRacePodium[1].driver_full_name}>
                     <div
-                      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border bg-black/40 transition-transform hover:scale-105"
+                      className="relative h-8 w-8 lg:h-10 lg:w-10 2xl:h-12 2xl:w-12 shrink-0 overflow-hidden rounded-full border bg-black/40 transition-transform hover:scale-105"
                       style={{ borderColor: getTeamColor(lastRacePodium[1].team_name, lastRacePodium[1].team_color) }}
                     >
                       {lastRacePodium[1].driver_headshot_url ? (
@@ -145,56 +147,105 @@ export default function BetweenRacesView({
                           className="h-full w-full object-cover object-top"
                         />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-xs font-black text-white/70">
+                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] lg:text-xs font-black text-white/70">
                           {lastRacePodium[1].driver_full_name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </div>
                   </DriverLink>
-                  <span className="text-3xl font-black text-white/30 font-mono">2</span>
+                  <span className="text-lg lg:text-2xl 2xl:text-3xl font-black text-white/40 font-mono">2º</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <span className="lg:hidden font-mono tabular-nums text-[11px] font-black text-white/90 bg-white/5 px-1.5 py-0.5 rounded">
+                  +{lastRacePodium[1].points || 18} pts
+                </span>
+                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
                   <span className="font-mono tabular-nums text-[11px] text-white/40 uppercase font-semibold">P2</span>
                   <DriverLink
                     driverId={lastRacePodium[1].driver_id}
                     driverName={lastRacePodium[1].driver_full_name}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/80 hover:bg-white/15 hover:text-white transition-all group"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 px-1.5 2xl:px-2 py-0.5 text-[10px] font-bold text-white/80 hover:bg-white/15 hover:text-white transition-all group"
                     title={`Ver perfil de ${lastRacePodium[1].driver_full_name}`}
                   >
-                    <span>Perfil</span>
+                    <span className="hidden 2xl:inline">Perfil</span>
                     <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </DriverLink>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-2 lg:mt-3">
                 <DriverLink driverId={lastRacePodium[1].driver_id} driverName={lastRacePodium[1].driver_full_name}>
-                  <h3 className="text-lg font-black text-white truncate hover:text-white hover:underline decoration-white/40 transition-colors">
+                  <h3 className="text-xs sm:text-sm lg:text-base 2xl:text-lg font-black text-white truncate hover:text-white hover:underline decoration-white/40 transition-colors">
                     {lastRacePodium[1].driver_full_name}
                   </h3>
                 </DriverLink>
                 <TeamLink
                   teamName={lastRacePodium[1].team_name}
                   teamId={lastRacePodium[1].team_id}
-                  className="text-xs font-medium text-f1-subtle hover:text-white transition-colors block truncate mt-0.5"
+                  className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-white transition-colors block truncate mt-0.5"
                 >
                   {lastRacePodium[1].team_name}
                 </TeamLink>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <div className="hidden lg:flex mt-4 pt-3 border-t border-white/5 items-center justify-between text-xs">
                 <span className="text-white/40">Pontos</span>
                 <span className="font-mono tabular-nums font-black text-white">+{lastRacePodium[1].points || 18} pts</span>
               </div>
             </div>
           )}
 
-          {/* P1 Winner (Gold Highlight in Center) */}
+          {/* P1 Winner (Horizontal enxuto em < lg, Card Central em Destaque em lg+) */}
           {lastRaceWinner && (
-            <div className="relative overflow-hidden rounded-xl border border-amber-500/40 bg-[#14131A] p-6 sm:order-2 flex flex-col justify-between min-h-[220px]">
+            <div className="col-span-2 lg:col-span-1 relative overflow-hidden rounded-xl border border-amber-500/40 bg-[#14131A] p-3 sm:p-4 2xl:p-6 order-1 lg:order-2 flex flex-row lg:flex-col items-center lg:items-stretch justify-between gap-3 lg:min-h-[205px] 2xl:min-h-[220px] min-w-0">
               <div className="absolute inset-x-0 top-0 h-1 bg-amber-400" />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+
+              {/* Layout Mobile & Tablet (< lg): Tudo em uma única linha horizontal compacta */}
+              <div className="flex lg:hidden items-center justify-between w-full gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <DriverLink driverId={lastRaceWinner.driver_id} driverName={lastRaceWinner.driver_full_name}>
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-amber-400 bg-black/40 transition-transform hover:scale-105">
+                    <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 border-amber-400 bg-black/40">
+                      {lastRaceWinner.driver_headshot_url ? (
+                        <img
+                          src={lastRaceWinner.driver_headshot_url}
+                          alt={lastRaceWinner.driver_full_name}
+                          className="h-full w-full object-cover object-top"
+                        />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center font-mono text-xs font-black text-amber-300">
+                          {lastRaceWinner.driver_full_name.slice(0, 2).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                  </DriverLink>
+                  <span className="text-2xl font-black text-amber-400 font-mono shrink-0">1º</span>
+                  <div className="min-w-0">
+                    <DriverLink driverId={lastRaceWinner.driver_id} driverName={lastRaceWinner.driver_full_name}>
+                      <h3 className="text-sm sm:text-base font-black text-white truncate">
+                        {lastRaceWinner.driver_full_name}
+                      </h3>
+                    </DriverLink>
+                    <TeamLink
+                      teamName={lastRaceWinner.team_name}
+                      teamId={lastRaceWinner.team_id}
+                      className="text-[11px] sm:text-xs font-semibold text-amber-300 truncate block"
+                    >
+                      {lastRaceWinner.team_name}
+                    </TeamLink>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="block font-mono text-[9px] font-bold uppercase tracking-wider text-amber-400/90">
+                    Vencedor
+                  </span>
+                  <span className="font-mono tabular-nums font-black text-amber-400 text-sm sm:text-base">
+                    +{lastRaceWinner.points || 25} pts
+                  </span>
+                </div>
+              </div>
+
+              {/* Layout Desktop (lg+): Card P1 Vertical Clássico */}
+              <div className="hidden lg:flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-2.5 2xl:gap-3">
+                  <DriverLink driverId={lastRaceWinner.driver_id} driverName={lastRaceWinner.driver_full_name}>
+                    <div className="relative h-11 w-11 2xl:h-14 2xl:w-14 shrink-0 overflow-hidden rounded-full border-2 border-amber-400 bg-black/40 transition-transform hover:scale-105">
                       {lastRaceWinner.driver_headshot_url ? (
                         <img
                           src={lastRaceWinner.driver_headshot_url}
@@ -208,26 +259,26 @@ export default function BetweenRacesView({
                       )}
                     </div>
                   </DriverLink>
-                  <span className="text-4xl font-black text-amber-400 font-mono">1</span>
+                  <span className="text-3xl 2xl:text-4xl font-black text-amber-400 font-mono">1</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="font-mono tabular-nums text-[11px] font-bold uppercase tracking-wider text-amber-400">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="font-mono tabular-nums text-[10px] 2xl:text-[11px] font-bold uppercase tracking-wider text-amber-400 whitespace-nowrap">
                     P1 · Vencedor
                   </span>
                   <DriverLink
                     driverId={lastRaceWinner.driver_id}
                     driverName={lastRaceWinner.driver_full_name}
-                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-all group"
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 2xl:px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-all group"
                     title={`Ver perfil completo de ${lastRaceWinner.driver_full_name}`}
                   >
-                    <span>Perfil</span>
+                    <span className="hidden 2xl:inline">Perfil</span>
                     <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </DriverLink>
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="hidden lg:block mt-3 2xl:mt-4">
                 <DriverLink driverId={lastRaceWinner.driver_id} driverName={lastRaceWinner.driver_full_name}>
-                  <h3 className="text-xl font-black text-white truncate hover:text-amber-300 transition-colors">
+                  <h3 className="text-lg 2xl:text-xl font-black text-white truncate hover:text-amber-300 transition-colors">
                     {lastRaceWinner.driver_full_name}
                   </h3>
                 </DriverLink>
@@ -239,25 +290,25 @@ export default function BetweenRacesView({
                   {lastRaceWinner.team_name}
                 </TeamLink>
               </div>
-              <div className="mt-4 pt-3 border-t border-amber-400/20 flex items-center justify-between text-xs">
-                <span className="text-white/60">Pontuação máxima</span>
-                <span className="font-mono tabular-nums font-black text-amber-400 text-base">+{lastRaceWinner.points || 25} pts</span>
+              <div className="hidden lg:flex mt-3 2xl:mt-4 pt-3 border-t border-amber-400/20 items-center justify-between text-xs gap-2">
+                <span className="text-white/60 truncate">Pontuação máxima</span>
+                <span className="font-mono tabular-nums font-black text-amber-400 text-sm 2xl:text-base shrink-0">+{lastRaceWinner.points || 25} pts</span>
               </div>
             </div>
           )}
 
           {/* P3 */}
           {lastRacePodium[2] && (
-            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#13131A] p-5 sm:order-3 flex flex-col justify-between">
+            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#13131A] p-3 lg:p-4 2xl:p-5 order-3 lg:order-3 flex flex-col justify-between min-w-0">
               <div
                 className="absolute inset-x-0 top-0 h-1"
                 style={{ backgroundColor: getTeamColor(lastRacePodium[2].team_name, lastRacePodium[2].team_color) }}
               />
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-1">
+                <div className="flex items-center gap-2 2xl:gap-3">
                   <DriverLink driverId={lastRacePodium[2].driver_id} driverName={lastRacePodium[2].driver_full_name}>
                     <div
-                      className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border bg-black/40 transition-transform hover:scale-105"
+                      className="relative h-8 w-8 lg:h-10 lg:w-10 2xl:h-12 2xl:w-12 shrink-0 overflow-hidden rounded-full border bg-black/40 transition-transform hover:scale-105"
                       style={{ borderColor: getTeamColor(lastRacePodium[2].team_name, lastRacePodium[2].team_color) }}
                     >
                       {lastRacePodium[2].driver_headshot_url ? (
@@ -267,42 +318,45 @@ export default function BetweenRacesView({
                           className="h-full w-full object-cover object-top"
                         />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-xs font-black text-white/70">
+                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] lg:text-xs font-black text-white/70">
                           {lastRacePodium[2].driver_full_name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
                     </div>
                   </DriverLink>
-                  <span className="text-3xl font-black text-white/30 font-mono">3</span>
+                  <span className="text-lg lg:text-2xl 2xl:text-3xl font-black text-white/40 font-mono">3º</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <span className="lg:hidden font-mono tabular-nums text-[11px] font-black text-white/90 bg-white/5 px-1.5 py-0.5 rounded">
+                  +{lastRacePodium[2].points || 15} pts
+                </span>
+                <div className="hidden lg:flex items-center gap-1.5 shrink-0">
                   <span className="font-mono tabular-nums text-[11px] text-white/40 uppercase font-semibold">P3</span>
                   <DriverLink
                     driverId={lastRacePodium[2].driver_id}
                     driverName={lastRacePodium[2].driver_full_name}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] font-bold text-white/80 hover:bg-white/15 hover:text-white transition-all group"
+                    className="inline-flex items-center gap-0.5 rounded-full border border-white/10 bg-white/5 px-1.5 2xl:px-2 py-0.5 text-[10px] font-bold text-white/80 hover:bg-white/15 hover:text-white transition-all group"
                     title={`Ver perfil de ${lastRacePodium[2].driver_full_name}`}
                   >
-                    <span>Perfil</span>
+                    <span className="hidden 2xl:inline">Perfil</span>
                     <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                   </DriverLink>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-2 lg:mt-3">
                 <DriverLink driverId={lastRacePodium[2].driver_id} driverName={lastRacePodium[2].driver_full_name}>
-                  <h3 className="text-lg font-black text-white truncate hover:text-white hover:underline decoration-white/40 transition-colors">
+                  <h3 className="text-xs sm:text-sm lg:text-base 2xl:text-lg font-black text-white truncate hover:text-white hover:underline decoration-white/40 transition-colors">
                     {lastRacePodium[2].driver_full_name}
                   </h3>
                 </DriverLink>
                 <TeamLink
                   teamName={lastRacePodium[2].team_name}
                   teamId={lastRacePodium[2].team_id}
-                  className="text-xs font-medium text-f1-subtle hover:text-white transition-colors block truncate mt-0.5"
+                  className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-white transition-colors block truncate mt-0.5"
                 >
                   {lastRacePodium[2].team_name}
                 </TeamLink>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
+              <div className="hidden lg:flex mt-4 pt-3 border-t border-white/5 items-center justify-between text-xs">
                 <span className="text-white/40">Pontos</span>
                 <span className="font-mono tabular-nums font-black text-white">+{lastRacePodium[2].points || 15} pts</span>
               </div>
@@ -310,40 +364,56 @@ export default function BetweenRacesView({
           )}
         </div>
 
-        {/* Quick Highlights (Fastest Lap & Biggest Climber) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        {/* Quick Highlights: Accordion expansível no mobile (< sm) para priorizar a Próxima Etapa acima da dobra */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => setHighlightsOpen(!highlightsOpen)}
+            aria-expanded={highlightsOpen}
+            className="sm:hidden w-full min-h-[46px] flex items-center justify-between rounded-xl border border-white/10 bg-[#12121A] px-3.5 py-2.5 text-left active:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Timer className="h-4 w-4 text-purple-400 shrink-0" />
+              <span className="text-xs font-bold text-white truncate">
+                Volta Rápida & Maior Escalador
+              </span>
+            </div>
+            <ChevronDown
+              className={`h-4 w-4 text-f1-subtle transition-transform duration-200 shrink-0 ${
+                highlightsOpen ? "rotate-180 text-f1-red" : ""
+              }`}
+            />
+          </button>
+
+          <div
+            className={`${
+              highlightsOpen ? "grid mt-2.5" : "hidden"
+            } sm:grid sm:mt-0 grid-cols-2 gap-2.5 sm:gap-4`}
+          >
           {/* Card: Volta Mais Rápida */}
-          <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between pb-3 border-b border-purple-500/20">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-purple-400" />
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-purple-300">
-                  Volta Mais Rápida
+          <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] p-3 sm:p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-1 pb-2 sm:pb-2.5 border-b border-purple-500/20">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-purple-400 shrink-0" />
+                <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-300 truncate">
+                  Volta Rápida
                 </span>
               </div>
               {fastestLapResult && (
-                <DriverLink
-                  driverId={fastestLapResult.driver_id}
-                  driverName={fastestLapResult.driver_full_name}
-                  className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group"
-                  title={`Ver perfil de ${fastestLapResult.driver_full_name}`}
-                >
-                  <span>Perfil</span>
-                  <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </DriverLink>
+                <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded shrink-0">
+                  {formatLapTimeDisplay(fastestLapResult.best_lap)}
+                </span>
               )}
             </div>
 
             {fastestLapResult ? (
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="mt-2.5 sm:mt-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <DriverLink driverId={fastestLapResult.driver_id} driverName={fastestLapResult.driver_full_name}>
                     <div
-                      className="relative shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
+                      className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
                       style={{
                         borderColor: getTeamColor(fastestLapResult.team_name, fastestLapResult.team_color),
-                        width: "3.25rem",
-                        height: "3.25rem"
                       }}
                     >
                       {fastestLapResult.driver_headshot_url ? (
@@ -353,7 +423,7 @@ export default function BetweenRacesView({
                           className="h-full w-full object-cover object-top"
                         />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-xs font-black text-purple-300">
+                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-purple-300">
                           {fastestLapResult.driver_full_name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
@@ -361,75 +431,61 @@ export default function BetweenRacesView({
                   </DriverLink>
                   <div className="min-w-0">
                     <DriverLink driverId={fastestLapResult.driver_id} driverName={fastestLapResult.driver_full_name}>
-                      <h4 className="text-base font-black text-white truncate hover:text-purple-300 transition-colors">
+                      <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-purple-300 transition-colors">
                         {fastestLapResult.driver_full_name}
                       </h4>
                     </DriverLink>
                     <TeamLink
                       teamName={fastestLapResult.team_name}
                       teamId={fastestLapResult.team_id}
-                      className="text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
+                      className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
                     >
                       {fastestLapResult.team_name}
                     </TeamLink>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-purple-400/80">
-                    Tempo
-                  </span>
-                  <span className="font-mono tabular-nums text-lg sm:text-xl font-black text-purple-400">
-                    {formatLapTimeDisplay(fastestLapResult.best_lap)}
-                  </span>
-                </div>
+                <DriverLink
+                  driverId={fastestLapResult.driver_id}
+                  driverName={fastestLapResult.driver_full_name}
+                  className="hidden sm:inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group shrink-0"
+                  title={`Ver perfil de ${fastestLapResult.driver_full_name}`}
+                >
+                  <span>Perfil</span>
+                  <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </DriverLink>
               </div>
             ) : (
-              <div className="mt-4 py-3 text-center text-xs text-f1-subtle font-medium">
-                Nenhum tempo de volta registrado
+              <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
+                Sem registro
               </div>
             )}
           </div>
 
           {/* Card: Maior Escalador */}
-          <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between pb-3 border-b border-emerald-500/20">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-emerald-300">
-                  Maior Escalador
+          <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] p-3 sm:p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-1 pb-2 sm:pb-2.5 border-b border-emerald-500/20">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 shrink-0" />
+                <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300 truncate">
+                  Escalador
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
-                  <span className="font-mono tabular-nums text-[11px] font-bold text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded">
-                    +{biggestClimber.delta_position} posições
-                  </span>
-                ) : null}
-                {biggestClimber && (
-                  <DriverLink
-                    driverId={biggestClimber.driver_id}
-                    driverName={biggestClimber.driver_full_name}
-                    className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group"
-                    title={`Ver perfil de ${biggestClimber.driver_full_name}`}
-                  >
-                    <span>Perfil</span>
-                    <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </DriverLink>
-                )}
-              </div>
+              {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
+                <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded shrink-0">
+                  +{biggestClimber.delta_position} <span className="hidden sm:inline">pos</span>
+                </span>
+              ) : null}
             </div>
 
             {biggestClimber ? (
-              <div className="mt-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="mt-2.5 sm:mt-3 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <DriverLink driverId={biggestClimber.driver_id} driverName={biggestClimber.driver_full_name}>
                     <div
-                      className="relative shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
+                      className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
                       style={{
                         borderColor: getTeamColor(biggestClimber.team_name, biggestClimber.team_color),
-                        width: "3.25rem",
-                        height: "3.25rem"
                       }}
                     >
                       {biggestClimber.driver_headshot_url ? (
@@ -439,7 +495,7 @@ export default function BetweenRacesView({
                           className="h-full w-full object-cover object-top"
                         />
                       ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-xs font-black text-emerald-300">
+                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-emerald-300">
                           {biggestClimber.driver_full_name.slice(0, 2).toUpperCase()}
                         </span>
                       )}
@@ -447,36 +503,34 @@ export default function BetweenRacesView({
                   </DriverLink>
                   <div className="min-w-0">
                     <DriverLink driverId={biggestClimber.driver_id} driverName={biggestClimber.driver_full_name}>
-                      <h4 className="text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
+                      <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
                         {biggestClimber.driver_full_name}
                       </h4>
                     </DriverLink>
-                    <TeamLink
-                      teamName={biggestClimber.team_name}
-                      teamId={biggestClimber.team_id}
-                      className="text-xs font-medium text-f1-subtle hover:text-emerald-300 hover:underline transition-colors truncate block"
-                    >
-                      {biggestClimber.team_name}
-                    </TeamLink>
+                    <div className="flex items-center gap-1 font-mono tabular-nums text-[10px] sm:text-xs font-bold">
+                      <span className="text-white/50">P{biggestClimber.grid_position ?? "—"}</span>
+                      <span className="text-emerald-400">➔</span>
+                      <span className="text-emerald-400">P{biggestClimber.finishing_position ?? "—"}</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-400/80">
-                    Evolução
-                  </span>
-                  <div className="flex items-center gap-1.5 font-mono tabular-nums text-sm sm:text-base font-black text-white">
-                    <span className="text-white/50">P{biggestClimber.grid_position ?? "—"}</span>
-                    <span className="text-emerald-400 font-bold">➔</span>
-                    <span className="text-emerald-400">P{biggestClimber.finishing_position ?? "—"}</span>
-                  </div>
-                </div>
+                <DriverLink
+                  driverId={biggestClimber.driver_id}
+                  driverName={biggestClimber.driver_full_name}
+                  className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group shrink-0"
+                  title={`Ver perfil de ${biggestClimber.driver_full_name}`}
+                >
+                  <span>Perfil</span>
+                  <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </DriverLink>
               </div>
             ) : (
-              <div className="mt-4 py-3 text-center text-xs text-f1-subtle font-medium">
-                Nenhuma ultrapassagem registrada
+              <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
+                Sem registro
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
@@ -522,45 +576,42 @@ function NextRaceCountdownCard({
   const seconds = Math.floor((remaining / 1000) % 60);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111118] p-6 sm:p-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111118] p-4 sm:p-6 2xl:p-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 items-center">
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-f1-subtle">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider text-f1-subtle">
               <span className="h-1.5 w-1.5 rounded-full bg-f1-red" />
-              <span>Próxima Etapa</span>
+              <span>Próxima Etapa · Round {upcomingRace?.round_number || 15}</span>
             </div>
             <CircuitLink
               circuitName={upcomingRace?.circuit_name}
               circuitId={upcomingRace?.circuit_id}
-              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all group"
+              className="hidden sm:inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold text-white/80 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all group"
               title={`Ver traçado e estatísticas do circuito ${upcomingRace?.circuit_name}`}
             >
               <span>Circuito</span>
               <ArrowUpRight className="h-3 w-3 text-f1-subtle group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </CircuitLink>
           </div>
-          <p className="text-xs font-mono font-bold uppercase text-f1-red">
-            Round {upcomingRace?.round_number || 15}
-          </p>
           <CircuitLink
             circuitName={upcomingRace?.circuit_name}
             circuitId={upcomingRace?.circuit_id}
             className="hover:underline decoration-white/30 transition-colors inline-block group"
             title={`Ver perfil e estatísticas do circuito ${upcomingRace?.circuit_name || "Oficial"}`}
           >
-            <h3 className="mt-1 text-2xl sm:text-3xl font-black uppercase text-white group-hover:underline transition-colors">
+            <h3 className="text-xl sm:text-3xl font-black uppercase text-white group-hover:underline transition-colors leading-tight">
               {upcomingRace?.circuit_name || "Circuito Oficial"}
             </h3>
           </CircuitLink>
-          <p className="mt-1 text-xs text-f1-subtle">
+          <p className="mt-0.5 sm:mt-1 text-xs text-f1-subtle">
             {upcomingRace?.location || "Local"}, {upcomingRace?.country || "País"} · {upcomingRace?.event_date || "Data"}
           </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <div className="mt-3.5 sm:mt-6 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
             <button
               onClick={onOpenSchedule}
-              className="flex items-center gap-2 rounded-lg bg-f1-red px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-white hover:bg-f1-darkred transition-colors shadow-sm"
+              className="flex min-h-[44px] items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-f1-red px-3.5 sm:px-4 py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white hover:bg-f1-darkred active:scale-[0.98] transition-all shadow-sm"
             >
               <span>Ver horários</span>
               <ChevronRight className="h-4 w-4" />
@@ -568,44 +619,44 @@ function NextRaceCountdownCard({
             <CircuitLink
               circuitName={upcomingRace?.circuit_name}
               circuitId={upcomingRace?.circuit_id}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider text-white/80 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all group"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 sm:px-3.5 py-2.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-white/90 hover:bg-white/10 hover:text-white hover:border-white/25 active:scale-[0.98] transition-all group"
               title={`Ver traçado, estatísticas e histórico de ${upcomingRace?.circuit_name}`}
             >
-              <span>Guia do Circuito</span>
-              <ArrowUpRight className="h-3.5 w-3.5 text-f1-subtle group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <span>Guia da Pista</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-f1-red group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </CircuitLink>
           </div>
         </div>
 
         {/* Real Countdown Grid */}
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-f1-subtle mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-f1-subtle mb-2 sm:mb-3">
             Luzes se apagam em
           </p>
           <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-              <span className="font-mono tabular-nums text-2xl sm:text-3xl font-black text-white">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
                 {String(days).padStart(2, "0")}
               </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-1">Dias</span>
+              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Dias</span>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-              <span className="font-mono tabular-nums text-2xl sm:text-3xl font-black text-white">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
                 {String(hours).padStart(2, "0")}
               </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-1">Horas</span>
+              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Horas</span>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-              <span className="font-mono tabular-nums text-2xl sm:text-3xl font-black text-white">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
                 {String(minutes).padStart(2, "0")}
               </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-1">Min</span>
+              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Min</span>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-3 sm:p-4">
-              <span className="font-mono tabular-nums text-2xl sm:text-3xl font-black text-f1-red">
+            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-f1-red">
                 {String(seconds).padStart(2, "0")}
               </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-1">Seg</span>
+              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Seg</span>
             </div>
           </div>
         </div>

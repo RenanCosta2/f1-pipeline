@@ -13,7 +13,7 @@ import TyreStrategyChart from "@/components/TyreStrategyChart";
 import LapChart from "@/components/LapChart";
 import RacePaceChart from "@/components/RacePaceChart";
 import DriverLink from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
+import TeamLink from "@/lib/teamUtils";
 import { Flag, ArrowUp, ArrowDown, Minus, CheckCircle, Timer } from "lucide-react";
 
 interface Props {
@@ -56,8 +56,8 @@ export default async function RacePage({ searchParams }: Props) {
   return (
     <div className="space-y-10">
       {/* Race Header with Round & Session Selector */}
-      <div className="border-b border-f1-border/50 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      <div className="border-b border-f1-border/50 pb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+        <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-f1-red/30 bg-f1-red/10 px-3 py-1 text-xs font-bold text-f1-red uppercase tracking-wider mb-2">
             <Flag className="h-3.5 w-3.5" /> Temporada {year} • Round {round}
             {session === "Sprint" && <span className="ml-1 px-1.5 py-0.5 rounded bg-amber-500 text-black font-black text-[10px]">SPRINT</span>}
@@ -71,14 +71,14 @@ export default async function RacePage({ searchParams }: Props) {
 
           {/* Session Switcher (if round has Sprint) */}
           {availableSessions.length > 1 && (
-            <div className="flex items-center gap-2 mt-3">
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <span className="text-xs font-bold text-f1-subtle uppercase">Sessão:</span>
-              <div className="inline-flex rounded-lg bg-[#14141F] p-1 border border-white/10">
+              <div className="inline-flex flex-wrap rounded-lg bg-[#14141F] p-1 border border-white/10 gap-1">
                 {availableSessions.map((s) => (
                   <Link
                     key={s}
                     href={`/race?year=${year}&round=${round}&session=${s}`}
-                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                    className={`px-3 py-1.5 min-h-[36px] sm:min-h-0 inline-flex items-center justify-center rounded-md text-xs font-bold transition-all ${
                       session === s
                         ? "bg-f1-red text-white shadow"
                         : "text-f1-subtle hover:text-white"
@@ -94,12 +94,12 @@ export default async function RacePage({ searchParams }: Props) {
 
         {/* Round Selector Chips */}
         {availableRounds && availableRounds.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 max-w-md">
+          <div className="flex sm:flex-wrap items-center gap-1.5 overflow-x-auto sm:overflow-visible no-scrollbar pb-1 sm:pb-0 w-full xl:w-auto xl:max-w-md">
             {availableRounds.map((rnd) => (
               <Link
                 key={rnd.round_number}
                 href={`/race?year=${year}&round=${rnd.round_number}${session !== "Race" ? `&session=${session}` : ""}`}
-                className={`px-2.5 py-1 text-xs font-bold rounded-md border transition-all ${
+                className={`px-2.5 py-1.5 sm:py-1 min-h-[38px] min-w-[38px] sm:min-h-0 sm:min-w-0 shrink-0 inline-flex items-center justify-center text-xs font-bold rounded-md border transition-all ${
                   rnd.round_number === round
                     ? "bg-f1-red text-white border-f1-red shadow"
                     : "bg-[#14141F] text-f1-subtle border-f1-border hover:text-white hover:border-white/20"
@@ -114,7 +114,7 @@ export default async function RacePage({ searchParams }: Props) {
       </div>
 
       {/* Official Results Table */}
-      <div className="rounded-2xl border border-f1-border bg-[#14141F] p-6 shadow-xl">
+      <div className="rounded-2xl border border-f1-border bg-[#14141F] p-4 sm:p-6 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-black uppercase text-white tracking-tight flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-emerald-400" />
@@ -129,18 +129,18 @@ export default async function RacePage({ searchParams }: Props) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-f1-border/40 text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
-                <th className="pb-3 w-12 text-center">Pos</th>
-                <th className="pb-3 w-12 text-center">Grid</th>
-                <th className="pb-3 w-14 text-center">+/-</th>
+                <th className="pb-3 w-10 sm:w-12 text-center">Pos</th>
+                <th className="pb-3 w-12 text-center hidden sm:table-cell">Grid</th>
+                <th className="pb-3 w-10 sm:w-14 text-center">+/-</th>
                 <th className="pb-3">Piloto</th>
                 <th className="pb-3 hidden md:table-cell">Equipe</th>
-                <th className="pb-3 text-right">Gap Líder</th>
+                <th className="pb-3 text-right">Gap</th>
                 <th className="pb-3 text-right hidden lg:table-cell">Intervalo</th>
-                <th className="pb-3 text-center">Voltas</th>
-                <th className="pb-3 text-center">Stops</th>
+                <th className="pb-3 text-center hidden md:table-cell">Voltas</th>
+                <th className="pb-3 text-center hidden md:table-cell">Stops</th>
                 <th className="pb-3 text-center hidden sm:table-cell">Status</th>
-                <th className="pb-3 text-right">Melhor Volta</th>
-                <th className="pb-3 text-right">Pontos</th>
+                <th className="pb-3 text-right hidden md:table-cell">Melhor Volta</th>
+                <th className="pb-3 text-right">Pts</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-f1-border/20 text-xs">
@@ -166,7 +166,7 @@ export default async function RacePage({ searchParams }: Props) {
                     </td>
 
                     {/* Grid */}
-                    <td className="py-3 text-center font-mono text-f1-subtle">
+                    <td className="py-3 text-center font-mono text-f1-subtle hidden sm:table-cell">
                       {r.grid_position ? `P${r.grid_position}` : "PL"}
                     </td>
 
@@ -230,12 +230,12 @@ export default async function RacePage({ searchParams }: Props) {
                     </td>
 
                     {/* Laps */}
-                    <td className="py-3 text-center font-mono text-white/90">
+                    <td className="py-3 text-center font-mono text-white/90 hidden md:table-cell">
                       {r.laps_completed ?? "—"}
                     </td>
 
                     {/* Stops */}
-                    <td className="py-3 text-center font-mono text-white/90">
+                    <td className="py-3 text-center font-mono text-white/90 hidden md:table-cell">
                       {r.stops ?? 0}
                     </td>
 
@@ -253,7 +253,7 @@ export default async function RacePage({ searchParams }: Props) {
                     </td>
 
                     {/* Best Lap */}
-                    <td className="py-3 text-right font-mono font-bold">
+                    <td className="py-3 text-right font-mono font-bold hidden md:table-cell">
                       {isFastestLap ? (
                         <div className="inline-flex items-center gap-1.5 justify-end">
                           <span

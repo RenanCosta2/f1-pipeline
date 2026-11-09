@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Trophy, ArrowUpRight, Gauge, ArrowRight, ShieldAlert, Award } from "lucide-react";
 import DriverLink from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
-import { CircuitLink } from "@/lib/circuitUtils";
+import TeamLink from "@/lib/teamUtils";
+import CircuitLink from "@/lib/circuitUtils";
 import { SessionSummary } from "@/types/f1";
 
 interface Props {

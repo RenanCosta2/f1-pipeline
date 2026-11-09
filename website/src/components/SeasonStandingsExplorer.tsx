@@ -27,11 +27,15 @@ import {
   Minus,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Filter,
   Columns2,
   Rows
 } from "lucide-react";
-import { DriverLink } from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
+import DriverLink from "@/lib/driverUtils";
+import TeamLink from "@/lib/teamUtils";
 
 function formatHexColor(rawColor: string | null | undefined): string {
   if (rawColor && rawColor.trim() !== "") {
@@ -119,6 +123,9 @@ export default function SeasonStandingsExplorer({
 
   const [minRound, setMinRound] = useState<number>(minPossibleRound);
   const [maxRound, setMaxRound] = useState<number>(maxPossibleRound);
+  const [mobileSubView, setMobileSubView] = useState<"table" | "analytics">("table");
+  const [expandedDriverKey, setExpandedDriverKey] = useState<string | null>(null);
+  const [expandedConstructorKey, setExpandedConstructorKey] = useState<string | null>(null);
 
   // Sincroniza os limites quando as rodadas terminarem de carregar do banco
   useEffect(() => {
@@ -413,11 +420,11 @@ export default function SeasonStandingsExplorer({
     <div className="flex flex-wrap items-center justify-between gap-4 bg-[#111118] border border-white/10 rounded-xl p-4">
       {/* Abas Pilotos / Construtores + Badge de Etapa */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center rounded-lg bg-black/50 p-0.5 border border-white/10 font-mono text-xs font-bold uppercase">
+        <div className="flex items-center rounded-lg bg-black/50 p-1 border border-white/10 font-mono text-xs font-bold uppercase">
           <button
             onClick={() => setActiveTab("drivers")}
-            className={`px-3.5 py-1.5 rounded-md transition-colors cursor-pointer ${activeTab === "drivers"
-              ? "bg-f1-red text-white"
+            className={`px-4 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-md transition-all cursor-pointer active:scale-95 ${activeTab === "drivers"
+              ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
               : "text-white/60 hover:text-white"
               }`}
           >
@@ -425,8 +432,8 @@ export default function SeasonStandingsExplorer({
           </button>
           <button
             onClick={() => setActiveTab("constructors")}
-            className={`px-3.5 py-1.5 rounded-md transition-colors cursor-pointer ${activeTab === "constructors"
-              ? "bg-f1-red text-white"
+            className={`px-4 py-2 sm:py-1.5 min-h-[44px] sm:min-h-0 rounded-md transition-all cursor-pointer active:scale-95 ${activeTab === "constructors"
+              ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
               : "text-white/60 hover:text-white"
               }`}
           >
@@ -445,15 +452,15 @@ export default function SeasonStandingsExplorer({
         {(minRound > minPossibleRound || maxRound < maxPossibleRound) && (
           <button
             onClick={() => applyPreset(minPossibleRound, maxPossibleRound)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors border border-white/10"
+            className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] sm:min-h-0 rounded-lg text-xs font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors border border-white/10 active:scale-95"
             title="Resetar para a temporada completa"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RotateCcw className="h-4 w-4" />
             <span className="hidden sm:inline">Resetar Filtro</span>
           </button>
         )}
 
-        <div className="flex items-center rounded-lg bg-black/50 p-0.5 border border-white/10 text-xs font-mono">
+        <div className="hidden xl:flex items-center rounded-lg bg-black/50 p-0.5 border border-white/10 text-xs font-mono">
           <button
             onClick={() => setLayoutMode("side")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-bold transition-colors cursor-pointer ${layoutMode === "side"
@@ -463,7 +470,7 @@ export default function SeasonStandingsExplorer({
             title="Visualização lado a lado (Tabela + Painel de Análise)"
           >
             <Columns2 className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Lado a Lado</span>
+            <span>Lado a Lado</span>
           </button>
           <button
             onClick={() => setLayoutMode("full")}
@@ -474,7 +481,7 @@ export default function SeasonStandingsExplorer({
             title="Tabela de classificação em largura total"
           >
             <Rows className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Tabela Completa</span>
+            <span>Tabela Completa</span>
           </button>
         </div>
       </div>
@@ -509,11 +516,11 @@ export default function SeasonStandingsExplorer({
         )}
       </div>
 
-      {/* Presets Rápidos em Linha */}
+      {/* Presets Rápidos em Linha - Ergonomia de toque adaptada */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <button
           onClick={() => applyPreset(minPossibleRound, maxPossibleRound)}
-          className={`px-2.5 py-1 rounded text-[11px] font-mono font-bold tracking-wide transition-colors cursor-pointer ${minRound === minPossibleRound && maxRound === maxPossibleRound
+          className={`px-3 py-2 sm:py-1 rounded-lg sm:rounded text-xs sm:text-[11px] min-h-[40px] sm:min-h-0 font-mono font-bold tracking-wide transition-colors cursor-pointer active:scale-95 ${minRound === minPossibleRound && maxRound === maxPossibleRound
             ? "bg-white/20 text-white border border-white/20"
             : "bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 border border-white/5"
             }`}
@@ -522,47 +529,47 @@ export default function SeasonStandingsExplorer({
         </button>
         <button
           onClick={() => applyPreset(1, Math.max(1, Math.floor(maxPossibleRound / 2)))}
-          className="px-2.5 py-1 rounded text-[11px] font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5"
+          className="px-3 py-2 sm:py-1 rounded-lg sm:rounded text-xs sm:text-[11px] min-h-[40px] sm:min-h-0 font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5 active:scale-95"
         >
           1ª Metade
         </button>
         <button
           onClick={() => applyPreset(Math.floor(maxPossibleRound / 2) + 1, maxPossibleRound)}
-          className="px-2.5 py-1 rounded text-[11px] font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5"
+          className="px-3 py-2 sm:py-1 rounded-lg sm:rounded text-xs sm:text-[11px] min-h-[40px] sm:min-h-0 font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5 active:scale-95"
         >
           2ª Metade
         </button>
         <button
           onClick={() => applyPreset(Math.max(minPossibleRound, maxPossibleRound - 4), maxPossibleRound)}
-          className="px-2.5 py-1 rounded text-[11px] font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5"
+          className="px-3 py-2 sm:py-1 rounded-lg sm:rounded text-xs sm:text-[11px] min-h-[40px] sm:min-h-0 font-mono font-bold tracking-wide bg-white/5 text-f1-subtle hover:text-white hover:bg-white/10 transition-colors cursor-pointer border border-white/5 active:scale-95"
         >
           Últimos 5
         </button>
       </div>
 
-      {/* Steppers de Início e Fim organizados em Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+      {/* Steppers de Início e Fim organizados em Grid com alvos táteis ampliados */}
+      <div className={`grid gap-2 pt-1 ${layoutMode === "side" ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2" : "grid-cols-1 sm:grid-cols-2"}`}>
         {/* Min Stepper Card */}
         <div className="flex items-center gap-2 rounded-xl bg-black/60 border border-white/10 p-1.5 shadow-inner min-w-0">
           <div className="flex items-center bg-white/5 rounded-lg border border-white/10 p-0.5 flex-shrink-0">
             <button
               onClick={() => setMinRound(Math.max(minPossibleRound, minRound - 1))}
               disabled={minRound <= minPossibleRound}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-10 w-10 sm:h-7 sm:w-7 flex items-center justify-center rounded hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed active:scale-90"
               title="GP Anterior"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
-            <span className="font-mono tabular-nums text-xs font-black text-white w-8 text-center select-none">
+            <span className="font-mono tabular-nums text-xs font-black text-white w-9 sm:w-8 text-center select-none">
               R{minRound}
             </span>
             <button
               onClick={() => setMinRound(Math.min(maxRound, minRound + 1))}
               disabled={minRound >= maxRound}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-10 w-10 sm:h-7 sm:w-7 flex items-center justify-center rounded hover:bg-white/10 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed active:scale-90"
               title="Próximo GP"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
           </div>
           <div className="min-w-0 flex-1 pr-1">
@@ -579,21 +586,21 @@ export default function SeasonStandingsExplorer({
             <button
               onClick={() => setMaxRound(Math.max(minRound, maxRound - 1))}
               disabled={maxRound <= minRound}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-f1-red/20 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-10 w-10 sm:h-7 sm:w-7 flex items-center justify-center rounded hover:bg-f1-red/20 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed active:scale-90"
               title="GP Anterior"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
-            <span className="font-mono tabular-nums text-xs font-black text-f1-red w-8 text-center select-none">
+            <span className="font-mono tabular-nums text-xs font-black text-f1-red w-9 sm:w-8 text-center select-none">
               R{maxRound}
             </span>
             <button
               onClick={() => setMaxRound(Math.min(maxPossibleRound, maxRound + 1))}
               disabled={maxRound >= maxPossibleRound}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-f1-red/20 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-10 w-10 sm:h-7 sm:w-7 flex items-center justify-center rounded hover:bg-f1-red/20 text-white/70 hover:text-white disabled:opacity-20 transition-all cursor-pointer disabled:cursor-not-allowed active:scale-90"
               title="Próximo GP"
             >
-              <ChevronRight className="h-3.5 w-3.5" />
+              <ChevronRight className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             </button>
           </div>
           <div className="min-w-0 flex-1 pr-1">
@@ -683,7 +690,18 @@ export default function SeasonStandingsExplorer({
                         : "bg-white/10"
                     }`}
                 />
-                <span className="text-[9px] font-mono tabular-nums">R{r.round_number}</span>
+                <span
+                  className={
+                    isBoundary ||
+                    r.round_number === minPossibleRound ||
+                    r.round_number === maxPossibleRound ||
+                    r.round_number % 3 === 0
+                      ? "text-[9px] font-mono tabular-nums"
+                      : "hidden sm:inline text-[9px] font-mono tabular-nums"
+                  }
+                >
+                  R{r.round_number}
+                </span>
               </button>
             );
           })}
@@ -728,7 +746,7 @@ export default function SeasonStandingsExplorer({
           {activeTab === "drivers" ? (
             <LineChart data={chartDriversData} margin={{ top: 10, right: 15, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#252538" />
-              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval={0} />
+              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval="preserveStartEnd" minTickGap={10} />
               <YAxis stroke="#8E8EA0" fontSize={10} domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
@@ -762,7 +780,7 @@ export default function SeasonStandingsExplorer({
           ) : (
             <LineChart data={chartTeamsData} margin={{ top: 10, right: 15, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#252538" />
-              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval={0} />
+              <XAxis dataKey="round" stroke="#8E8EA0" fontSize={10} tickMargin={6} interval="preserveStartEnd" minTickGap={10} />
               <YAxis stroke="#8E8EA0" fontSize={10} domain={[0, "auto"]} />
               <Tooltip
                 contentStyle={{
@@ -815,18 +833,77 @@ export default function SeasonStandingsExplorer({
         </p>
       </div>
 
+      {/* Barra de Filtros Rápidos Mobile (< xl): Permite alternar recortes diretamente da tabela */}
+      <div className="xl:hidden flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs font-mono">
+        <span className="text-[10px] uppercase font-bold text-f1-subtle flex items-center gap-1 shrink-0 mr-1">
+          <Filter className="h-3 w-3 text-f1-red" />
+          Recorte:
+        </span>
+        <button
+          onClick={() => applyPreset(minPossibleRound, maxPossibleRound)}
+          className={`px-3 py-1.5 rounded-lg shrink-0 font-bold min-h-[36px] transition-all active:scale-95 ${
+            minRound === minPossibleRound && maxRound === maxPossibleRound
+              ? "bg-white/20 text-white border border-white/30"
+              : "bg-white/5 text-f1-subtle border border-white/5 hover:text-white"
+          }`}
+        >
+          Ano Todo
+        </button>
+        <button
+          onClick={() => applyPreset(1, Math.max(1, Math.floor(maxPossibleRound / 2)))}
+          className={`px-3 py-1.5 rounded-lg shrink-0 font-bold min-h-[36px] transition-all active:scale-95 ${
+            minRound === 1 && maxRound === Math.max(1, Math.floor(maxPossibleRound / 2))
+              ? "bg-white/20 text-white border border-white/30"
+              : "bg-white/5 text-f1-subtle border border-white/5 hover:text-white"
+          }`}
+        >
+          1ª Metade
+        </button>
+        <button
+          onClick={() => applyPreset(Math.floor(maxPossibleRound / 2) + 1, maxPossibleRound)}
+          className={`px-3 py-1.5 rounded-lg shrink-0 font-bold min-h-[36px] transition-all active:scale-95 ${
+            minRound === Math.floor(maxPossibleRound / 2) + 1 && maxRound === maxPossibleRound
+              ? "bg-white/20 text-white border border-white/30"
+              : "bg-white/5 text-f1-subtle border border-white/5 hover:text-white"
+          }`}
+        >
+          2ª Metade
+        </button>
+        <button
+          onClick={() => applyPreset(Math.max(minPossibleRound, maxPossibleRound - 4), maxPossibleRound)}
+          className={`px-3 py-1.5 rounded-lg shrink-0 font-bold min-h-[36px] transition-all active:scale-95 ${
+            minRound === Math.max(minPossibleRound, maxPossibleRound - 4) && maxRound === maxPossibleRound
+              ? "bg-white/20 text-white border border-white/30"
+              : "bg-white/5 text-f1-subtle border border-white/5 hover:text-white"
+          }`}
+        >
+          Últimos 5
+        </button>
+      </div>
+
+      {/* Dica visual de expansão no mobile (< md) */}
+      <div className="md:hidden flex items-center justify-between gap-2 px-3 py-1.5 mb-2 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
+        <span className="flex items-center gap-1.5">
+          <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+          <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+        </span>
+      </div>
+
       {/* Tabela de Pilotos */}
       {activeTab === "drivers" && (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
-                <th rowSpan={2} className="pb-3 w-8 text-center align-bottom border-b border-white/10">Pos</th>
-                <th rowSpan={2} className="pb-3 w-8 text-center align-bottom border-b border-white/10">+/-</th>
-                <th rowSpan={2} className="pb-3 pr-4 align-bottom border-b border-white/10 min-w-[160px]">Piloto</th>
+              <tr className="text-[10px] sm:text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 w-7 sm:w-8 text-center align-bottom border-b border-white/10">Pos</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 w-7 sm:w-8 text-center align-bottom border-b border-white/10">+/-</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 pr-2 sm:pr-4 align-bottom border-b border-white/10 min-w-0 sm:min-w-[160px]">Piloto</th>
                 <th rowSpan={2} className="pb-3 px-4 hidden sm:table-cell align-bottom border-b border-white/10 text-center">Nac</th>
                 <th rowSpan={2} className="pb-3 px-4 hidden md:table-cell align-bottom border-b border-white/10 min-w-[130px]">Equipe</th>
-                <th rowSpan={2} className="pb-3 px-2 text-center align-bottom border-b border-white/10 whitespace-nowrap">Última (R{maxRound})</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 px-1.5 sm:px-2 text-center align-bottom border-b border-white/10 whitespace-nowrap">
+                  <span className="sm:hidden">R{maxRound}</span>
+                  <span className="hidden sm:inline">Última (R{maxRound})</span>
+                </th>
                 {minRound > 1 && (
                   <th rowSpan={2} className="pb-2.5 px-2 text-center text-amber-400/90 hidden sm:table-cell align-bottom border-b border-white/10 leading-tight">
                     <span className="block text-[11px] font-bold">No Período</span>
@@ -841,9 +918,12 @@ export default function SeasonStandingsExplorer({
                 <th colSpan={2} className="pb-1.5 px-2 text-center hidden md:table-cell border-b border-l border-white/10 text-white/90">
                   Pódios
                 </th>
-                <th rowSpan={2} className="pb-3 pl-3 text-right align-bottom border-b border-white/10 min-w-[90px]">Total Acumulado</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 pl-2 sm:pl-3 text-right align-bottom border-b border-white/10 min-w-0 sm:min-w-[90px]">
+                  <span className="sm:hidden">Pts</span>
+                  <span className="hidden sm:inline">Total Acumulado</span>
+                </th>
               </tr>
-              <tr className="border-b border-white/10 text-[10px] font-bold tracking-wider uppercase">
+              <tr className="hidden md:table-row border-b border-white/10 text-[10px] font-bold tracking-wider uppercase">
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-white/70 w-14 min-w-[52px]">GP</th>
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-purple-400 w-14 min-w-[52px]">Sprint</th>
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-white/70 w-14 min-w-[52px] border-l border-white/10">GP</th>
@@ -854,9 +934,17 @@ export default function SeasonStandingsExplorer({
               {filteredDrivers.map((d, index) => {
                 const pointsPercent = maxDriverPoints > 0 ? Math.round((d.total_points / maxDriverPoints) * 100) : 0;
                 const isLeader = index === 0;
+                const driverKey = d.driver_id || d.driver_full_name;
+                const isExpanded = expandedDriverKey === driverKey;
 
                 return (
-                  <tr key={d.driver_full_name} className="group hover:bg-white/[0.02] transition-colors">
+                  <React.Fragment key={d.driver_full_name}>
+                    <tr
+                      onClick={() => setExpandedDriverKey(isExpanded ? null : driverKey)}
+                      className={`group transition-colors cursor-pointer md:cursor-default ${
+                        isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                      }`}
+                    >
                     {/* Posição no Campeonato */}
                     <td className="py-2.5 text-center">
                       <span className={`font-mono tabular-nums text-xs font-black ${isLeader
@@ -891,12 +979,12 @@ export default function SeasonStandingsExplorer({
                     </td>
 
                     {/* Piloto e Foto */}
-                    <td className="py-2.5 pr-4 min-w-[160px]">
-                      <div className="flex items-center gap-2.5">
+                    <td className="py-2.5 pr-2 sm:pr-4 min-w-0 sm:min-w-[160px] max-w-[175px] sm:max-w-none">
+                      <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                         <DriverLink
                           driverId={d.driver_id}
                           driverName={d.driver_full_name}
-                          className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 transition-transform hover:scale-105"
+                          className="relative h-7 w-7 sm:h-8 sm:w-8 flex-shrink-0 overflow-hidden rounded-full border border-white/10 bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
                           title={`Ver perfil de ${d.driver_full_name}`}
                         >
                           {d.driver_headshot_url ? (
@@ -914,21 +1002,33 @@ export default function SeasonStandingsExplorer({
                             </div>
                           )}
                         </DriverLink>
-                        <div className="min-w-0">
-                          <DriverLink
-                            driverId={d.driver_id}
-                            driverName={d.driver_full_name}
-                            className="font-bold text-white text-xs sm:text-sm hover:text-white hover:underline decoration-white/30 transition-colors flex items-center gap-1.5 truncate"
-                            title={`Ver perfil de ${d.driver_full_name}`}
-                          >
-                            <span>{d.driver_full_name}</span>
-                            {index < 5 && (
-                              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: formatHexColor(d.team_color) }} />
-                            )}
-                          </DriverLink>
-                          <TeamLink teamName={d.team_name} className="block md:hidden">
-                            <span className="text-[11px] text-f1-subtle block truncate hover:underline hover:text-white transition-colors">{d.team_name || "F1 Team"}</span>
-                          </TeamLink>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1.5 min-w-0">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <DriverLink
+                                driverId={d.driver_id}
+                                driverName={d.driver_full_name}
+                                className="font-bold text-white text-xs sm:text-sm hover:text-white hover:underline decoration-white/30 transition-colors truncate pointer-events-none md:pointer-events-auto"
+                                title={`Ver perfil de ${d.driver_full_name}`}
+                              >
+                                <span className="truncate">{d.driver_full_name}</span>
+                              </DriverLink>
+                              {index < 5 && (
+                                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: formatHexColor(d.team_color) }} />
+                              )}
+                            </div>
+                            <span
+                              className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                                isExpanded
+                                  ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                  : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                              }`}
+                              aria-hidden="true"
+                            >
+                              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-f1-subtle block truncate md:hidden">{d.team_name || "F1 Team"}</span>
                         </div>
                       </div>
                     </td>
@@ -952,9 +1052,9 @@ export default function SeasonStandingsExplorer({
                     </td>
 
                     {/* Pontos Conquistados na Última Etapa */}
-                    <td className="py-2.5 px-2 text-center font-mono tabular-nums font-bold text-xs whitespace-nowrap">
+                    <td className="py-2.5 px-1.5 sm:px-2 text-center font-mono tabular-nums font-bold text-xs whitespace-nowrap">
                       {d.pts_in_last_round > 0 ? (
-                        <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        <span className="text-emerald-400 bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 rounded border border-emerald-500/20">
                           +{d.pts_in_last_round}
                         </span>
                       ) : (
@@ -990,9 +1090,9 @@ export default function SeasonStandingsExplorer({
                     </td>
 
                     {/* Pontos Totais Acumulados no Campeonato */}
-                    <td className="py-2.5 pl-3 text-right">
-                      <span className="font-black text-white text-sm font-mono tabular-nums">{d.total_points}</span>
-                      <div className="mt-1 w-18 ml-auto h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <td className="py-2.5 pl-2 sm:pl-3 text-right">
+                      <span className="font-black text-white text-xs sm:text-sm font-mono tabular-nums">{d.total_points}</span>
+                      <div className="hidden sm:block mt-1 w-18 ml-auto h-1.5 rounded-full bg-white/10 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
@@ -1003,9 +1103,60 @@ export default function SeasonStandingsExplorer({
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
+
+                  {/* Accordion Expandível Mobile (< md): Detalhes completos do piloto */}
+                  {isExpanded && (
+                    <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                      <td colSpan={12} className="p-3">
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                            <TeamLink teamName={d.team_name} className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: formatHexColor(d.team_color) }} />
+                              <span className="font-bold text-white text-xs">{d.team_name || "—"}</span>
+                            </TeamLink>
+                            <span className="text-[11px] font-mono text-f1-subtle">
+                              Nac: <strong className="text-white">{d.driver_nationality || "INT"}</strong>
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                            <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                              <span className="block text-[10px] text-f1-subtle uppercase">Vitórias GP / Sprint</span>
+                              <span className="text-xs font-black text-white">
+                                {d.race_wins_in_period} / <span className="text-purple-300">{d.sprint_wins_in_period}</span>
+                              </span>
+                            </div>
+                            <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                              <span className="block text-[10px] text-f1-subtle uppercase">Pódios GP / Sprint</span>
+                              <span className="text-xs font-black text-white">
+                                {d.race_podiums_in_period} / <span className="text-purple-300">{d.sprint_podiums_in_period}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {minRound > 1 && (
+                            <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-amber-300 font-mono text-[11px]">
+                              <span>No Período (R{minRound}-R{maxRound}):</span>
+                              <span className="font-black">+{d.pts_in_period} pts</span>
+                            </div>
+                          )}
+
+                          <DriverLink
+                            driverId={d.driver_id}
+                            driverName={d.driver_full_name}
+                            className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                          >
+                            <span>Ver Perfil Completo do Piloto</span>
+                            <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                          </DriverLink>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
           </table>
         </div>
       )}
@@ -1015,11 +1166,14 @@ export default function SeasonStandingsExplorer({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
-                <th rowSpan={2} className="pb-3 w-8 text-center align-bottom border-b border-white/10">Pos</th>
-                <th rowSpan={2} className="pb-3 w-8 text-center align-bottom border-b border-white/10">+/-</th>
-                <th rowSpan={2} className="pb-3 px-3 align-bottom border-b border-white/10 min-w-[160px]">Equipe / Construtor</th>
-                <th rowSpan={2} className="pb-3 px-2 text-center align-bottom border-b border-white/10 whitespace-nowrap">Última (R{maxRound})</th>
+              <tr className="text-[10px] sm:text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 w-7 sm:w-8 text-center align-bottom border-b border-white/10">Pos</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 w-7 sm:w-8 text-center align-bottom border-b border-white/10">+/-</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 px-2 sm:px-3 align-bottom border-b border-white/10 min-w-0 sm:min-w-[160px]">Equipe</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 px-1.5 sm:px-2 text-center align-bottom border-b border-white/10 whitespace-nowrap">
+                  <span className="sm:hidden">R{maxRound}</span>
+                  <span className="hidden sm:inline">Última (R{maxRound})</span>
+                </th>
                 {minRound > 1 && (
                   <th rowSpan={2} className="pb-2.5 px-2 text-center text-amber-400/90 hidden sm:table-cell align-bottom border-b border-white/10 leading-tight">
                     <span className="block text-[11px] font-bold">No Período</span>
@@ -1034,9 +1188,12 @@ export default function SeasonStandingsExplorer({
                 <th colSpan={2} className="pb-1.5 px-2 text-center hidden md:table-cell border-b border-l border-white/10 text-white/90">
                   Pódios
                 </th>
-                <th rowSpan={2} className="pb-3 pl-3 text-right align-bottom border-b border-white/10 min-w-[90px]">Total Acumulado</th>
+                <th rowSpan={2} className="pb-2.5 sm:pb-3 pl-2 sm:pl-3 text-right align-bottom border-b border-white/10 min-w-0 sm:min-w-[90px]">
+                  <span className="sm:hidden">Pts</span>
+                  <span className="hidden sm:inline">Total Acumulado</span>
+                </th>
               </tr>
-              <tr className="border-b border-white/10 text-[10px] font-bold tracking-wider uppercase">
+              <tr className="hidden md:table-row border-b border-white/10 text-[10px] font-bold tracking-wider uppercase">
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-white/70 w-14 min-w-[52px]">GP</th>
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-purple-400 w-14 min-w-[52px]">Sprint</th>
                 <th className="pt-1 pb-2 text-center hidden md:table-cell text-white/70 w-14 min-w-[52px] border-l border-white/10">GP</th>
@@ -1047,9 +1204,16 @@ export default function SeasonStandingsExplorer({
               {filteredConstructors.map((c, index) => {
                 const pointsPercent = maxConstructorPoints > 0 ? Math.round((c.total_points / maxConstructorPoints) * 100) : 0;
                 const isLeader = index === 0;
+                const isExpanded = expandedConstructorKey === c.team_name;
 
                 return (
-                  <tr key={c.team_name} className="group hover:bg-white/[0.02] transition-colors">
+                  <React.Fragment key={c.team_name}>
+                    <tr
+                      onClick={() => setExpandedConstructorKey(isExpanded ? null : c.team_name)}
+                      className={`group transition-colors cursor-pointer md:cursor-default ${
+                        isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                      }`}
+                    >
                     {/* Posição */}
                     <td className="py-2.5 text-center">
                       <span className={`font-mono tabular-nums text-xs font-black ${isLeader
@@ -1084,22 +1248,34 @@ export default function SeasonStandingsExplorer({
                     </td>
 
                     {/* Nome com Pill da Cor */}
-                    <td className="py-2.5 px-3 min-w-[160px]">
-                      <TeamLink teamName={c.team_name} className="flex items-center gap-3 group/constructor">
-                        <div
-                          className="h-6 w-1.5 rounded-full flex-shrink-0 shadow-sm"
-                          style={{ backgroundColor: formatHexColor(c.team_color) }}
-                        />
-                        <span className="font-bold text-white text-xs sm:text-sm group-hover/constructor:text-white group-hover/constructor:underline transition-colors truncate">
-                          {c.team_name}
+                    <td className="py-2.5 px-2 sm:px-3 min-w-0 sm:min-w-[160px] max-w-[165px] sm:max-w-none">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <TeamLink teamName={c.team_name} className="flex items-center gap-2 sm:gap-3 group/constructor min-w-0 pointer-events-none md:pointer-events-auto">
+                          <div
+                            className="h-5 sm:h-6 w-1.5 rounded-full flex-shrink-0 shadow-sm"
+                            style={{ backgroundColor: formatHexColor(c.team_color) }}
+                          />
+                          <span className="font-bold text-white text-xs sm:text-sm group-hover/constructor:text-white group-hover/constructor:underline transition-colors truncate">
+                            {c.team_name}
+                          </span>
+                        </TeamLink>
+                        <span
+                          className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
+                            isExpanded
+                              ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                              : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                          }`}
+                          aria-hidden="true"
+                        >
+                          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                         </span>
-                      </TeamLink>
+                      </div>
                     </td>
 
                     {/* Pontos Conquistados na Última Etapa */}
-                    <td className="py-2.5 px-2 text-center font-mono tabular-nums font-bold text-xs whitespace-nowrap">
+                    <td className="py-2.5 px-1.5 sm:px-2 text-center font-mono tabular-nums font-bold text-xs whitespace-nowrap">
                       {c.pts_in_last_round > 0 ? (
-                        <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                        <span className="text-emerald-400 bg-emerald-500/10 px-1.5 sm:px-2 py-0.5 rounded border border-emerald-500/20">
                           +{c.pts_in_last_round}
                         </span>
                       ) : (
@@ -1135,9 +1311,9 @@ export default function SeasonStandingsExplorer({
                     </td>
 
                     {/* Pontos Totais Acumulados no Campeonato */}
-                    <td className="py-2.5 pl-3 text-right">
-                      <span className="font-black text-white text-sm font-mono tabular-nums">{c.total_points}</span>
-                      <div className="mt-1 w-18 ml-auto h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <td className="py-2.5 pl-2 sm:pl-3 text-right">
+                      <span className="font-black text-white text-xs sm:text-sm font-mono tabular-nums">{c.total_points}</span>
+                      <div className="hidden sm:block mt-1 w-18 ml-auto h-1.5 rounded-full bg-white/10 overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all"
                           style={{
@@ -1148,9 +1324,49 @@ export default function SeasonStandingsExplorer({
                       </div>
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
+
+                  {/* Accordion Expandível Mobile (< md): Detalhes da Equipe */}
+                  {isExpanded && (
+                    <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                      <td colSpan={12} className="p-3">
+                        <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                          <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                            <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                              <span className="block text-[10px] text-f1-subtle uppercase">Vitórias GP / Sprint</span>
+                              <span className="text-xs font-black text-white">
+                                {c.race_wins_in_period} / <span className="text-purple-300">{c.sprint_wins_in_period}</span>
+                              </span>
+                            </div>
+                            <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                              <span className="block text-[10px] text-f1-subtle uppercase">Pódios GP / Sprint</span>
+                              <span className="text-xs font-black text-white">
+                                {c.race_podiums_in_period} / <span className="text-purple-300">{c.sprint_podiums_in_period}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {minRound > 1 && (
+                            <div className="flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 text-amber-300 font-mono text-[11px]">
+                              <span>No Período (R{minRound}-R{maxRound}):</span>
+                              <span className="font-black">+{c.pts_in_period} pts</span>
+                            </div>
+                          )}
+
+                          <TeamLink
+                            teamName={c.team_name}
+                            className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                          >
+                            <span>Ver Perfil Completo da Equipe</span>
+                            <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                          </TeamLink>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
           </table>
         </div>
       )}
@@ -1161,21 +1377,48 @@ export default function SeasonStandingsExplorer({
   // RENDERIZAÇÃO FINAL: DISPOSIÇÃO MODULAR
   // =========================================================================
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
       {/* 1. Barra de Controles Superiores */}
       {topControlBar}
+
+      {/* Sub-abas Mobile (< xl): Evita empilhar Tabela + Filtro + Gráfico um em cima do outro */}
+      <div className="grid grid-cols-2 xl:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
+        <button
+          onClick={() => setMobileSubView("table")}
+          className={`py-2.5 px-3 min-h-[44px] rounded-lg text-xs font-black uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center ${
+            mobileSubView === "table"
+              ? "bg-white/15 text-white shadow"
+              : "text-f1-subtle hover:text-white"
+          }`}
+        >
+          Classificação
+        </button>
+        <button
+          onClick={() => setMobileSubView("analytics")}
+          className={`py-2.5 px-3 min-h-[44px] rounded-lg text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 active:scale-95 ${
+            mobileSubView === "analytics"
+              ? "bg-white/15 text-white shadow"
+              : "text-f1-subtle hover:text-white"
+          }`}
+        >
+          <span>Gráfico & Filtro</span>
+          {(minRound > minPossibleRound || maxRound < maxPossibleRound) && (
+            <span className="h-1.5 w-1.5 rounded-full bg-f1-red" />
+          )}
+        </button>
+      </div>
 
       {/* 2. Grid de Conteúdo */}
       {layoutMode === "side" ? (
         /* VISÃO LADO A LADO: Tabela ampliada à esquerda + Painel de Análise à direita */
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Tabela de Classificação como Visão Primária (8 colunas) */}
-          <div className="xl:col-span-8 2xl:col-span-8">
+          <div className={`xl:col-span-8 2xl:col-span-8 min-w-0 ${mobileSubView === "table" ? "block" : "hidden xl:block"}`}>
             {standingsTable}
           </div>
 
           {/* Painel Lateral: Filtro de Rodadas + Gráfico Top 5 (4 colunas) */}
-          <div className="xl:col-span-4 2xl:col-span-4 space-y-6 xl:sticky xl:top-6">
+          <div className={`xl:col-span-4 2xl:col-span-4 space-y-6 xl:sticky xl:top-6 min-w-0 ${mobileSubView === "analytics" ? "block" : "hidden xl:block"}`}>
             {filterCard}
             {chartCard}
           </div>
@@ -1183,15 +1426,15 @@ export default function SeasonStandingsExplorer({
       ) : (
         /* VISÃO EXPANDIDA: Tabela em largura total no topo, Filtro e Gráfico lado a lado abaixo */
         <div className="space-y-6">
-          <div>
+          <div className={mobileSubView === "table" ? "block" : "hidden xl:block"}>
             {standingsTable}
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-            <div className="xl:col-span-5 space-y-6">
+          <div className={`grid grid-cols-1 xl:grid-cols-12 gap-6 items-start ${mobileSubView === "analytics" ? "grid" : "hidden xl:grid"}`}>
+            <div className="xl:col-span-5 space-y-6 min-w-0">
               {filterCard}
             </div>
-            <div className="xl:col-span-7">
+            <div className="xl:col-span-7 min-w-0">
               {chartCard}
             </div>
           </div>

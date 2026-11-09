@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -23,6 +23,22 @@ import {
 export default function Sidebar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [mobileOpen]);
 
   const navLinks = [
     {
@@ -61,40 +77,55 @@ export default function Sidebar() {
   return (
     <>
       {/* ========================================================================= */}
-      {/* MOBILE TOP BAR (Visível apenas em telas pequenas < md) */}
+      {/* MOBILE & TABLET TOP BAR (Visível em telas < lg para liberar 100% da largura) */}
       {/* ========================================================================= */}
-      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#0B0B10]/95 px-4 py-3 backdrop-blur-md">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-10 items-center justify-center rounded bg-f1-red font-black italic tracking-tighter text-white text-xs">
+      <header className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-white/10 bg-[#0B0B10]/95 px-4 py-2.5 backdrop-blur-md">
+        <Link href="/" className="flex items-center gap-2.5 min-h-[44px]">
+          <div className="flex h-8 w-10 items-center justify-center rounded-lg bg-f1-red font-black italic tracking-tighter text-white text-xs shadow-md shadow-f1-red/30">
             F1
           </div>
-          <span className="text-sm font-black uppercase tracking-wider text-white">
-            Pit<span className="text-f1-red">wall</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="text-sm font-black uppercase tracking-wider text-white leading-none">
+              Pit<span className="text-f1-red">wall</span>
+            </span>
+            <span className="text-[10px] text-f1-subtle font-mono tracking-tight mt-0.5 hidden sm:inline">
+              Motorsport Intelligence
+            </span>
+          </div>
         </Link>
 
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10 transition-colors"
-          aria-label="Abrir menu de navegação"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
+        <div className="flex items-center gap-2.5">
+          {/* Live Status Pill Compacto */}
+          <div className="hidden xs:flex sm:flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-[10px] font-bold uppercase text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>2026 Live</span>
+          </div>
 
-      {/* Mobile Drawer Backdrop */}
+          {/* Touch Target >= 44x44px */}
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white hover:bg-white/10 active:scale-95 transition-all"
+            aria-label={mobileOpen ? "Fechar menu de sistema" : "Abrir menu de sistema"}
+            aria-expanded={mobileOpen}
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile & Tablet Drawer Backdrop */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
+          className="md:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm animate-fadeIn"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* ========================================================================= */}
-      {/* SIDEBAR CONTAINER (Fixo na lateral esquerda no desktop, gaveta no mobile) */}
+      {/* SIDEBAR CONTAINER (Fixo na lateral esquerda apenas em Desktop lg+, gaveta em < lg) */}
       {/* ========================================================================= */}
       <aside
-        className={`fixed md:sticky top-0 left-0 z-40 h-screen w-72 md:w-64 lg:w-72 flex-shrink-0 flex flex-col justify-between border-r border-white/10 bg-[#0B0B10] transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:sticky top-0 left-0 z-50 md:z-30 h-[100dvh] md:h-screen w-64 lg:w-72 flex-shrink-0 flex flex-col justify-between border-r border-white/10 bg-[#0B0B10] transition-transform duration-300 ease-in-out md:translate-x-0 ${
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
         }`}
       >
@@ -104,7 +135,7 @@ export default function Sidebar() {
             <Link
               href="/"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-3 group"
+              className="flex items-center gap-3 group min-h-[44px]"
             >
               <div className="flex h-9 w-12 items-center justify-center rounded-lg bg-f1-red font-black italic tracking-tighter text-white shadow-lg shadow-f1-red/30 transition-transform group-hover:scale-105">
                 F1
@@ -119,10 +150,11 @@ export default function Sidebar() {
               </div>
             </Link>
 
-            {/* Mobile Close Button */}
+            {/* Mobile/Tablet Close Button >= 44x44px */}
             <button
               onClick={() => setMobileOpen(false)}
-              className="md:hidden text-white/60 hover:text-white p-1"
+              className="md:hidden flex h-11 w-11 items-center justify-center rounded-xl text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+              aria-label="Fechar gaveta lateral"
             >
               <X className="h-5 w-5" />
             </button>
@@ -156,7 +188,9 @@ export default function Sidebar() {
             <nav className="space-y-1.5" aria-label="Navegação lateral principal">
               {navLinks.map((link) => {
                 const Icon = link.icon;
-                const isActive = pathname === link.href;
+                const isActive =
+                  pathname === link.href ||
+                  (link.href !== "/" && pathname.startsWith(link.href));
 
                 return (
                   <Link
@@ -242,13 +276,53 @@ export default function Sidebar() {
             href="https://github.com/RenanCosta2/f1-pipeline"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-white hover:bg-white/10 hover:border-f1-red/40 transition-all group"
+            className="flex min-h-[44px] items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/10 bg-white/5 text-xs font-bold text-white hover:bg-white/10 hover:border-f1-red/40 transition-all group"
           >
             <Github className="h-4 w-4 text-white/70 group-hover:text-white transition-colors" />
             <span>Código Aberto (GitHub)</span>
           </a>
         </div>
       </aside>
+
+      {/* ========================================================================= */}
+      {/* MOBILE & TABLET BOTTOM NAVIGATION DOCK (Thumb-zone, alvos >= 48px, < lg) */}
+      {/* ========================================================================= */}
+      <nav
+        aria-label="Navegação principal inferior mobile e tablet"
+        className="md:hidden fixed bottom-0 inset-x-0 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:bottom-3 sm:w-[540px] z-30 border-t sm:border border-white/10 sm:border-white/15 bg-[#0B0B10]/95 sm:rounded-2xl backdrop-blur-xl px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] sm:pb-1.5 shadow-[0_-8px_30px_rgba(0,0,0,0.75)]"
+      >
+        <div className="grid grid-cols-5 gap-1">
+          {navLinks.map((link) => {
+            const Icon = link.icon;
+            const isActive =
+              link.href === "/"
+                ? pathname === "/"
+                : pathname === link.href || pathname.startsWith(`${link.href}/`);
+            const shortName = link.name === "Visão Geral" ? "Hub" : link.name;
+
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className={`relative flex min-h-[50px] flex-col items-center justify-center gap-1 rounded-xl px-1 py-1.5 active:scale-95 transition-all ${
+                  isActive
+                    ? "text-white bg-f1-red/15"
+                    : "text-white/55 hover:text-white/85 hover:bg-white/5"
+                }`}
+              >
+                {isActive && (
+                  <span className="absolute top-0.5 h-0.5 w-7 rounded-full bg-f1-red" />
+                )}
+                <Icon className={`h-5 w-5 ${isActive ? "text-f1-red" : ""}`} />
+                <span className="text-[10px] sm:text-[11px] font-bold tracking-tight leading-none">
+                  {shortName}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </>
   );
 }

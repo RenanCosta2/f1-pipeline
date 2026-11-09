@@ -16,29 +16,29 @@ export default function CircuitsSpotlightStrip({
   if (!upcomingRace && !lastRace) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3">
       {/* ========================================================================= */}
       {/* CARD 1: PRÓXIMO GP NO CALENDÁRIO                                         */}
       {/* ========================================================================= */}
       {upcomingRace && (
         <Link
           href={`/circuits/${upcomingRace.circuit_id}`}
-          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E14] p-3 transition-all duration-200 hover:border-white/25 hover:bg-[#13131C] hover:shadow-lg"
+          className="group relative flex items-center justify-between overflow-hidden rounded-xl border border-white/10 bg-[#0E0E14] p-2.5 sm:p-3 transition-all duration-200 hover:border-white/25 hover:bg-[#13131C] hover:shadow-lg min-h-[64px] active:scale-[0.99]"
         >
           {/* Linha de sotaque superior vermelha F1 */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-f1-red to-rose-400" />
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-f1-red to-rose-400 transition-all group-hover:h-1.5" />
 
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Bandeira do País da Próxima Etapa */}
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B10] flex items-center justify-center text-2xl shadow-inner">
+            <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#0B0B10] flex items-center justify-center text-lg sm:text-xl shadow-inner">
               <span role="img" aria-label={upcomingRace.country}>
                 {getCountryFlag(upcomingRace.country)}
               </span>
             </div>
 
             {/* Informações da Próxima Corrida */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full border border-f1-red/30 bg-f1-red/10 px-2 py-0.2 text-[9px] font-black uppercase tracking-wider text-f1-red">
                   <span className="h-1.5 w-1.5 rounded-full bg-f1-red animate-pulse" />
                   Próximo GP (Etapa {upcomingRace.round_number})
@@ -47,10 +47,10 @@ export default function CircuitsSpotlightStrip({
                   {upcomingRace.country}
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white truncate group-hover:underline decoration-white/40 transition-colors mt-0.5">
+              <h4 className="text-xs sm:text-sm font-black text-white truncate group-hover:underline decoration-white/40 transition-colors mt-0.5 leading-tight">
                 {upcomingRace.circuit_name}
               </h4>
-              <p className="text-[11px] text-f1-subtle font-mono truncate">
+              <p className="text-[10px] sm:text-[11px] text-f1-subtle font-mono truncate mt-0.5">
                 <strong className="text-white">{upcomingRace.location}</strong> •{" "}
                 {upcomingRace.official_event_name || `GP de ${upcomingRace.country}`}
               </p>
@@ -59,9 +59,9 @@ export default function CircuitsSpotlightStrip({
 
           {/* Botão de Atalho */}
           <div className="shrink-0 pl-2">
-            <span className="flex items-center gap-0.5 text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-white/70 group-hover:text-white transition-colors">
               <span className="hidden sm:inline">Pista</span>
-              <ChevronRight className="h-3.5 w-3.5 text-f1-subtle group-hover:text-white transition-colors" />
+              <ChevronRight className="h-3 w-3 text-f1-subtle group-hover:text-white transition-colors" />
             </span>
           </div>
         </Link>
@@ -73,27 +73,27 @@ export default function CircuitsSpotlightStrip({
       {lastRace && (
         <Link
           href={`/circuits/${lastRace.circuit_id}`}
-          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#0E0E14] p-3 transition-all duration-200 hover:border-white/25 hover:bg-[#13131C] hover:shadow-lg"
+          className="group relative flex items-center justify-between overflow-hidden rounded-xl border border-white/10 bg-[#0E0E14] p-2.5 sm:p-3 transition-all duration-200 hover:border-white/25 hover:bg-[#13131C] hover:shadow-lg min-h-[64px] active:scale-[0.99]"
         >
           {/* Linha de sotaque superior na cor da equipe vencedora */}
           <div
-            className="absolute top-0 left-0 right-0 h-1"
+            className="absolute top-0 left-0 right-0 h-1 transition-all group-hover:h-1.5"
             style={{
               backgroundColor: lastRace.race_winner_team_color || lastRace.team_color || "#10B981"
             }}
           />
 
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             {/* Bandeira do País do Último GP */}
-            <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-[#0B0B10] flex items-center justify-center text-2xl shadow-inner">
+            <div className="relative h-10 w-10 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-[#0B0B10] flex items-center justify-center text-lg sm:text-xl shadow-inner">
               <span role="img" aria-label={lastRace.country}>
                 {getCountryFlag(lastRace.country)}
               </span>
             </div>
 
             {/* Informações da Etapa Recente */}
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.2 text-[9px] font-black uppercase tracking-wider text-emerald-400">
                   <Zap className="h-2.5 w-2.5" />
                   Último GP Realizado (Etapa {lastRace.round_number})
@@ -102,10 +102,10 @@ export default function CircuitsSpotlightStrip({
                   {lastRace.country}
                 </span>
               </div>
-              <h4 className="text-sm font-black text-white truncate group-hover:text-emerald-400 transition-colors mt-0.5">
+              <h4 className="text-xs sm:text-sm font-black text-white truncate group-hover:text-emerald-400 transition-colors mt-0.5 leading-tight">
                 {lastRace.circuit_name}
               </h4>
-              <p className="text-[11px] text-f1-subtle font-mono truncate">
+              <p className="text-[10px] sm:text-[11px] text-f1-subtle font-mono truncate mt-0.5">
                 {lastRace.race_winner_driver ? (
                   <>
                     Vitória de <strong className="text-white">{lastRace.race_winner_driver}</strong> (
@@ -127,9 +127,9 @@ export default function CircuitsSpotlightStrip({
 
           {/* Botão de Atalho */}
           <div className="shrink-0 pl-2">
-            <span className="flex items-center gap-0.5 text-[11px] font-bold text-white/70 group-hover:text-white transition-colors">
+            <span className="flex items-center gap-0.5 text-[10px] font-bold text-white/70 group-hover:text-white transition-colors">
               <span className="hidden sm:inline">Pista</span>
-              <ChevronRight className="h-3.5 w-3.5 text-f1-subtle group-hover:text-emerald-400 transition-colors" />
+              <ChevronRight className="h-3 w-3 text-f1-subtle group-hover:text-emerald-400 transition-colors" />
             </span>
           </div>
         </Link>

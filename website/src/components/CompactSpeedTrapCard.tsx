@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { MaxSpeed } from "@/types/f1";
 import DriverLink from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
+import TeamLink from "@/lib/teamUtils";
 import { Zap, Flame, Award, ChevronRight, ArrowUpRight } from "lucide-react";
 
 interface CompactSpeedTrapCardProps {

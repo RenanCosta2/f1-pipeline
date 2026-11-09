@@ -27,13 +27,13 @@ export default function CircuitProfileHero({ overview }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Botão Voltar */}
+      {/* Botão Voltar com touch target mínimo de 44px */}
       <div className="flex items-center justify-between">
         <Link
           href="/circuits"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-f1-subtle hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 min-h-[44px] py-2 px-1 text-xs font-bold text-f1-subtle hover:text-white transition-colors active:scale-95"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
+          <ArrowLeft className="h-4 w-4" />
           <span>Voltar para Catálogo de Circuitos</span>
         </Link>
       </div>
@@ -48,7 +48,7 @@ export default function CircuitProfileHero({ overview }: Props) {
           }}
         />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           {/* Lado Esquerdo: Bandeira + Identificação Oficial em Linha */}
           <div className="flex items-center gap-4 min-w-0">
             {/* Bandeira do País com Moldura Compacta */}
@@ -92,7 +92,7 @@ export default function CircuitProfileHero({ overview }: Props) {
               </h1>
 
               {/* Localização e País */}
-              <div className="flex items-center gap-2 text-xs font-medium text-f1-subtle">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-f1-subtle">
                 <span className="text-white font-bold">{overview.location}</span>
                 <span>•</span>
                 <span className="text-zinc-300">{overview.country}</span>
@@ -100,7 +100,7 @@ export default function CircuitProfileHero({ overview }: Props) {
                   <>
                     <span className="text-white/20">•</span>
                     <span className="flex items-center gap-1 font-mono text-[11px]">
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: teamColor }} />
+                      <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
                       <strong className="text-white">{overview.most_wins_team}</strong> ({overview.most_wins_team_count}v)
                     </span>
                   </>
@@ -109,69 +109,69 @@ export default function CircuitProfileHero({ overview }: Props) {
             </div>
           </div>
 
-          {/* Lado Direito: Régua de KPIs em Linha Compacta (5 métricas em 1 linha) */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 lg:border-l border-white/5 lg:pl-5">
+          {/* Lado Direito: Régua de KPIs em Linha Compacta (Grid 3+2 no mobile, 5 em linha a partir de sm) */}
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 sm:gap-2.5 shrink-0 pt-3 xl:pt-0 border-t xl:border-t-0 xl:border-l border-white/5 xl:pl-5">
             {/* 1. GPs Disputados */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[70px]">
-              <span className="block text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[70px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-f1-subtle tracking-wider">
                 GPs
               </span>
-              <span className="text-base sm:text-lg font-black text-white font-mono block">
+              <span className="text-sm sm:text-lg font-black text-white font-mono block">
                 {overview.total_gps_completed}
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5">
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5">
                 Edições
               </span>
             </div>
 
             {/* 2. Recorde de Corrida */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[95px]">
-              <span className="block text-[10px] font-bold uppercase text-purple-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[95px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-purple-400 tracking-wider">
                 Recorde GP
               </span>
               <span className="text-xs sm:text-sm font-black text-purple-300 font-mono block mt-0.5 truncate">
                 {overview.race_lap_record_formatted || "—"}
               </span>
-              <span className="text-[10px] text-zinc-400 font-sans block truncate -mt-0.5" title={overview.race_lap_record_driver || "Sem registro"}>
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-sans block truncate -mt-0.5" title={overview.race_lap_record_driver || "Sem registro"}>
                 {overview.race_lap_record_driver || "Sem registro"}
               </span>
             </div>
 
             {/* 3. Recorde de Quali */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[95px]">
-              <span className="block text-[10px] font-bold uppercase text-emerald-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[95px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-emerald-400 tracking-wider">
                 Recorde Quali
               </span>
               <span className="text-xs sm:text-sm font-black text-emerald-300 font-mono block mt-0.5 truncate">
                 {overview.quali_lap_record_formatted || "—"}
               </span>
-              <span className="text-[10px] text-zinc-400 font-sans block truncate -mt-0.5" title={overview.quali_lap_record_driver || "Sem registro"}>
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-sans block truncate -mt-0.5" title={overview.quali_lap_record_driver || "Sem registro"}>
                 {overview.quali_lap_record_driver || "Sem registro"}
               </span>
             </div>
 
             {/* 4. Maior Vencedor */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[95px]">
-              <span className="block text-[10px] font-bold uppercase text-amber-400 tracking-wider">
+            <div className="col-span-2 sm:col-span-1 rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[95px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-amber-400 tracking-wider">
                 Top Piloto
               </span>
               <span className="text-xs sm:text-sm font-black text-amber-300 block mt-0.5 truncate font-sans" title={overview.most_wins_driver || "—"}>
                 {overview.most_wins_driver ? overview.most_wins_driver.split(' ').pop() : "—"}
               </span>
-              <span className="text-[10px] text-amber-400 font-mono block -mt-0.5">
+              <span className="text-[9px] sm:text-[10px] text-amber-400 font-mono block -mt-0.5">
                 {overview.most_wins_count ? `${overview.most_wins_count} vitórias` : "—"}
               </span>
             </div>
 
             {/* 5. Média DNF */}
-            <div className="rounded-xl border border-white/5 bg-[#12121A] px-3 py-2 text-center min-w-[70px] col-span-2 sm:col-span-1">
-              <span className="block text-[10px] font-bold uppercase text-rose-400 tracking-wider">
+            <div className="rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[70px]">
+              <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-rose-400 tracking-wider">
                 Média DNF
               </span>
-              <span className="text-base sm:text-lg font-black text-white font-mono block">
+              <span className="text-sm sm:text-lg font-black text-white font-mono block">
                 {Number(overview.avg_dnfs_per_race || 0).toFixed(1)}
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono block -mt-0.5">
+              <span className="text-[9px] sm:text-[10px] text-zinc-400 font-mono block -mt-0.5">
                 {overview.total_dnfs} total
               </span>
             </div>

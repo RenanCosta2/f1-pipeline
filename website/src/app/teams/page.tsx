@@ -27,21 +27,21 @@ export default async function TeamsPage() {
     <div className="space-y-5">
       {/* Header Executivo da Página de Construtores / Equipes */}
       <div className="border-b border-f1-border/50 pb-4">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-f1-red/30 bg-f1-red/10 px-3 py-1 text-xs font-bold text-f1-red uppercase tracking-wider mb-2">
               <Shield className="h-3.5 w-3.5" /> Central de Construtores • F1 Analytics
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black uppercase text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black uppercase text-white tracking-tight">
               Galeria de Equipes da Fórmula 1
             </h1>
             <p className="text-sm text-f1-subtle mt-1.5 max-w-3xl font-medium">
-              Explore o legado histórico, títulos mundiais de construtores, vitórias, dobradinhas e os pilotos lendários de cada escuderia da Fórmula 1 moderna.
+              Explore o legado histórico, títulos mundiais de construtores, vitórias, dobradinhas e os pilotos lendários de cada escuderia da Fórmula 1.
             </p>
           </div>
 
           {/* Badges Rápidas com Totais Consolidados */}
-          <div className="flex items-center gap-2 self-start md:self-auto shrink-0">
+          <div className="grid grid-cols-3 sm:flex items-center gap-2 w-full sm:w-auto self-start xl:self-auto shrink-0">
             <div className="rounded-xl border border-white/10 bg-[#12121A] px-3.5 py-2 text-center">
               <span className="block text-[10px] font-bold uppercase text-f1-subtle">Equipes</span>
               <span className="text-base font-black text-white font-mono">{totalTeams}</span>

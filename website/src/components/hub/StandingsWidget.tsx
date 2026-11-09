@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Trophy, ChevronRight, X, ArrowUpRight } from "lucide-react";
 import { DriverStanding, ConstructorStanding } from "@/types/f1";
-import { DriverLink } from "@/lib/driverUtils";
+import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
 
 interface Props {
@@ -60,6 +60,22 @@ export default function StandingsWidget({ drivers = [], constructors = [], year 
   const [tab, setTab] = useState<"drivers" | "teams">("drivers");
   const [fullModalOpen, setFullModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (!fullModalOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [fullModalOpen]);
+
   const top10Drivers = drivers.slice(0, 10);
   const top10Teams = constructors.slice(0, 10);
   const leaderDriver = top10Drivers[0];
@@ -78,18 +94,18 @@ export default function StandingsWidget({ drivers = [], constructors = [], year 
           <span className="font-mono text-[10px] font-bold uppercase text-zinc-500">Top 10</span>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="grid grid-cols-2 rounded-lg border border-white/10 bg-black/40 p-0.5 text-xs font-mono font-bold uppercase">
+        {/* Tab Switcher (Alvos >= 44px no mobile) */}
+        <div className="grid grid-cols-2 rounded-xl border border-white/10 bg-black/40 p-1 text-xs font-mono font-bold uppercase">
           <button
             onClick={() => setTab("drivers")}
-            className={`py-1.5 rounded-md transition-colors ${tab === "drivers" ? "bg-white/15 text-white" : "text-f1-subtle hover:text-white"
+            className={`min-h-[44px] sm:min-h-[36px] py-1.5 rounded-lg active:scale-[0.98] transition-all ${tab === "drivers" ? "bg-white/15 text-white shadow" : "text-f1-subtle hover:text-white"
               }`}
           >
             Pilotos
           </button>
           <button
             onClick={() => setTab("teams")}
-            className={`py-1.5 rounded-md transition-colors ${tab === "teams" ? "bg-white/15 text-white" : "text-f1-subtle hover:text-white"
+            className={`min-h-[44px] sm:min-h-[36px] py-1.5 rounded-lg active:scale-[0.98] transition-all ${tab === "teams" ? "bg-white/15 text-white shadow" : "text-f1-subtle hover:text-white"
               }`}
           >
             Construtores
@@ -319,61 +335,65 @@ export default function StandingsWidget({ drivers = [], constructors = [], year 
         </div>
       )}
 
-      {/* Footer Button: Open Full Modal */}
+      {/* Footer Button: Open Full Modal (Touch target >= 44px) */}
       <div className="pt-2 border-t border-white/5">
         <button
           onClick={() => setFullModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 py-2 text-xs font-mono font-bold uppercase tracking-wider text-zinc-300 hover:text-white hover:border-white/20 hover:bg-white/10 transition-colors"
+          className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-mono font-bold uppercase tracking-wider text-zinc-300 hover:text-white hover:border-white/20 hover:bg-white/10 active:scale-[0.99] transition-all"
         >
           <span>Ver classificação completa</span>
-          <ChevronRight className="h-3.5 w-3.5 text-f1-red" />
+          <ChevronRight className="h-4 w-4 text-f1-red" />
         </button>
       </div>
       </aside>
 
-      {/* Modal: Full Standings (rendered via Portal on document.body to avoid space-y-* margin & stacking issues) */}
+      {/* Modal: Full Standings (Bottom Sheet no mobile, Modal central no desktop) */}
       {fullModalOpen &&
         typeof document !== "undefined" &&
         createPortal(
           <div
             onClick={() => setFullModalOpen(false)}
-            className="fixed inset-0 z-[9999] !m-0 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn"
+            className="fixed inset-0 z-[9999] !m-0 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 animate-fadeIn"
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#12121A] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+              className="w-full max-w-3xl rounded-t-3xl sm:rounded-2xl border-t sm:border border-white/15 bg-[#12121A] max-h-[90dvh] sm:max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slideUpSheet sm:animate-none pb-[env(safe-area-inset-bottom)] sm:pb-0"
             >
-              <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              {/* Mobile Drag Pill Indicator */}
+              <div className="w-12 h-1.5 rounded-full bg-white/20 mx-auto mt-2.5 sm:hidden shrink-0" />
+
+              <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
                 <div>
-                  <h3 className="text-2xl font-black uppercase text-white">Classificação Geral {year}</h3>
+                  <h3 className="text-xl sm:text-2xl font-black uppercase text-white">Classificação Geral {year}</h3>
                   <p className="text-xs text-f1-subtle">Tabela completa de pontuação do Campeonato Mundial</p>
                 </div>
                 <button
                   onClick={() => setFullModalOpen(false)}
-                  className="p-2 rounded-lg border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="Fechar classificação geral"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="flex gap-2 border-b border-white/10 px-6 pt-3">
+              <div className="grid grid-cols-2 sm:flex gap-2 border-b border-white/10 px-4 sm:px-6 pt-2 shrink-0">
                 <button
                   onClick={() => setTab("drivers")}
-                  className={`pb-2 px-3 text-xs font-bold uppercase transition-colors border-b-2 ${tab === "drivers" ? "border-f1-red text-white" : "border-transparent text-white/50"
+                  className={`min-h-[44px] pb-2 px-3 text-xs font-bold uppercase transition-colors border-b-2 ${tab === "drivers" ? "border-f1-red text-white" : "border-transparent text-white/50"
                     }`}
                 >
                   Pilotos ({drivers.length})
                 </button>
                 <button
                   onClick={() => setTab("teams")}
-                  className={`pb-2 px-3 text-xs font-bold uppercase transition-colors border-b-2 ${tab === "teams" ? "border-f1-red text-white" : "border-transparent text-white/50"
+                  className={`min-h-[44px] pb-2 px-3 text-xs font-bold uppercase transition-colors border-b-2 ${tab === "teams" ? "border-f1-red text-white" : "border-transparent text-white/50"
                     }`}
                 >
                   Construtores ({constructors.length})
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-2">
+              <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-2">
                 {tab === "drivers"
                   ? drivers.map((d) => (
                     <div

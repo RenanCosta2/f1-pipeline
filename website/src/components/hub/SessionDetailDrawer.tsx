@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { X, Gauge, Flag, Loader2, ArrowUp, ArrowDown, Minus, Timer, TrendingUp, ArrowUpRight } from "lucide-react";
 import { SessionSummary } from "@/types/f1";
 import { getTeamColor, getTeamAbbr } from "./StandingsWidget";
-import { DriverLink } from "@/lib/driverUtils";
+import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
 import CircuitLink from "@/lib/circuitUtils";
 
@@ -78,15 +78,20 @@ export default function SessionDetailDrawer({
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
+    if (!isOpen) {
       document.body.style.overflow = "";
+      return;
     }
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   useEffect(() => {
     if (!isOpen || !session) return;
@@ -123,7 +128,8 @@ export default function SessionDetailDrawer({
 
   return createPortal(
     <div
-      className="fixed inset-0 flex justify-end bg-black/85 backdrop-blur-sm animate-fadeIn"
+      onClick={onClose}
+      className="fixed inset-0 flex items-end sm:items-stretch justify-end bg-black/85 backdrop-blur-sm animate-fadeIn"
       style={{
         zIndex: 99999,
         top: 0,
@@ -131,44 +137,48 @@ export default function SessionDetailDrawer({
         right: 0,
         bottom: 0,
         width: "100vw",
-        height: "100vh",
+        height: "100dvh",
         margin: 0,
         padding: 0
       }}
     >
       <div
-        className="w-full max-w-3xl sm:max-w-4xl bg-[#12121A] border-l border-white/10 flex flex-col shadow-2xl overflow-hidden animate-slideLeft"
-        style={{ height: "100vh", maxHeight: "100vh", margin: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl sm:max-w-4xl bg-[#12121A] rounded-t-3xl sm:rounded-none border-t sm:border-t-0 sm:border-l border-white/15 flex flex-col shadow-2xl overflow-hidden max-h-[92dvh] sm:max-h-none sm:h-full animate-slideUpSheet sm:animate-slideLeft pb-[env(safe-area-inset-bottom)] sm:pb-0"
       >
+        {/* Mobile Drag Pill Indicator */}
+        <div className="w-12 h-1.5 rounded-full bg-white/20 mx-auto mt-2.5 sm:hidden shrink-0" />
+
         {/* Drawer Header */}
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-400">
                 Sessão Finalizada
               </span>
-              <span className="text-xs text-f1-subtle">{session.date} · {session.time}</span>
+              <span className="text-[11px] sm:text-xs text-f1-subtle">{session.date} · {session.time}</span>
             </div>
-            <h3 className="text-2xl font-black uppercase text-white mt-1">
+            <h3 className="text-lg sm:text-2xl font-black uppercase text-white mt-1 truncate">
               {session.name}
             </h3>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex flex-wrap items-center gap-2 mt-1">
               <CircuitLink
                 circuitName={circuitName}
-                className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/90 hover:text-white transition-all group"
+                className="inline-flex min-h-[36px] sm:min-h-0 items-center gap-1 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-white/90 hover:text-white transition-all group"
                 title={`Ver perfil e traçado do circuito ${circuitName}`}
               >
                 <span>{circuitName}</span>
                 <ArrowUpRight className="h-3 w-3 text-f1-subtle group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </CircuitLink>
-              <span className="text-white/20">·</span>
-              <span className="text-xs text-f1-subtle">Classificação e Tempos Oficiais</span>
+              <span className="text-white/20 hidden sm:inline">·</span>
+              <span className="text-[11px] sm:text-xs text-f1-subtle hidden sm:inline">Classificação e Tempos Oficiais</span>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-lg border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Fechar detalhes da sessão"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -178,13 +188,14 @@ export default function SessionDetailDrawer({
         <div className="grid grid-cols-2 gap-px border-b border-white/10 bg-white/10">
           {isRaceOrSprint ? (
             /* Card 1: Maior Escalador na Corrida */
-            <div className="bg-[#151520] p-4">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-emerald-400">
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> Maior Escalador
+            <div className="bg-[#151520] p-3 sm:p-4 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-emerald-400">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Maior Escalador</span>
               </div>
               {biggestClimberInfo ? (
                 <>
-                  <p className="font-mono tabular-nums text-xl font-black text-emerald-400 mt-1">
+                  <p className="font-mono tabular-nums text-base sm:text-xl font-black text-emerald-400 mt-1 truncate">
                     +{biggestClimberInfo.gained} {biggestClimberInfo.gained === 1 ? "POSIÇÃO" : "POSIÇÕES"}
                   </p>
                   <p className="text-xs text-f1-subtle truncate">
@@ -206,20 +217,21 @@ export default function SessionDetailDrawer({
                 </>
               ) : (
                 <>
-                  <p className="font-mono text-xl font-bold text-white/40 mt-1">—</p>
-                  <p className="text-xs text-f1-subtle">Sem mudanças de posição</p>
+                  <p className="font-mono text-base sm:text-xl font-bold text-white/40 mt-1">—</p>
+                  <p className="text-xs text-f1-subtle truncate">Sem mudanças de posição</p>
                 </>
               )}
             </div>
           ) : (
             /* Card 1: Speed Trap em Treinos/Classificação */
-            <div className="bg-[#151520] p-4">
-              <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-f1-red">
-                <Gauge className="h-3.5 w-3.5 text-f1-red" /> Speed Trap
+            <div className="bg-[#151520] p-3 sm:p-4 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-f1-red">
+                <Gauge className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                <span className="truncate">Speed Trap</span>
               </div>
               {speedTrap ? (
                 <>
-                  <p className="font-mono tabular-nums text-xl font-bold text-white mt-1">{speedTrap.speed} KM/H</p>
+                  <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-white mt-1 truncate">{speedTrap.speed} KM/H</p>
                   <p className="text-xs text-f1-subtle truncate">
                     <DriverLink
                       driverName={speedTrap.driver}
@@ -239,21 +251,22 @@ export default function SessionDetailDrawer({
                 </>
               ) : (
                 <>
-                  <p className="font-mono text-xl font-bold text-white/40 mt-1">—</p>
-                  <p className="text-xs text-f1-subtle">Sem dados de velocidade</p>
+                  <p className="font-mono text-base sm:text-xl font-bold text-white/40 mt-1">—</p>
+                  <p className="text-xs text-f1-subtle truncate">Sem dados de velocidade</p>
                 </>
               )}
             </div>
           )}
 
           {/* Card 2: Volta Mais Rápida (para todas as sessões) */}
-          <div className="bg-[#151520] p-4">
-            <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-purple-400">
-              <Timer className="h-3.5 w-3.5 text-purple-400" /> Volta Mais Rápida
+          <div className="bg-[#151520] p-3 sm:p-4 min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-purple-400">
+              <Timer className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+              <span className="truncate">Volta Mais Rápida</span>
             </div>
             {fastestLapInfo ? (
               <>
-                <p className="font-mono tabular-nums text-xl font-bold text-purple-400 mt-1">{fastestLapInfo.best_lap}</p>
+                <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-purple-400 mt-1 truncate">{fastestLapInfo.best_lap}</p>
                 <p className="text-xs text-f1-subtle truncate">
                   <DriverLink driverId={fastestLapInfo.driver_id} driverName={fastestLapInfo.driver_full_name} className="font-bold text-white/90 hover:text-purple-300 transition-colors">
                     {fastestLapInfo.driver_full_name}
@@ -268,8 +281,8 @@ export default function SessionDetailDrawer({
               </>
             ) : (
               <>
-                <p className="font-mono text-xl font-bold text-purple-400 mt-1">—</p>
-                <p className="text-xs text-f1-subtle">Aguardando registro</p>
+                <p className="font-mono text-base sm:text-xl font-bold text-purple-400 mt-1">—</p>
+                <p className="text-xs text-f1-subtle truncate">Aguardando registro</p>
               </>
             )}
           </div>
@@ -358,7 +371,7 @@ export default function SessionDetailDrawer({
         )}
 
         {/* Classification Table */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-auto p-3.5 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-f1-subtle">
               <Loader2 className="h-7 w-7 animate-spin text-f1-red" />
@@ -371,18 +384,18 @@ export default function SessionDetailDrawer({
 
               if (isRaceOrSprint) {
                 return (
-                  <div className="min-w-[680px]">
-                    <div className="grid grid-cols-[40px_50px_48px_1fr_65px_85px_85px_50px_75px_45px] gap-2 pb-2 text-[10px] font-bold uppercase text-f1-subtle border-b border-white/10 items-center">
+                  <div className="sm:min-w-[680px]">
+                    <div className="grid grid-cols-[32px_36px_1fr_72px] sm:grid-cols-[40px_50px_48px_1fr_65px_85px_85px_50px_75px_45px] gap-1.5 sm:gap-2 pb-2 text-[10px] font-bold uppercase text-f1-subtle border-b border-white/10 items-center">
                       <span className="text-center">Pos</span>
-                      <span className="text-center">Largada</span>
+                      <span className="text-center hidden sm:block">Largada</span>
                       <span className="text-center">+/-</span>
                       <span>Piloto</span>
-                      <span>Equipe</span>
+                      <span className="hidden sm:block">Equipe</span>
                       <span className="text-right">Gap Líder</span>
-                      <span className="text-right">Intervalo</span>
-                      <span className="text-center">Paradas</span>
-                      <span className="text-right">Melhor</span>
-                      <span className="text-center">Voltas</span>
+                      <span className="text-right hidden sm:block">Intervalo</span>
+                      <span className="text-center hidden sm:block">Paradas</span>
+                      <span className="text-right hidden sm:block">Melhor</span>
+                      <span className="text-center hidden sm:block">Voltas</span>
                     </div>
 
                     <div className="divide-y divide-white/5 text-xs">
@@ -394,7 +407,7 @@ export default function SessionDetailDrawer({
                         return (
                           <div
                             key={`${r.driver_full_name}-${i}`}
-                            className="grid grid-cols-[40px_50px_48px_1fr_65px_85px_85px_50px_75px_45px] gap-2 py-2.5 items-center hover:bg-white/[0.02]"
+                            className="grid grid-cols-[32px_36px_1fr_72px] sm:grid-cols-[40px_50px_48px_1fr_65px_85px_85px_50px_75px_45px] gap-1.5 sm:gap-2 py-2.5 items-center hover:bg-white/[0.02]"
                           >
                             <span className={`font-mono tabular-nums text-center font-bold ${isWinner ? "text-amber-400 font-black" : "text-white/60"
                               }`}>
@@ -402,7 +415,7 @@ export default function SessionDetailDrawer({
                             </span>
 
                             {/* Posição de Largada */}
-                            <span className="text-center font-mono tabular-nums text-white/50 text-[11px] font-semibold">
+                            <span className="text-center font-mono tabular-nums text-white/50 text-[11px] font-semibold hidden sm:block">
                               {r.grid_position != null ? `P${r.grid_position}` : "—"}
                             </span>
 
@@ -427,59 +440,66 @@ export default function SessionDetailDrawer({
                               )}
                             </div>
 
-                            <DriverLink
-                              driverId={r.driver_id}
-                              driverName={r.driver_full_name}
-                              className="flex items-center gap-2 truncate group/drow"
-                              title={`Ver perfil de ${r.driver_full_name}`}
-                            >
-                              <div
-                                className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 shadow-sm transition-transform group-hover/drow:scale-105"
-                                style={{ borderColor: color }}
+                            <div className="min-w-0">
+                              <DriverLink
+                                driverId={r.driver_id}
+                                driverName={r.driver_full_name}
+                                className="flex items-center gap-2 truncate group/drow"
+                                title={`Ver perfil de ${r.driver_full_name}`}
                               >
-                                {r.driver_headshot_url ? (
-                                  <img
-                                    src={r.driver_headshot_url}
-                                    alt={r.driver_full_name}
-                                    className="h-full w-full object-cover object-top"
-                                  />
-                                ) : (
-                                  <span className="font-mono text-[9px] font-black text-white/70">
-                                    {r.driver_full_name.slice(0, 2).toUpperCase()}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="font-bold text-white truncate group-hover/drow:text-white group-hover/drow:underline decoration-white/30 transition-colors">{r.driver_full_name}</span>
-                              {r.driver_number && (
-                                <span className="text-[10px] font-mono tabular-nums text-white/40">#{r.driver_number}</span>
-                              )}
-                            </DriverLink>
+                                <div
+                                  className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 shadow-sm transition-transform group-hover/drow:scale-105"
+                                  style={{ borderColor: color }}
+                                >
+                                  {r.driver_headshot_url ? (
+                                    <img
+                                      src={r.driver_headshot_url}
+                                      alt={r.driver_full_name}
+                                      className="h-full w-full object-cover object-top"
+                                    />
+                                  ) : (
+                                    <span className="font-mono text-[9px] font-black text-white/70">
+                                      {r.driver_full_name.slice(0, 2).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="font-bold text-white truncate group-hover/drow:text-white group-hover/drow:underline decoration-white/30 transition-colors">{r.driver_full_name}</span>
+                                    {r.driver_number && (
+                                      <span className="text-[10px] font-mono tabular-nums text-white/40 hidden sm:inline">#{r.driver_number}</span>
+                                    )}
+                                  </div>
+                                  <span className="block sm:hidden text-[10px] text-f1-subtle truncate">{r.team_name}</span>
+                                </div>
+                              </DriverLink>
+                            </div>
 
                             <TeamLink
                               teamName={r.team_name}
                               teamId={r.team_id}
-                              className="font-bold text-[11px] truncate text-white/60 hover:text-white hover:underline decoration-white/30 transition-colors"
+                              className="font-bold text-[11px] truncate text-white/60 hover:text-white hover:underline decoration-white/30 transition-colors hidden sm:block"
                               title={`Ver perfil de ${r.team_name}`}
                             >
                               {abbr}
                             </TeamLink>
 
-                            <span className="font-mono tabular-nums text-right text-[11px] font-medium text-white/90">
+                            <span className="font-mono tabular-nums text-right text-[11px] font-medium text-white/90 truncate">
                               {r.gap_to_leader || (i === 0 ? "Leader" : "—")}
                             </span>
 
-                            <span className="font-mono tabular-nums text-right text-[11px] text-white/60">
+                            <span className="font-mono tabular-nums text-right text-[11px] text-white/60 hidden sm:block">
                               {r.interval_to_car_ahead || (i === 0 ? "-" : "—")}
                             </span>
 
-                            <span className="text-center font-mono tabular-nums text-white/80 font-bold text-xs">
+                            <span className="text-center font-mono tabular-nums text-white/80 font-bold text-xs hidden sm:block">
                               {r.stops != null ? r.stops : 0}
                             </span>
 
                             {(() => {
                               const isFastest = Boolean(fastestLapInfo && r.best_lap && r.best_lap === fastestLapInfo.best_lap);
                               return (
-                                <div className="flex justify-end">
+                                <div className="hidden sm:flex justify-end">
                                   {isFastest ? (
                                     <span
                                       title="Volta Mais Rápida da Sessão"
@@ -497,7 +517,7 @@ export default function SessionDetailDrawer({
                               );
                             })()}
 
-                            <span className="text-center font-mono tabular-nums text-white/60 text-[11px]">
+                            <span className="text-center font-mono tabular-nums text-white/60 text-[11px] hidden sm:block">
                               {r.laps_completed != null ? r.laps_completed : "—"}
                             </span>
                           </div>
@@ -510,14 +530,14 @@ export default function SessionDetailDrawer({
 
               // Practice / Qualifying Sessions (Foco total nos tempos de volta e gaps)
               return (
-                <div className="min-w-[480px]">
-                  <div className="grid grid-cols-[40px_1fr_65px_95px_95px_95px] gap-2 pb-2 text-[10px] font-bold uppercase text-f1-subtle border-b border-white/10 items-center">
+                <div className="sm:min-w-[480px]">
+                  <div className="grid grid-cols-[32px_1fr_76px_62px] sm:grid-cols-[40px_1fr_65px_95px_95px_95px] gap-1.5 sm:gap-2 pb-2 text-[10px] font-bold uppercase text-f1-subtle border-b border-white/10 items-center">
                     <span className="text-center">Pos</span>
                     <span>Piloto</span>
-                    <span>Equipe</span>
+                    <span className="hidden sm:block">Equipe</span>
                     <span className="text-right">Melhor Volta</span>
                     <span className="text-right">Delta</span>
-                    <span className="text-right">Intervalo</span>
+                    <span className="text-right hidden sm:block">Intervalo</span>
                   </div>
 
                   <div className="divide-y divide-white/5 text-xs">
@@ -529,7 +549,7 @@ export default function SessionDetailDrawer({
                       return (
                         <div
                           key={`${r.driver_full_name}-${i}`}
-                          className="grid grid-cols-[40px_1fr_65px_95px_95px_95px] gap-2 py-2.5 items-center hover:bg-white/[0.02]"
+                          className="grid grid-cols-[32px_1fr_76px_62px] sm:grid-cols-[40px_1fr_65px_95px_95px_95px] gap-1.5 sm:gap-2 py-2.5 items-center hover:bg-white/[0.02]"
                         >
                           <span className={`font-mono tabular-nums text-center font-bold ${isLeader ? "text-purple-400 font-black" : "text-white/60"
                             }`}>
@@ -558,16 +578,21 @@ export default function SessionDetailDrawer({
                                 </span>
                               )}
                             </div>
-                            <span className="font-bold text-white truncate group-hover/dmob:text-white group-hover/dmob:underline decoration-white/30 transition-colors">{r.driver_full_name}</span>
-                            {r.driver_number && (
-                              <span className="text-[10px] font-mono tabular-nums text-white/40">#{r.driver_number}</span>
-                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="font-bold text-white truncate group-hover/dmob:text-white group-hover/dmob:underline decoration-white/30 transition-colors">{r.driver_full_name}</span>
+                                {r.driver_number && (
+                                  <span className="text-[10px] font-mono tabular-nums text-white/40 hidden sm:inline">#{r.driver_number}</span>
+                                )}
+                              </div>
+                              <span className="block sm:hidden text-[10px] text-f1-subtle truncate">{r.team_name}</span>
+                            </div>
                           </DriverLink>
 
                           <TeamLink
                             teamName={r.team_name}
                             teamId={r.team_id}
-                            className="font-bold text-[11px] truncate text-white/60 hover:text-white hover:underline decoration-white/30 transition-colors"
+                            className="font-bold text-[11px] truncate text-white/60 hover:text-white hover:underline decoration-white/30 transition-colors hidden sm:block"
                             title={`Ver perfil de ${r.team_name}`}
                           >
                             {abbr}
@@ -590,13 +615,13 @@ export default function SessionDetailDrawer({
                           </div>
 
                           {/* Delta to Leader's Best Lap */}
-                          <span className={`font-mono tabular-nums text-right text-[11px] ${isLeader ? "text-purple-400 font-bold" : "text-white/80"
+                          <span className={`font-mono tabular-nums text-right text-[11px] truncate ${isLeader ? "text-purple-400 font-bold" : "text-white/80"
                             }`}>
                             {r.gap_to_leader || (isLeader ? "Líder" : "—")}
                           </span>
 
                           {/* Interval to Car Ahead */}
-                          <span className="font-mono tabular-nums text-right text-[11px] text-white/50">
+                          <span className="font-mono tabular-nums text-right text-[11px] text-white/50 hidden sm:block">
                             {r.interval_to_car_ahead || (isLeader ? "-" : "—")}
                           </span>
                         </div>

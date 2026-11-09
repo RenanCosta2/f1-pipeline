@@ -45,6 +45,7 @@ export default function ApexF1Hub({
   year
 }: Props) {
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [mobileSection, setMobileSection] = useState<"hub" | "standings">("hub");
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
 
@@ -52,57 +53,87 @@ export default function ApexF1Hub({
   const activeWeekend = weekendRace || upcomingRace;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       {/* Interactive Control Header with State Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-[#12121A]/80 backdrop-blur-md p-4 sm:p-5 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-f1-red text-white shadow-lg shadow-f1-red/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-2xl border border-white/10 bg-[#12121A]/80 backdrop-blur-md p-3.5 sm:p-5 shadow-xl">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-f1-red text-white shadow-lg shadow-f1-red/30">
             <Gauge className="h-5 w-5" />
           </div>
-          <div>
-            <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex items-center gap-2">
-              Pit<span className="text-f1-red">wall</span>
-              <span className="text-xs font-normal text-white/40">| Central de Inteligência & Telemetria</span>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-black uppercase tracking-tight text-white flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span>Pit<span className="text-f1-red">wall</span></span>
+              <span className="text-[11px] sm:text-xs font-normal text-white/40 truncate">| Central de Inteligência & Telemetria</span>
             </h1>
-            <p className="text-[11px] text-f1-subtle font-medium">
-              Temporada Oficial {year} · Central analítica de telemetria, resultados e estatísticas oficiais
+            <p className="text-[11px] text-f1-subtle font-medium truncate">
+              Temporada Oficial {year} · Telemetria, resultados e estatísticas
             </p>
           </div>
         </div>
 
-        {/* State Toggle Switcher */}
-        <div className="flex items-center rounded-xl border border-white/10 bg-black/40 p-1">
+        {/* State Toggle Switcher (Alvos >= 44px para polegar) */}
+        <div className="grid grid-cols-2 sm:flex items-center rounded-xl border border-white/10 bg-black/40 p-1 w-full sm:w-auto">
           <button
-            onClick={() => setMode("weekend")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+            onClick={() => {
+              setMode("weekend");
+              setMobileSection("hub");
+            }}
+            className={`flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black uppercase tracking-wider active:scale-[0.98] transition-all ${
               mode === "weekend"
                 ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <Radio className="h-3.5 w-3.5" />
+            <Radio className="h-3.5 w-3.5 shrink-0" />
             <span>Fim de Semana</span>
           </button>
           <button
-            onClick={() => setMode("between")}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+            onClick={() => {
+              setMode("between");
+              setMobileSection("hub");
+            }}
+            className={`flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-3.5 sm:py-1.5 rounded-lg text-[11px] sm:text-xs font-black uppercase tracking-wider active:scale-[0.98] transition-all ${
               mode === "between"
                 ? "bg-white/15 text-white shadow-md"
                 : "text-white/60 hover:text-white"
             }`}
           >
-            <History className="h-3.5 w-3.5" />
+            <History className="h-3.5 w-3.5 shrink-0" />
             <span>Entre Corridas</span>
           </button>
         </div>
       </div>
 
+      {/* Mobile & Tablet Sub-tabs: Evita empilhar o Painel do GP e o Mundial Top 10 (Alvos >= 44px) */}
+      <div className="grid grid-cols-2 xl:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
+        <button
+          onClick={() => setMobileSection("hub")}
+          className={`min-h-[44px] py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider active:scale-[0.98] transition-all ${
+            mobileSection === "hub"
+              ? "bg-white/15 text-white shadow"
+              : "text-f1-subtle hover:text-white"
+          }`}
+        >
+          {mode === "weekend" ? "GP Atual & Sessões" : "Último & Próximo GP"}
+        </button>
+        <button
+          onClick={() => setMobileSection("standings")}
+          className={`min-h-[44px] py-2 px-3 rounded-lg text-xs font-black uppercase tracking-wider active:scale-[0.98] transition-all ${
+            mobileSection === "standings"
+              ? "bg-white/15 text-white shadow"
+              : "text-f1-subtle hover:text-white"
+          }`}
+        >
+          Mundial Top 10
+        </button>
+      </div>
+
       {/* Main 2-Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
         {/* ============================================================ */}
-        {/* LEFT COLUMN: Dynamic Race Hub (68% - lg:col-span-8) */}
+        {/* LEFT COLUMN: Dynamic Race Hub (68% - xl:col-span-8) */}
         {/* ============================================================ */}
-        <div className="lg:col-span-8">
+        <div className={`xl:col-span-8 min-w-0 ${mobileSection === "hub" ? "block" : "hidden xl:block"}`}>
           {mode === "weekend" ? (
             <RaceWeekendView
               raceInfo={activeWeekend}
@@ -119,9 +150,9 @@ export default function ApexF1Hub({
         </div>
 
         {/* ============================================================ */}
-        {/* RIGHT COLUMN: Standings Top 10 Widget (32% - lg:col-span-4) */}
+        {/* RIGHT COLUMN: Standings Top 10 Widget (32% - xl:col-span-4) */}
         {/* ============================================================ */}
-        <div className="lg:col-span-4">
+        <div className={`xl:col-span-4 min-w-0 ${mobileSection === "standings" ? "block" : "hidden xl:block"}`}>
           <StandingsWidget
             drivers={drivers}
             constructors={constructors}

@@ -270,15 +270,15 @@ export default function LapChart({ data, sessionResults = [] }: Props) {
           </div>
 
           {/* Filtros de Preset e Zoom Rápido */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 max-w-full">
             {/* Presets de Seleção Rápida */}
-            <div className="flex items-center rounded-xl bg-white/5 p-1 border border-white/10">
-              <span className="text-[10px] font-bold uppercase text-f1-subtle px-2 flex items-center gap-1">
+            <div className="flex items-center rounded-xl bg-white/5 p-1 border border-white/10 overflow-x-auto no-scrollbar max-w-full">
+              <span className="text-[10px] font-bold uppercase text-f1-subtle px-2 hidden xs:flex items-center gap-1 shrink-0">
                 <Filter className="h-3 w-3" /> Selecionar:
               </span>
               <button
                 onClick={() => handleSelectPreset("all")}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                className={`rounded-lg px-2.5 py-1.5 sm:py-1 text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
                   !hasSelection
                     ? "bg-f1-red text-white shadow-md shadow-f1-red/30"
                     : "text-gray-400 hover:text-white"
@@ -288,50 +288,50 @@ export default function LapChart({ data, sessionResults = [] }: Props) {
               </button>
               <button
                 onClick={() => handleSelectPreset("top10")}
-                className="rounded-lg px-2.5 py-1 text-xs font-bold text-gray-400 hover:text-white transition-all"
+                className="rounded-lg px-2.5 py-1.5 sm:py-1 text-xs font-bold text-gray-400 hover:text-white transition-all shrink-0 whitespace-nowrap"
               >
                 Top 10
               </button>
               <button
                 onClick={() => handleSelectPreset("top5")}
-                className="rounded-lg px-2.5 py-1 text-xs font-bold text-gray-400 hover:text-white transition-all"
+                className="rounded-lg px-2.5 py-1.5 sm:py-1 text-xs font-bold text-gray-400 hover:text-white transition-all shrink-0 whitespace-nowrap"
               >
                 Top 5
               </button>
               <button
                 onClick={() => handleSelectPreset("podium")}
-                className="rounded-lg px-2.5 py-1 text-xs font-bold text-gray-400 hover:text-white transition-all"
+                className="rounded-lg px-2.5 py-1.5 sm:py-1 text-xs font-bold text-gray-400 hover:text-white transition-all shrink-0 whitespace-nowrap"
               >
                 Pódio
               </button>
             </div>
 
             {/* Quick Zoom Buttons */}
-            <div className="flex items-center rounded-xl bg-white/5 p-1 border border-white/10">
-              <span className="text-[10px] font-bold uppercase text-f1-subtle px-2 flex items-center gap-1">
+            <div className="flex items-center rounded-xl bg-white/5 p-1 border border-white/10 overflow-x-auto no-scrollbar max-w-full">
+              <span className="text-[10px] font-bold uppercase text-f1-subtle px-2 flex items-center gap-1 shrink-0">
                 <Maximize2 className="h-3 w-3" /> Zoom:
               </span>
               <button
                 onClick={() => handleZoom("all")}
-                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white"
+                className="rounded-lg px-2 py-1.5 sm:py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white shrink-0 whitespace-nowrap"
               >
                 Tudo
               </button>
               <button
                 onClick={() => handleZoom("start")}
-                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white"
+                className="rounded-lg px-2 py-1.5 sm:py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white shrink-0 whitespace-nowrap"
               >
                 V1–15
               </button>
               <button
                 onClick={() => handleZoom("mid")}
-                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white"
+                className="rounded-lg px-2 py-1.5 sm:py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white shrink-0 whitespace-nowrap"
               >
                 Meio
               </button>
               <button
                 onClick={() => handleZoom("end")}
-                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white"
+                className="rounded-lg px-2 py-1.5 sm:py-1 text-[11px] font-semibold text-gray-400 hover:bg-white/10 hover:text-white shrink-0 whitespace-nowrap"
               >
                 Fim
               </button>
@@ -551,7 +551,7 @@ export default function LapChart({ data, sessionResults = [] }: Props) {
         )}
 
         {/* Gráfico Recharts Interativo */}
-        <div className="mt-4 h-[500px] w-full">
+        <div className="mt-4 h-[340px] sm:h-[440px] lg:h-[500px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
@@ -746,7 +746,7 @@ function CustomLapTooltip({
   const hasSelectedInTooltip = selectedItems.length > 0;
 
   return (
-    <div className="w-72 rounded-xl border border-white/15 bg-[#12121D]/95 p-3.5 shadow-2xl backdrop-blur-md">
+    <div className="w-60 sm:w-72 rounded-xl border border-white/15 bg-[#12121D]/95 p-3 sm:p-3.5 shadow-2xl backdrop-blur-md">
       {/* Cabeçalho da Volta */}
       <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2.5">
         <span className="text-xs font-black uppercase text-white flex items-center gap-1.5">

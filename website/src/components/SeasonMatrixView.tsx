@@ -8,11 +8,13 @@ import {
   ChevronDown, 
   ChevronUp, 
   Zap,
-  Info
+  Info,
+  LayoutGrid,
+  CreditCard
 } from "lucide-react";
-import { DriverLink } from "@/lib/driverUtils";
-import { TeamLink } from "@/lib/teamUtils";
-import { CircuitLink } from "@/lib/circuitUtils";
+import DriverLink from "@/lib/driverUtils";
+import TeamLink from "@/lib/teamUtils";
+import CircuitLink from "@/lib/circuitUtils";
 
 interface Props {
   matrixData: SeasonMatrixItem[];
@@ -192,6 +194,8 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [showLegend, setShowLegend] = useState(false);
   const [paletteMode, setPaletteMode] = useState<PaletteMode>("dark_neon");
+  const [mobileMode, setMobileMode] = useState<"grid" | "driver">("grid");
+  const [selectedMobileDriverId, setSelectedMobileDriverId] = useState<string>("");
   const [hoveredCell, setHoveredCell] = useState<{
     driverId: string;
     roundNumber: number;
@@ -304,14 +308,21 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
     );
   }, [driverRows, searchQuery]);
 
+  // Piloto selecionado no modo mobile "Cartão por Piloto"
+  const currentMobileDriver = useMemo(() => {
+    if (!filteredRows.length) return null;
+    if (!selectedMobileDriverId) return filteredRows[0];
+    return filteredRows.find((r) => r.driver_id === selectedMobileDriverId) || filteredRows[0];
+  }, [filteredRows, selectedMobileDriverId]);
+
   // Verifica se há alguma rodada com sprint na temporada para exibir a linha secundária no header
   const hasAnySprint = useMemo(() => rounds.some((r) => r.has_sprint), [rounds]);
 
   return (
     <div className="space-y-4">
-      {/* Barra Superior da Matriz: Busca & Legenda */}
+      {/* Barra Superior da Matriz: Busca & Legenda & Alternador de Modo Mobile */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0B10] p-3 rounded-2xl border border-white/10 shadow-lg">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-f1-subtle" />
             <input
@@ -319,12 +330,38 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
               placeholder="Buscar piloto ou número..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-xl bg-white/5 border border-white/10 pl-9 pr-3 py-1.5 text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-f1-red transition-colors"
+              className="w-full rounded-xl bg-white/5 border border-white/10 pl-9 pr-3 py-2 min-h-[44px] text-base sm:text-xs text-white placeholder-f1-subtle focus:outline-none focus:border-f1-red transition-colors"
             />
           </div>
           <span className="text-xs text-f1-subtle font-medium hidden sm:inline">
             {filteredRows.length} piloto(s) • {rounds.length} GPs
           </span>
+
+          {/* Alternador de Modo Mobile (< md): Matriz Grade vs Cartão por Piloto com touch target de 44px */}
+          <div className="flex md:hidden items-center bg-white/5 border border-white/10 p-1 rounded-xl shrink-0">
+            <button
+              onClick={() => setMobileMode("grid")}
+              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${
+                mobileMode === "grid"
+                  ? "bg-f1-red text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+              title="Modo Grade (Matriz Completa)"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setMobileMode("driver")}
+              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${
+                mobileMode === "driver"
+                  ? "bg-f1-red text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white"
+              }`}
+              title="Modo Cartão do Piloto"
+            >
+              <CreditCard className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
@@ -332,7 +369,7 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
           <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-xl">
             <button
               onClick={() => setPaletteMode("dark_neon")}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${
                 paletteMode === "dark_neon"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
@@ -343,7 +380,7 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
             </button>
             <button
               onClick={() => setPaletteMode("vibrant")}
-              className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${
                 paletteMode === "vibrant"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
@@ -356,11 +393,11 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
 
           <button
             onClick={() => setShowLegend(!showLegend)}
-            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3.5 py-2 min-h-[44px] text-xs font-bold text-gray-300 hover:bg-white/10 hover:text-white transition-all active:scale-95"
           >
-            <HelpCircle className="h-3.5 w-3.5 text-white/50" />
+            <HelpCircle className="h-4 w-4 text-white/50" />
             <span>Legenda</span>
-            {showLegend ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {showLegend ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>
         </div>
       </div>
@@ -436,65 +473,78 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
         </div>
       )}
 
-      {/* Container Principal da Matriz */}
-      <div className="relative rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-black/40 rounded-2xl">
-          <table className="w-full border-collapse text-left text-xs table-fixed">
-            {/* Definição Rígida das Colunas */}
-            <colgroup>
-              {/* 1. Pos: 36px */}
-              <col style={{ width: "36px" }} />
-              {/* 2. Nu: 36px */}
-              <col style={{ width: "36px" }} />
-              {/* 3. Piloto: 170px */}
-              <col style={{ width: "170px" }} />
+      {/* --------------------------------------------------------------------- */}
+      {/* MODO 1: MATRIZ COMPLETA (GRADE BIDIMENSIONAL COM COLUNAS OTIMIZADAS)    */}
+      {/* --------------------------------------------------------------------- */}
+      <div className={`space-y-2 ${mobileMode === "grid" ? "block" : "hidden md:block"}`}>
+        {/* Banner/Dica de rolagem sutil no mobile */}
+        <div className="flex md:hidden items-center justify-between px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] text-f1-subtle">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-f1-red animate-pulse" />
+            <span>Deslize a tabela para ver todos os GPs</span>
+          </span>
+          <span className="font-mono text-zinc-400 font-bold">➔</span>
+        </div>
 
-              {/* Colunas dos GPs: 38px para etapa simples, ou 34px para CS e 34px para CP */}
-              {rounds.map((round) =>
-                round.has_sprint ? (
-                  <React.Fragment key={round.round_number}>
-                    <col style={{ width: "34px" }} />
-                    <col style={{ width: "34px" }} />
-                  </React.Fragment>
-                ) : (
-                  <col key={round.round_number} style={{ width: "38px" }} />
-                )
-              )}
+        {/* Container Principal da Matriz com Gradiente de Scroll à Direita */}
+        <div className="relative rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
+          {/* Indicador de continuidade visual com gradiente lateral à direita no mobile */}
+          <div className="pointer-events-none absolute right-0 inset-y-0 w-6 bg-gradient-to-l from-[#0B0B10] to-transparent z-20 md:hidden rounded-r-2xl" />
 
-              {/* Pts: 54px */}
-              <col style={{ width: "54px" }} />
-            </colgroup>
+          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-black/40 rounded-2xl">
+            <table className="w-full border-collapse text-left text-xs table-fixed">
+              {/* Definição Rígida das Colunas: no mobile Pos=32px, Piloto=100px; no sm+ Pos=36px, Nu=36px, Piloto=170px */}
+              <colgroup>
+                {/* 1. Pos */}
+                <col className="w-[32px] sm:w-[36px]" />
+                {/* 2. Nu (oculto no mobile) */}
+                <col className="hidden sm:table-column w-[36px]" />
+                {/* 3. Piloto */}
+                <col className="w-[105px] sm:w-[170px]" />
 
-            {/* Cabeçalho */}
-            <thead>
-              {/* Linha 1 do Header */}
-              <tr className="bg-[#12121A] text-white text-[11px] font-black uppercase tracking-wider border-b border-white/10">
-                {/* 1. Pos (Sticky 0px) */}
-                <th
-                  rowSpan={hasAnySprint ? 2 : 1}
-                  className="sticky left-0 z-30 bg-[#12121A] px-1 py-2.5 text-center border-r border-white/10"
-                  style={{ width: "36px", minWidth: "36px", maxWidth: "36px" }}
-                >
-                  Pos.
-                </th>
+                {/* Colunas dos GPs: 38px para etapa simples, ou 34px para CS e 34px para CP */}
+                {rounds.map((round) =>
+                  round.has_sprint ? (
+                    <React.Fragment key={round.round_number}>
+                      <col style={{ width: "34px" }} />
+                      <col style={{ width: "34px" }} />
+                    </React.Fragment>
+                  ) : (
+                    <col key={round.round_number} style={{ width: "38px" }} />
+                  )
+                )}
 
-                {/* 2. N.º (Sticky 36px) */}
-                <th
-                  rowSpan={hasAnySprint ? 2 : 1}
-                  className="sticky left-[36px] z-30 bg-[#12121A] px-1 py-2.5 text-center border-r border-white/10"
-                  style={{ width: "36px", minWidth: "36px", maxWidth: "36px" }}
-                >
-                  N.º
-                </th>
+                {/* Pts: 54px */}
+                <col style={{ width: "54px" }} />
+              </colgroup>
 
-                {/* 3. Piloto (Sticky 72px = 36 + 36) com Sombra Lateral */}
-                <th
-                  rowSpan={hasAnySprint ? 2 : 1}
-                  className="sticky left-[72px] z-30 bg-[#12121A] px-3 py-2.5 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)]"
-                  style={{ width: "170px", minWidth: "170px", maxWidth: "170px" }}
-                >
-                  Piloto
-                </th>
+              {/* Cabeçalho */}
+              <thead>
+                {/* Linha 1 do Header */}
+                <tr className="bg-[#12121A] text-white text-[11px] font-black uppercase tracking-wider border-b border-white/10">
+                  {/* 1. Pos (Sticky 0px) */}
+                  <th
+                    rowSpan={hasAnySprint ? 2 : 1}
+                    className="sticky left-0 z-30 bg-[#12121A] px-1 py-2.5 text-center border-r border-white/10 w-[32px] sm:w-[36px] min-w-[32px] sm:min-w-[36px] max-w-[32px] sm:max-w-[36px]"
+                  >
+                    Pos.
+                  </th>
+
+                  {/* 2. N.º (Sticky 36px - Oculto no Mobile < sm) */}
+                  <th
+                    rowSpan={hasAnySprint ? 2 : 1}
+                    className="hidden sm:table-cell sticky left-[36px] z-30 bg-[#12121A] px-1 py-2.5 text-center border-r border-white/10 w-[36px] min-w-[36px] max-w-[36px]"
+                  >
+                    N.º
+                  </th>
+
+                  {/* 3. Piloto (Sticky no Mobile: left-[32px]; no Desktop: left-[72px]) com Sombra Lateral */}
+                  <th
+                    rowSpan={hasAnySprint ? 2 : 1}
+                    className="sticky left-[32px] sm:left-[72px] z-30 bg-[#12121A] px-2 sm:px-3 py-2.5 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)] w-[105px] sm:w-[170px] min-w-[105px] sm:min-w-[170px] max-w-[105px] sm:max-w-[170px]"
+                  >
+                    Piloto
+                  </th>
 
                 {/* Colunas de cada GP */}
                 {rounds.map((round) => {
@@ -611,13 +661,12 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                     key={`${row.driver_id}__${row.team_id}`}
                     className={`hover:bg-white/[0.04] transition-colors group ${rowBg}`}
                   >
-                    {/* 1. Pos (Sticky 0px) */}
+                    {/* 1. Pos (Sticky 0px: 32px mobile / 36px sm+) */}
                     <td
-                      className={`sticky left-0 z-20 px-1 py-2 text-center font-bold font-mono tabular-nums border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors`}
-                      style={{ width: "36px", minWidth: "36px", maxWidth: "36px" }}
+                      className={`sticky left-0 z-20 px-1 py-2 text-center font-bold font-mono tabular-nums border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[32px] sm:w-[36px] min-w-[32px] sm:min-w-[36px] max-w-[32px] sm:max-w-[36px]`}
                     >
                       <span
-                        className={`text-xs font-black font-mono tabular-nums ${
+                        className={`text-[11px] sm:text-xs font-black font-mono tabular-nums ${
                           row.championship_position === 1
                             ? "text-amber-400"
                             : row.championship_position === 2
@@ -631,10 +680,9 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                       </span>
                     </td>
 
-                    {/* 2. N.º (Sticky 36px) */}
+                    {/* 2. N.º (Sticky 36px - Oculto no Mobile < sm) */}
                     <td
-                      className={`sticky left-[36px] z-20 px-1 py-2 text-center border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors`}
-                      style={{ width: "36px", minWidth: "36px", maxWidth: "36px" }}
+                      className={`hidden sm:table-cell sticky left-[36px] z-20 px-1 py-2 text-center border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[36px] min-w-[36px] max-w-[36px]`}
                     >
                       {row.driver_number ? (
                         <span className="inline-block rounded bg-white/5 border border-white/10 px-1 py-0.2 text-[10px] font-mono tabular-nums font-bold text-zinc-300">
@@ -645,33 +693,33 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                       )}
                     </td>
 
-                    {/* 3. Piloto (Sticky 72px) - Visual Moderno de Card de Piloto */}
+                    {/* 3. Piloto (Sticky no Mobile: left-[32px], 105px; no Desktop: left-[72px], 170px) */}
                     <td
-                      className={`sticky left-[72px] z-20 px-2.5 py-2 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)] ${rowBg} group-hover:bg-[#161622] transition-colors`}
-                      style={{ width: "170px", minWidth: "170px", maxWidth: "170px" }}
+                      className={`sticky left-[32px] sm:left-[72px] z-20 px-1.5 sm:px-2.5 py-2 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)] ${rowBg} group-hover:bg-[#161622] transition-colors w-[105px] sm:w-[170px] min-w-[105px] sm:min-w-[170px] max-w-[105px] sm:max-w-[170px]`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                         {/* Faixa de Cor da Equipe */}
                         <div
-                          className="w-1.5 h-7 rounded-full shrink-0 shadow-sm"
+                          className="w-1 sm:w-1.5 h-6 sm:h-7 rounded-full shrink-0 shadow-sm"
                           style={{ backgroundColor: teamColor }}
                           title={row.team_name}
                         />
 
-                        {/* Nome do Piloto & Equipe */}
+                        {/* Nome do Piloto & Equipe (Abrev no mobile, Nome completo no desktop) */}
                         <div className="min-w-0 flex-1 block">
                           <DriverLink
                             driverId={row.driver_id}
                             driverName={row.driver_full_name}
                             driverAbbr={row.driver_abbreviation}
-                            className="block truncate font-bold text-white text-xs hover:text-white hover:underline decoration-white/30 transition-colors leading-snug"
+                            className="block truncate font-bold text-white text-[11px] sm:text-xs hover:text-white hover:underline decoration-white/30 transition-colors leading-snug"
                           >
-                            {row.driver_full_name}
+                            <span className="sm:hidden font-mono font-black">{row.driver_abbreviation}</span>
+                            <span className="hidden sm:inline">{row.driver_full_name}</span>
                           </DriverLink>
                           <TeamLink
                             teamId={row.team_name}
                             teamName={row.team_name}
-                            className="block truncate text-[10px] text-f1-subtle hover:text-white font-medium leading-none mt-0.5 transition-colors"
+                            className="block truncate text-[9px] sm:text-[10px] text-f1-subtle hover:text-white font-medium leading-none mt-0.5 transition-colors"
                           >
                             {row.team_name}
                           </TeamLink>
@@ -869,6 +917,147 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
             </tbody>
           </table>
         </div>
+      </div>
+      </div>
+
+      {/* --------------------------------------------------------------------- */}
+      {/* MODO 2: VISÃO CARTÃO DO PILOTO (MOBILE EXCLUSIVO)                     */}
+      {/* --------------------------------------------------------------------- */}
+      <div className={`md:hidden space-y-3 ${mobileMode === "driver" ? "block" : "hidden"}`}>
+        {/* Seletor Rápido de Piloto */}
+        <div className="flex items-center gap-2 bg-[#0B0B10] p-2 rounded-xl border border-white/10">
+          <span className="text-[11px] font-bold text-f1-subtle shrink-0">Piloto:</span>
+          <select
+            value={currentMobileDriver?.driver_id || ""}
+            onChange={(e) => setSelectedMobileDriverId(e.target.value)}
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white outline-none focus:border-f1-red transition-colors"
+          >
+            {filteredRows.map((d) => (
+              <option key={d.driver_id} value={d.driver_id} className="bg-[#12121A] text-white">
+                P{d.championship_position} · {d.driver_full_name} ({d.team_name})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {currentMobileDriver && (
+          <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-3.5 space-y-4 shadow-xl">
+            {/* Header do Piloto Selecionado */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-1.5 h-10 rounded-full shrink-0"
+                  style={{
+                    backgroundColor: currentMobileDriver.team_color
+                      ? currentMobileDriver.team_color.startsWith("#")
+                        ? currentMobileDriver.team_color
+                        : `#${currentMobileDriver.team_color}`
+                      : "#E10600"
+                  }}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-black text-amber-400">
+                      P{currentMobileDriver.championship_position}
+                    </span>
+                    <h3 className="text-sm font-black text-white truncate">
+                      {currentMobileDriver.driver_full_name}
+                    </h3>
+                  </div>
+                  <p className="text-[10px] text-f1-subtle truncate">
+                    {currentMobileDriver.team_name}
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <span className="block text-[9px] font-bold uppercase tracking-wider text-f1-subtle">
+                  Total
+                </span>
+                <span className="font-mono tabular-nums text-base font-black text-white">
+                  {currentMobileDriver.total_driver_points} pts
+                </span>
+              </div>
+            </div>
+
+            {/* Lista Vertical de Etapas com Cards de Resultados */}
+            <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin">
+              {rounds.map((round) => {
+                const item = currentMobileDriver.resultsByRound.get(round.round_number);
+                const isCompleted = round.round_status === "Completed";
+                const cpTheme = item?.result_category
+                  ? activeTheme[item.result_category] || activeTheme.not_participated
+                  : activeTheme.scheduled;
+                const csTheme = item?.sprint_result_category
+                  ? activeTheme[item.sprint_result_category] || activeTheme.not_participated
+                  : activeTheme.scheduled;
+
+                return (
+                  <div
+                    key={round.round_number}
+                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] font-mono font-bold text-f1-subtle w-6 text-center shrink-0">
+                        R{round.round_number}
+                      </span>
+                      <div className="min-w-0">
+                        <span className="font-black text-xs text-white block truncate leading-tight">
+                          {round.circuit_short_code} · {round.location}
+                        </span>
+                        <span className="text-[9px] text-f1-subtle block truncate">
+                          {round.country}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Badge Sprint se houver */}
+                      {round.has_sprint && (
+                        <div className="flex flex-col items-center">
+                          <span className="text-[8px] font-mono text-amber-400 font-bold uppercase">CS</span>
+                          <div
+                            className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm"
+                            style={{
+                              backgroundColor: csTheme.bg,
+                              color: csTheme.text,
+                              border: csTheme.border ? `1px solid ${csTheme.border}` : "none"
+                            }}
+                          >
+                            {item?.sprint_result_code || "—"}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Badge Corrida Principal */}
+                      <div className="flex flex-col items-center">
+                        {round.has_sprint && (
+                          <span className="text-[8px] font-mono text-zinc-400 font-bold uppercase">CP</span>
+                        )}
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm relative"
+                          style={{
+                            backgroundColor: cpTheme.bg,
+                            color: cpTheme.text,
+                            border: cpTheme.border ? `1px solid ${cpTheme.border}` : "none"
+                          }}
+                        >
+                          <span
+                            className={`${
+                              item?.is_pole ? "underline decoration-purple-400 decoration-2" : ""
+                            } ${item?.is_fastest_lap ? "italic text-pink-300" : ""}`}
+                          >
+                            {item?.result_code || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

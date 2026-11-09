@@ -158,7 +158,7 @@ export default function ConstructorProfileKPIs({ profile }: Props) {
           Raio-X Histórico & Recordes da Escuderia
         </h2>
         <span className="text-[11px] text-white/40 font-mono">
-          ERA MODERNA (2013–2026)
+          HISTÓRICO OFICIAL
         </span>
       </div>
 
@@ -200,9 +200,9 @@ export default function ConstructorProfileKPIs({ profile }: Props) {
       )}
 
       {/* Grid de 3 Colunas Temáticas (Idêntico ao Raio-X do Piloto) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 divide-y md:divide-y-0 md:divide-x divide-white/5">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 divide-y xl:divide-y-0 xl:divide-x divide-white/5">
         {/* COLUNA 1: Conquistas & Pódios */}
-        <div className="space-y-2 pt-2 md:pt-0">
+        <div className="space-y-2 pt-2 xl:pt-0">
           <div className="text-xs font-mono font-black uppercase tracking-wider text-white/60 pb-1 border-b border-white/5">
             Conquistas & Pódios
           </div>
@@ -289,7 +289,7 @@ export default function ConstructorProfileKPIs({ profile }: Props) {
         </div>
 
         {/* COLUNA 2: Ritmo de Qualificação */}
-        <div className="space-y-2 pt-3 md:pt-0 md:pl-6">
+        <div className="space-y-2 pt-3 xl:pt-0 xl:pl-6">
           <div className="text-xs font-mono font-black uppercase tracking-wider text-white/60 pb-1 border-b border-white/5">
             Ritmo de Qualificação
           </div>
@@ -360,7 +360,7 @@ export default function ConstructorProfileKPIs({ profile }: Props) {
         </div>
 
         {/* COLUNA 3: Longevidade & Eficiência */}
-        <div className="space-y-2 pt-3 md:pt-0 md:pl-6">
+        <div className="space-y-2 pt-3 xl:pt-0 xl:pl-6">
           <div className="text-xs font-mono font-black uppercase tracking-wider text-white/60 pb-1 border-b border-white/5">
             Longevidade & Eficiência
           </div>
