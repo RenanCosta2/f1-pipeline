@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { X, Gauge, Flag, Loader2, ArrowUp, ArrowDown, Minus, Timer, TrendingUp, ArrowUpRight } from "lucide-react";
 import { SessionSummary } from "@/types/f1";
 import { getTeamColor, getTeamAbbr } from "./StandingsWidget";
@@ -14,6 +15,32 @@ import {
   TieCarouselTrack,
   TieCarouselDots,
 } from "@/components/ui/TieCarousel";
+
+export function getCanonicalSessionName(sessionName?: string, sessionCode?: string): string {
+  if (sessionName) {
+    const s = sessionName.trim().toLowerCase();
+    if (s === "practice 1" || s.includes("practice 1") || s.includes("treino livre 1") || s === "fp1") return "Practice 1";
+    if (s === "practice 2" || s.includes("practice 2") || s.includes("treino livre 2") || s === "fp2") return "Practice 2";
+    if (s === "practice 3" || s.includes("practice 3") || s.includes("treino livre 3") || s === "fp3") return "Practice 3";
+    if (s.includes("sprint shootout") || s.includes("shootout")) return "Sprint Shootout";
+    if (s.includes("sprint qualifying") || s.includes("classificação sprint") || s === "sq") return "Sprint Qualifying";
+    if (s === "sprint" || s.includes("corrida sprint")) return "Sprint";
+    if (s === "qualifying" || s.includes("qualifying") || s.includes("classificação") || s === "q") return "Qualifying";
+    if (s === "race" || s.includes("race") || s.includes("corrida") || s.includes("grande prêmio") || s === "r") return "Race";
+  }
+  if (sessionCode) {
+    const c = sessionCode.trim().toUpperCase();
+    if (c === "FP1") return "Practice 1";
+    if (c === "FP2") return "Practice 2";
+    if (c === "FP3") return "Practice 3";
+    if (c === "SQ") return "Sprint Qualifying";
+    if (c === "SS") return "Sprint Shootout";
+    if (c === "S") return "Sprint";
+    if (c === "Q") return "Qualifying";
+    if (c === "R") return "Race";
+  }
+  return sessionName || "Race";
+}
 
 interface Props {
   isOpen: boolean;
@@ -53,6 +80,8 @@ export default function SessionDetailDrawer({
 
   const sessionType = (session?.session_name || session?.name || "").toLowerCase();
   const isRaceOrSprint = sessionType.includes("race") || sessionType === "sprint" || session?.code === "R" || session?.code === "S";
+  const canonicalSession = getCanonicalSessionName(session?.session_name || session?.name, session?.code);
+  const sessionDetailUrl = `/season/round/${round}?year=${year}&session=${encodeURIComponent(canonicalSession)}`;
 
   // Identifica a(s) melhor(es) volta(s) da sessão para exibição no card e destaque em roxo
   const fastestLapsInfo = useMemo(() => {
@@ -191,13 +220,25 @@ export default function SessionDetailDrawer({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            aria-label="Fechar detalhes da sessão"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href={sessionDetailUrl}
+              className="inline-flex min-h-[44px] sm:min-h-[38px] items-center gap-1.5 rounded-xl border border-f1-red/50 bg-f1-red/15 hover:bg-f1-red text-f1-red hover:text-white px-3 sm:px-3.5 py-2 text-xs font-bold transition-all shadow-sm group active:scale-95"
+              title={`Abrir página com detalhamento e telemetria da sessão ${session.name}`}
+            >
+              <span className="hidden sm:inline">Acessar Aba da Sessão</span>
+              <span className="sm:hidden">Aba da Sessão</span>
+              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </Link>
+
+            <button
+              onClick={onClose}
+              aria-label="Fechar detalhes da sessão"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Quick Metrics Header */}
@@ -681,6 +722,28 @@ export default function SessionDetailDrawer({
               Nenhum dado registrado para esta sessão ainda.
             </div>
           )}
+        </div>
+
+        {/* Drawer Footer: Redirecionamento Direto para a Aba de Detalhamento da Sessão */}
+        <div className="p-3.5 sm:p-4 border-t border-white/10 bg-[#0E0E16] flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="text-center sm:text-left min-w-0">
+            <p className="text-xs font-bold text-white truncate">
+              Detalhamento Completo da Sessão ({canonicalSession})
+            </p>
+            <p className="text-[11px] text-f1-subtle truncate">
+              {isRaceOrSprint
+                ? "Telemetria de voltas, ritmo de corrida, estratégias de pneus e pit stops."
+                : "Volta ideal, setores detalhados S1/S2/S3, speed traps e tempos oficiais."}
+            </p>
+          </div>
+          <Link
+            href={sessionDetailUrl}
+            className="w-full sm:w-auto inline-flex min-h-[44px] sm:min-h-[38px] items-center justify-center gap-2 rounded-xl bg-f1-red hover:bg-f1-darkred px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-f1-red/25 active:scale-95 transition-all shrink-0"
+            title={`Acessar aba da sessão ${session.name} na página do GP`}
+          >
+            <span>Acessar Aba da Sessão</span>
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </div>,

@@ -2,9 +2,11 @@
 
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Calendar } from "lucide-react";
+import Link from "next/link";
+import { X, Calendar, ArrowUpRight } from "lucide-react";
 import { RaceWeekendInfo } from "@/types/f1";
 import CircuitLink from "@/lib/circuitUtils";
+import { getCanonicalSessionName } from "./SessionDetailDrawer";
 
 interface Props {
   isOpen: boolean;
@@ -83,13 +85,12 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
               <div className="min-w-0 pr-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                      sess.completed
+                    className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${sess.completed
                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                         : sess.waiting_data
                           ? "bg-amber-500/20 text-amber-300 border border-amber-500/35"
                           : "bg-white/10 text-f1-subtle"
-                    }`}
+                      }`}
                   >
                     {sess.completed ? (
                       "Finalizado"
@@ -106,6 +107,16 @@ export default function ScheduleModal({ isOpen, onClose, upcomingRace, year }: P
                     )}
                   </span>
                   <p className="font-bold text-white truncate">{sess.name}</p>
+                  {sess.completed && (
+                    <Link
+                      href={`/season/round/${upcomingRace?.round_number || 1}?year=${year}&session=${encodeURIComponent(getCanonicalSessionName(sess.session_name || sess.name, sess.session_code))}`}
+                      className="inline-flex items-center gap-0.5 text-[10px] font-bold text-f1-red hover:underline"
+                      title={`Ir para aba de ${sess.name}`}
+                    >
+                      <span>Aba</span>
+                      <ArrowUpRight className="h-3 w-3" />
+                    </Link>
+                  )}
                 </div>
                 <p className="text-[11px] text-f1-subtle mt-1">
                   {sess.date} {year}

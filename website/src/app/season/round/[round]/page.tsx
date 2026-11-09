@@ -134,65 +134,68 @@ export default async function GrandPrixDetailsPage({ params, searchParams }: Pro
   }
 
   // Define sessão ativa (padrão: Race se disponível, senão a última executada ou primeira)
-  let activeSession = searchParams?.session;
-  if (!activeSession || !availableSessions.includes(activeSession)) {
-    activeSession = availableSessions.includes("Race")
-      ? "Race"
-      : availableSessions[availableSessions.length - 1] || "Practice 1";
-  }
+    let activeSession = searchParams?.session
+      ? availableSessions.find((s) => s.toLowerCase() === searchParams.session!.toLowerCase())
+      : undefined;
 
-  // Busca resultados da sessão ativa
-  const isRaceOrSprint = activeSession === "Race" || activeSession === "Sprint";
-  const [sessionResults, tyreStrategies, racePace, lapData, maxSpeed, idealLapsRaw] = await Promise.all([
-    getSessionSummary(year, roundNumber, activeSession),
-    isRaceOrSprint ? getTyreStrategies(year, roundNumber, activeSession) : Promise.resolve([]),
-    isRaceOrSprint ? getRacePace(year, roundNumber, activeSession) : Promise.resolve([]),
-    isRaceOrSprint ? getLapByLap(year, roundNumber, activeSession) : Promise.resolve([]),
-    isRaceOrSprint ? getMaxSpeed(year, roundNumber, activeSession) : Promise.resolve([]),
-    !isRaceOrSprint ? getIdealLap(year, roundNumber, activeSession) : Promise.resolve([])
-  ]);
+    if (!activeSession) {
+      activeSession = availableSessions.includes("Race")
+        ? "Race"
+        : availableSessions[availableSessions.length - 1] || "Practice 1";
+    }
 
-  // Enriquecer idealLaps com fotos e cores das equipes a partir dos resultados da sessão
-  const driverMetadataMap = new Map<string, { headshot: string | null; teamColor: string | null }>();
-  sessionResults.forEach((s) => {
-    driverMetadataMap.set(s.driver_full_name, {
-      headshot: s.driver_headshot_url || null,
-      teamColor: s.team_color || null
+    // Busca resultados da sessão ativa
+    const isRaceOrSprint = activeSession === "Race" || activeSession === "Sprint";
+    const [sessionResults, tyreStrategies, racePace, lapData, maxSpeed, idealLapsRaw] = await Promise.all([
+      getSessionSummary(year, roundNumber, activeSession),
+      isRaceOrSprint ? getTyreStrategies(year, roundNumber, activeSession) : Promise.resolve([]),
+      isRaceOrSprint ? getRacePace(year, roundNumber, activeSession) : Promise.resolve([]),
+      isRaceOrSprint ? getLapByLap(year, roundNumber, activeSession) : Promise.resolve([]),
+      isRaceOrSprint ? getMaxSpeed(year, roundNumber, activeSession) : Promise.resolve([]),
+      !isRaceOrSprint ? getIdealLap(year, roundNumber, activeSession) : Promise.resolve([])
+    ]);
+
+    // Enriquecer idealLaps com fotos e cores das equipes a partir dos resultados da sessão
+    const driverMetadataMap = new Map<string, { headshot: string | null; teamColor: string | null }>();
+    sessionResults.forEach((s) => {
+      driverMetadataMap.set(s.driver_full_name, {
+        headshot: s.driver_headshot_url || null,
+        teamColor: s.team_color || null
+      });
     });
-  });
 
-  const idealLaps = idealLapsRaw.map((lap) => {
-    const meta = driverMetadataMap.get(lap.driver_full_name);
-    return {
-      ...lap,
-      driver_headshot_url: meta?.headshot || null,
-      team_color: meta?.teamColor || null
-    };
-  });
+    const idealLaps = idealLapsRaw.map((lap) => {
+      const meta = driverMetadataMap.get(lap.driver_full_name);
+      return {
+        ...lap,
+        driver_headshot_url: meta?.headshot || null,
+        team_color: meta?.teamColor || null
+      };
+    });
 
-  return (
-    <div className="mx-auto max-w-7xl py-2">
-      <Suspense fallback={<div className="h-96 rounded-2xl bg-[#0B0B10] border border-white/5 animate-pulse" />}>
-        <GrandPrixWeekendExplorer
-          year={year}
-          round={roundNumber}
-          officialEventName={currentRace.official_event_name}
-          country={currentRace.country}
-          location={currentRace.location}
-          eventDate={currentRace.event_date}
-          circuitId={currentRace.circuit_id}
-          circuitName={currentRace.circuit_name}
-          availableSessions={availableSessions}
-          activeSession={activeSession}
-          sessionResults={sessionResults}
-          tyreStrategies={tyreStrategies}
-          racePace={racePace}
-          lapData={lapData}
-          maxSpeed={maxSpeed}
-          idealLaps={idealLaps}
-          raceStatus={currentRace.race_status}
-        />
-      </Suspense>
-    </div>
-  );
-}
+    return (
+      <div className="mx-auto max-w-7xl py-2">
+        <Suspense fallback={<div className="h-96 rounded-2xl bg-[#0B0B10] border border-white/5 animate-pulse" />}>
+          <GrandPrixWeekendExplorer
+            year={year}
+            round={roundNumber}
+            officialEventName={currentRace.official_event_name}
+            country={currentRace.country}
+            location={currentRace.location}
+            eventDate={currentRace.event_date}
+            circuitId={currentRace.circuit_id}
+            circuitName={currentRace.circuit_name}
+            availableSessions={availableSessions}
+            activeSession={activeSession}
+            sessionResults={sessionResults}
+            tyreStrategies={tyreStrategies}
+            racePace={racePace}
+            lapData={lapData}
+            maxSpeed={maxSpeed}
+            idealLaps={idealLaps}
+            raceStatus={currentRace.race_status}
+          />
+        </Suspense>
+      </div>
+    );
+  }

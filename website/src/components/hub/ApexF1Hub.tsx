@@ -137,6 +137,7 @@ export default function ApexF1Hub({
           {mode === "weekend" ? (
             <RaceWeekendView
               raceInfo={activeWeekend}
+              year={year}
               onSelectSession={(session) => setSelectedSession(session)}
             />
           ) : (
