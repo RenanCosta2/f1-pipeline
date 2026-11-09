@@ -10,11 +10,13 @@ import {
 
 export interface CircuitRecordDriversProps {
   drivers?: string | string[] | null;
+  items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
   accentColor?: "amber" | "purple" | "emerald" | "blue";
   emptyText?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
   carousel?: TieCarouselState;
+  showAvatar?: boolean;
 }
 
 const ACCENT_STYLES = {
@@ -34,13 +36,26 @@ const ACCENT_STYLES = {
 
 export default function CircuitRecordDrivers({
   drivers,
+  items,
   accentColor = "amber",
   emptyText = "Sem histórico",
   size = "sm",
   className = "",
   carousel: externalCarousel,
+  showAvatar = true,
 }: CircuitRecordDriversProps) {
-  const driverList = parseDriverNames(drivers);
+  const driverList = React.useMemo(() => {
+    if (items && items.length > 0) {
+      return items;
+    }
+    const names = parseDriverNames(drivers);
+    return names.map((name) => ({
+      driver: name,
+      driver_id: null as string | null,
+      headshot_url: null as string | null
+    }));
+  }, [items, drivers]);
+
   const internalCarousel = useTieCarousel(driverList.length);
   const carousel = externalCarousel || internalCarousel;
   const accent = ACCENT_STYLES[accentColor] || ACCENT_STYLES.amber;
@@ -57,20 +72,51 @@ export default function CircuitRecordDrivers({
     size === "lg"
       ? "text-lg font-black text-white"
       : size === "md"
-      ? "text-base font-bold text-white"
-      : "text-xs sm:text-sm font-bold text-white";
+        ? "text-base font-bold text-white"
+        : "text-xs sm:text-sm font-bold text-white";
+
+  const renderDriverAvatar = (item: { driver: string; driver_id?: string | null; headshot_url?: string | null }) => {
+    if (!showAvatar) return null;
+    const initials = item.driver
+      .split(" ")
+      .map((part) => part[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+
+    return (
+      <div className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border border-white/20 bg-white/5 shadow-sm">
+        {item.headshot_url ? (
+          <img
+            src={item.headshot_url}
+            alt={item.driver}
+            className="h-full w-full object-cover object-top"
+          />
+        ) : (
+          <span className="font-mono text-[9px] font-bold text-white/70">
+            {initials || "F1"}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   if (driverList.length === 1) {
-    const singleDriver = driverList[0];
+    const single = driverList[0];
     return (
-      <p className={`${textSizeClass} truncate ${className}`} title={singleDriver}>
-        <DriverLink
-          driverName={singleDriver}
-          className={`${accent.hoverText} transition-colors`}
-        >
-          {singleDriver}
-        </DriverLink>
-      </p>
+      <div className={`flex items-center gap-2 min-w-0 ${className}`}>
+        {renderDriverAvatar(single)}
+        <p className={`${textSizeClass} truncate min-w-0`} title={single.driver}>
+          <DriverLink
+            driverId={single.driver_id || undefined}
+            driverName={single.driver}
+            className={`${accent.hoverText} transition-colors`}
+          >
+            {single.driver}
+          </DriverLink>
+        </p>
+      </div>
     );
   }
 
@@ -79,16 +125,20 @@ export default function CircuitRecordDrivers({
       <TieCarouselTrack
         carousel={carousel}
         items={driverList}
-        keyExtractor={(d) => d}
-        renderItem={(driver) => (
-          <p className={`${textSizeClass} truncate`} title={driver}>
-            <DriverLink
-              driverName={driver}
-              className={`${accent.hoverText} transition-colors`}
-            >
-              {driver}
-            </DriverLink>
-          </p>
+        keyExtractor={(d) => d.driver}
+        renderItem={(item) => (
+          <div className="flex items-center gap-2 min-w-0">
+            {renderDriverAvatar(item)}
+            <p className={`${textSizeClass} truncate min-w-0`} title={item.driver}>
+              <DriverLink
+                driverId={item.driver_id || undefined}
+                driverName={item.driver}
+                className={`${accent.hoverText} transition-colors`}
+              >
+                {item.driver}
+              </DriverLink>
+            </p>
+          </div>
         )}
       />
     </div>

@@ -798,16 +798,44 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
 
         // 3. Query historical records for this circuit directly from pipeline tables
         let hasHistoricalData = false;
-        let mostWins: { driver: string; drivers: string[]; count: number } = { driver: "—", drivers: [], count: 0 };
-        let mostPoles: { driver: string; drivers: string[]; count: number } = { driver: "—", drivers: [], count: 0 };
-        let raceLap = { lap: "—", driver: "—", year: 0 };
-        let allTimeLap = { lap: "—", driver: "—", year: 0, session: "—" };
+        let mostWins: {
+          driver: string;
+          drivers: string[];
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
+          count: number;
+        } = { driver: "—", drivers: [], count: 0 };
+        let mostPoles: {
+          driver: string;
+          drivers: string[];
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
+          count: number;
+        } = { driver: "—", drivers: [], count: 0 };
+        let raceLap: {
+          lap: string;
+          driver: string;
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          year: number;
+        } = { lap: "—", driver: "—", year: 0 };
+        let allTimeLap: {
+          lap: string;
+          driver: string;
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          year: number;
+          session: string;
+        } = { lap: "—", driver: "—", year: 0, session: "—" };
         let topSpeed: {
           speed: number;
           driver: string;
           team?: string;
           year: number;
-          drivers: { driver: string; team?: string; year: number }[];
+          headshot_url?: string | null;
+          drivers: { driver: string; team?: string; year: number; headshot_url?: string | null }[];
         } = { speed: 0, driver: "—", year: 0, drivers: [] };
         let totalLaps = 0;
 
@@ -820,7 +848,7 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
           `, [event.circuit_id]).catch(() => ({ rows: [] }));
 
           const tiedDriversPromise = pool.query(`
-            SELECT driver_full_name, race_wins, total_wins, race_poles, total_podiums, total_points
+            SELECT driver_id, driver_full_name, driver_headshot_url, race_wins, total_wins, race_poles, total_podiums, total_points
             FROM website.v_circuit_driver_performance
             WHERE circuit_id = $1
           `, [event.circuit_id]).catch(() => ({ rows: [] }));
@@ -854,20 +882,37 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
             totalLapsPromise
           ]);
 
+          const headshotMap = new Map<string, string | null>();
+          if (tiedRes.rows) {
+            for (const r of tiedRes.rows) {
+              if (r.driver_full_name && r.driver_headshot_url) {
+                headshotMap.set(String(r.driver_full_name).toLowerCase(), r.driver_headshot_url);
+              }
+            }
+          }
+
           if (ovRes.rows && ovRes.rows.length > 0) {
             const ov = ovRes.rows[0];
             hasHistoricalData = true;
             if (ov.most_wins_driver) {
+              const hs = ov.most_wins_driver_headshot_url || headshotMap.get(ov.most_wins_driver.toLowerCase()) || null;
               mostWins = {
                 driver: ov.most_wins_driver,
                 drivers: [ov.most_wins_driver],
+                driver_id: ov.most_wins_driver_id || null,
+                headshot_url: hs,
+                items: [{ driver: ov.most_wins_driver, driver_id: ov.most_wins_driver_id || null, headshot_url: hs }],
                 count: Number(ov.most_wins_count) || 0
               };
             }
             if (ov.most_poles_driver) {
+              const hs = ov.most_poles_driver_headshot_url || headshotMap.get(ov.most_poles_driver.toLowerCase()) || null;
               mostPoles = {
                 driver: ov.most_poles_driver,
                 drivers: [ov.most_poles_driver],
+                driver_id: ov.most_poles_driver_id || null,
+                headshot_url: hs,
+                items: [{ driver: ov.most_poles_driver, driver_id: ov.most_poles_driver_id || null, headshot_url: hs }],
                 count: Number(ov.most_poles_count) || 0
               };
             }
@@ -875,6 +920,8 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
               raceLap = {
                 lap: ov.race_lap_record_formatted,
                 driver: ov.race_lap_record_driver || "—",
+                driver_id: ov.race_lap_record_driver_id || null,
+                headshot_url: ov.race_lap_record_headshot_url || (ov.race_lap_record_driver ? headshotMap.get(ov.race_lap_record_driver.toLowerCase()) : null) || null,
                 year: Number(ov.race_lap_record_year) || 0
               };
             }
@@ -882,6 +929,8 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
               allTimeLap = {
                 lap: ov.quali_lap_record_formatted,
                 driver: ov.quali_lap_record_driver || "—",
+                driver_id: ov.quali_lap_record_driver_id || null,
+                headshot_url: ov.quali_lap_record_headshot_url || (ov.quali_lap_record_driver ? headshotMap.get(ov.quali_lap_record_driver.toLowerCase()) : null) || null,
                 year: Number(ov.quali_lap_record_year) || 0,
                 session: "Classificação"
               };
@@ -892,14 +941,22 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
             const rows = tiedRes.rows;
             const maxWins = Math.max(0, ...rows.map((r: any) => Number(r.race_wins ?? r.total_wins) || 0));
             if (maxWins > 0) {
-              const tiedWinners = rows
+              const tiedWinnersRows = rows
                 .filter((r: any) => (Number(r.race_wins ?? r.total_wins) || 0) === maxWins)
-                .sort((a: any, b: any) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0))
-                .map((r: any) => String(r.driver_full_name));
+                .sort((a: any, b: any) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0));
+              const tiedWinners = tiedWinnersRows.map((r: any) => String(r.driver_full_name));
+              const tiedItems = tiedWinnersRows.map((r: any) => ({
+                driver: String(r.driver_full_name),
+                driver_id: r.driver_id || null,
+                headshot_url: r.driver_headshot_url || null
+              }));
               if (tiedWinners.length > 0) {
                 mostWins = {
                   driver: tiedWinners[0],
                   drivers: tiedWinners,
+                  driver_id: tiedItems[0]?.driver_id || null,
+                  headshot_url: tiedItems[0]?.headshot_url || null,
+                  items: tiedItems,
                   count: maxWins
                 };
               }
@@ -907,14 +964,22 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
 
             const maxPoles = Math.max(0, ...rows.map((r: any) => Number(r.race_poles) || 0));
             if (maxPoles > 0) {
-              const tiedPoleHolders = rows
+              const tiedPoleRows = rows
                 .filter((r: any) => (Number(r.race_poles) || 0) === maxPoles)
-                .sort((a: any, b: any) => (Number(b.race_wins ?? b.total_wins) || 0) - (Number(a.race_wins ?? a.total_wins) || 0))
-                .map((r: any) => String(r.driver_full_name));
+                .sort((a: any, b: any) => (Number(b.race_wins ?? b.total_wins) || 0) - (Number(a.race_wins ?? a.total_wins) || 0));
+              const tiedPoleHolders = tiedPoleRows.map((r: any) => String(r.driver_full_name));
+              const tiedItems = tiedPoleRows.map((r: any) => ({
+                driver: String(r.driver_full_name),
+                driver_id: r.driver_id || null,
+                headshot_url: r.driver_headshot_url || null
+              }));
               if (tiedPoleHolders.length > 0) {
                 mostPoles = {
                   driver: tiedPoleHolders[0],
                   drivers: tiedPoleHolders,
+                  driver_id: tiedItems[0]?.driver_id || null,
+                  headshot_url: tiedItems[0]?.headshot_url || null,
+                  items: tiedItems,
                   count: maxPoles
                 };
               }
@@ -933,13 +998,15 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
               .map((r: any) => ({
                 driver: String(r.driver_full_name),
                 team: r.team_name ? String(r.team_name) : undefined,
-                year: parseInt(r.year)
+                year: parseInt(r.year),
+                headshot_url: headshotMap.get(String(r.driver_full_name).toLowerCase()) || null
               }));
             topSpeed = {
               speed: maxSpd,
               driver: speedRes.rows[0].driver_full_name,
               team: speedRes.rows[0].team_name ? String(speedRes.rows[0].team_name) : undefined,
               year: parseInt(speedRes.rows[0].year),
+              headshot_url: headshotMap.get(String(speedRes.rows[0].driver_full_name).toLowerCase()) || null,
               drivers: tiedSpd
             };
           } else if (mockUpcomingRace.circuit_records?.max_speed_kmh) {
@@ -1002,22 +1069,33 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
             has_historical_data: hasHistoricalData,
             lap_record: raceLap.lap,
             lap_record_holder: raceLap.driver,
+            lap_record_driver_id: raceLap.driver_id,
+            lap_record_headshot_url: raceLap.headshot_url,
             lap_record_year: raceLap.year,
             all_time_record: allTimeLap.lap,
             all_time_holder: allTimeLap.driver,
+            all_time_driver_id: allTimeLap.driver_id,
+            all_time_headshot_url: allTimeLap.headshot_url,
             all_time_year: allTimeLap.year,
             all_time_session: allTimeLap.session,
             max_speed_kmh: topSpeed.speed,
             max_speed_driver: topSpeed.driver,
             max_speed_team: topSpeed.team,
             max_speed_drivers: topSpeed.drivers,
+            max_speed_headshot_url: topSpeed.headshot_url,
             max_speed_year: topSpeed.year,
             total_laps_analyzed: totalLaps,
             most_wins_driver: mostWins.driver,
             most_wins_drivers: mostWins.drivers,
+            most_wins_driver_id: mostWins.driver_id,
+            most_wins_headshot_url: mostWins.headshot_url,
+            most_wins_items: mostWins.items,
             most_wins_count: mostWins.count,
             most_poles_driver: mostPoles.driver,
             most_poles_drivers: mostPoles.drivers,
+            most_poles_driver_id: mostPoles.driver_id,
+            most_poles_headshot_url: mostPoles.headshot_url,
+            most_poles_items: mostPoles.items,
             most_poles_count: mostPoles.count,
             typical_strategy: typicalStrategy
           }
