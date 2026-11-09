@@ -514,6 +514,9 @@ export interface DriverRaceLogItem {
     year: number;
     round_number: number;
     official_event_name: string;
+    circuit_id?: string;
+    circuit_name?: string;
+    country?: string;
     session_name: string;
     driver_id: string;
     driver_full_name: string;
@@ -679,6 +682,9 @@ export interface ConstructorRaceLogItem {
     year: number;
     round_number: number;
     official_event_name: string;
+    circuit_id?: string;
+    circuit_name?: string;
+    country?: string;
     session_name: string;
     team_name: string;
     team_color: string;

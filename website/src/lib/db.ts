@@ -1401,26 +1401,31 @@ export async function getDriverCircuits(driverId: string): Promise<DriverCircuit
 export async function getDriverRaceLog(driverId: string): Promise<DriverRaceLogItem[]> {
   const sql = `
     SELECT 
-      year,
-      round_number,
-      official_event_name,
-      session_name,
-      driver_id,
-      driver_full_name,
-      driver_number,
-      team_name,
-      team_color,
-      grid_position,
-      finishing_position,
-      delta_position,
-      points,
-      best_lap,
-      gap_to_leader,
-      status,
-      laps_completed
-    FROM website.v_sessions_summary
-    WHERE driver_id = $1 AND session_name = 'Race'
-    ORDER BY year DESC, round_number DESC;
+      s.year,
+      s.round_number,
+      s.official_event_name,
+      COALESCE(c.circuit_name, s.circuit_id) AS circuit_name,
+      s.circuit_id,
+      COALESCE(c.country, s.country) AS country,
+      s.session_name,
+      s.driver_id,
+      s.driver_full_name,
+      s.driver_number,
+      s.team_name,
+      s.team_color,
+      s.grid_position,
+      s.finishing_position,
+      s.delta_position,
+      s.points,
+      s.best_lap,
+      s.gap_to_leader,
+      s.status,
+      s.laps_completed
+    FROM website.v_sessions_summary s
+    LEFT JOIN website.v_circuit_season_summary c
+      ON s.year = c.year AND CAST(s.round_number AS TEXT) = CAST(c.round_number AS TEXT)
+    WHERE s.driver_id = $1 AND s.session_name = 'Race'
+    ORDER BY s.year DESC, s.round_number DESC;
   `;
 
   try {
@@ -1431,6 +1436,9 @@ export async function getDriverRaceLog(driverId: string): Promise<DriverRaceLogI
           ...r,
           year: Number(r.year),
           round_number: Number(r.round_number),
+          circuit_id: r.circuit_id || undefined,
+          circuit_name: r.circuit_name || undefined,
+          country: r.country || undefined,
           driver_number: r.driver_number ? Number(r.driver_number) : undefined,
           grid_position: r.grid_position ? Number(r.grid_position) : undefined,
           finishing_position: r.finishing_position ? Number(r.finishing_position) : undefined,
@@ -1906,37 +1914,42 @@ export async function getConstructorSeasons(teamId: string): Promise<Constructor
 export async function getConstructorRaceLog(teamName: string): Promise<ConstructorRaceLogItem[]> {
   const sql = `
     SELECT 
-      year,
-      round_number,
-      official_event_name,
-      session_name,
-      team_name,
-      team_color,
+      s.year,
+      s.round_number,
+      s.official_event_name,
+      COALESCE(c.circuit_name, s.circuit_id) AS circuit_name,
+      s.circuit_id,
+      COALESCE(c.country, s.country) AS country,
+      s.session_name,
+      s.team_name,
+      s.team_color,
       JSON_AGG(
         JSON_BUILD_OBJECT(
-          'driver_id', driver_id,
-          'driver_full_name', driver_full_name,
-          'driver_headshot_url', driver_headshot_url,
-          'driver_number', driver_number,
-          'grid_position', grid_position,
-          'finishing_position', finishing_position,
-          'points', points,
-          'status', status
-        ) ORDER BY finishing_position ASC NULLS LAST
+          'driver_id', s.driver_id,
+          'driver_full_name', s.driver_full_name,
+          'driver_headshot_url', s.driver_headshot_url,
+          'driver_number', s.driver_number,
+          'grid_position', s.grid_position,
+          'finishing_position', s.finishing_position,
+          'points', s.points,
+          'status', s.status
+        ) ORDER BY s.finishing_position ASC NULLS LAST
       ) AS drivers_results,
-      SUM(points) AS team_points,
-      MIN(finishing_position) AS best_finish,
-      COUNT(CASE WHEN finishing_position <= 3 THEN 1 END) AS podiums_count,
-      COUNT(CASE WHEN finishing_position = 1 THEN 1 END) AS wins_count
-    FROM website.v_sessions_summary
-    WHERE session_name = 'Race' 
+      SUM(s.points) AS team_points,
+      MIN(s.finishing_position) AS best_finish,
+      COUNT(CASE WHEN s.finishing_position <= 3 THEN 1 END) AS podiums_count,
+      COUNT(CASE WHEN s.finishing_position = 1 THEN 1 END) AS wins_count
+    FROM website.v_sessions_summary s
+    LEFT JOIN website.v_circuit_season_summary c
+      ON s.year = c.year AND CAST(s.round_number AS TEXT) = CAST(c.round_number AS TEXT)
+    WHERE s.session_name = 'Race' 
       AND (
-        team_name = $1 
-        OR LOWER(team_name) = LOWER($1)
-        OR LOWER(team_name) ILIKE LOWER($1 || '%')
+        s.team_name = $1 
+        OR LOWER(s.team_name) = LOWER($1)
+        OR LOWER(s.team_name) ILIKE LOWER($1 || '%')
       )
-    GROUP BY year, round_number, official_event_name, session_name, team_name, team_color
-    ORDER BY year DESC, round_number DESC;
+    GROUP BY s.year, s.round_number, s.official_event_name, c.circuit_name, s.circuit_id, c.country, s.country, s.session_name, s.team_name, s.team_color
+    ORDER BY s.year DESC, s.round_number DESC;
   `;
 
   try {
@@ -1957,6 +1970,9 @@ export async function getConstructorRaceLog(teamName: string): Promise<Construct
             year: Number(r.year),
             round_number: Number(r.round_number),
             official_event_name: r.official_event_name,
+            circuit_id: r.circuit_id || undefined,
+            circuit_name: r.circuit_name || undefined,
+            country: r.country || undefined,
             session_name: r.session_name,
             team_name: r.team_name,
             team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',

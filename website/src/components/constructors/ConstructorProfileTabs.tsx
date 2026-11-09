@@ -46,6 +46,7 @@ import {
   CartesianGrid
 } from "recharts";
 import DriverLink, { getDriverProfileUrl } from "@/lib/driverUtils";
+import { getCountryFlag } from "@/lib/circuitUtils";
 
 interface Props {
   profile: ConstructorCatalogItem;
@@ -641,6 +642,7 @@ export default function ConstructorProfileTabs({
   // 3. REGISTRO CORRIDA A CORRIDA
   // ---------------------------------------------------------------------------
   const [selectedSeasonForRaces, setSelectedSeasonForRaces] = useState<string>("all");
+  const [raceSearch, setRaceSearch] = useState<string>("");
 
   const availableYears = useMemo(() => {
     const years = Array.from(new Set(raceLog.map((r) => r.year))).sort((a, b) => b - a);
@@ -648,10 +650,30 @@ export default function ConstructorProfileTabs({
   }, [raceLog]);
 
   const filteredRaces = useMemo(() => {
-    if (selectedSeasonForRaces === "all") return raceLog;
-    const y = Number(selectedSeasonForRaces);
-    return raceLog.filter((r) => r.year === y);
-  }, [raceLog, selectedSeasonForRaces]);
+    let result = raceLog;
+    if (selectedSeasonForRaces !== "all") {
+      const y = Number(selectedSeasonForRaces);
+      result = result.filter((r) => r.year === y);
+    }
+    if (raceSearch.trim()) {
+      const q = raceSearch.toLowerCase().trim();
+      result = result.filter((r) => {
+        const cName = (r.circuit_name || r.official_event_name || "").toLowerCase();
+        const country = (r.country || "").toLowerCase();
+        const eventName = (r.official_event_name || "").toLowerCase();
+        const year = r.year.toString();
+        const drivers = (r.drivers_results || []).map((d) => (d.driver_full_name || "").toLowerCase()).join(" ");
+        return (
+          cName.includes(q) ||
+          country.includes(q) ||
+          eventName.includes(q) ||
+          year.includes(q) ||
+          drivers.includes(q)
+        );
+      });
+    }
+    return result;
+  }, [raceLog, selectedSeasonForRaces, raceSearch]);
 
   const totalRacePages = Math.ceil(filteredRaces.length / RACES_PER_PAGE);
   const paginatedRaces = useMemo(() => {
@@ -1029,8 +1051,8 @@ export default function ConstructorProfileTabs({
               type="button"
               onClick={() => setActiveTab("overview")}
               className={`xl:hidden inline-flex items-center justify-center gap-1 px-2.5 py-2 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "overview"
-                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                : "text-f1-subtle hover:text-white hover:bg-white/5"
                 }`}
             >
               <span>Raio-X</span>
@@ -1040,16 +1062,16 @@ export default function ConstructorProfileTabs({
               type="button"
               onClick={() => setActiveTab("seasons")}
               className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "seasons"
-                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                : "text-f1-subtle hover:text-white hover:bg-white/5"
                 }`}
             >
               <Trophy className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
               <span>Temporadas</span>
               <span
                 className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "seasons"
-                    ? "bg-black/30 text-white"
-                    : "bg-white/10 text-zinc-400"
+                  ? "bg-black/30 text-white"
+                  : "bg-white/10 text-zinc-400"
                   }`}
               >
                 {seasons.length}
@@ -1060,8 +1082,8 @@ export default function ConstructorProfileTabs({
               type="button"
               onClick={() => setActiveTab("drivers")}
               className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "drivers"
-                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                : "text-f1-subtle hover:text-white hover:bg-white/5"
                 }`}
             >
               <Users className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
@@ -1079,8 +1101,8 @@ export default function ConstructorProfileTabs({
               type="button"
               onClick={() => setActiveTab("races")}
               className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "races"
-                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                : "text-f1-subtle hover:text-white hover:bg-white/5"
                 }`}
             >
               <Timer className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
@@ -1107,8 +1129,8 @@ export default function ConstructorProfileTabs({
                 type="button"
                 onClick={() => setMobileSeasonSubView("chart")}
                 className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "chart"
-                    ? "bg-white/15 text-white shadow"
-                    : "text-f1-subtle hover:text-white"
+                  ? "bg-white/15 text-white shadow"
+                  : "text-f1-subtle hover:text-white"
                   }`}
               >
                 Gráfico & Raio-X ({selectedSeasonYear})
@@ -1117,8 +1139,8 @@ export default function ConstructorProfileTabs({
                 type="button"
                 onClick={() => setMobileSeasonSubView("table")}
                 className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "table"
-                    ? "bg-white/15 text-white shadow"
-                    : "text-f1-subtle hover:text-white"
+                  ? "bg-white/15 text-white shadow"
+                  : "text-f1-subtle hover:text-white"
                   }`}
               >
                 Tabela ({seasons.length})
@@ -1215,8 +1237,8 @@ export default function ConstructorProfileTabs({
                     }}
                     disabled={chartPeriod === 0}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === 0
-                        ? "opacity-30 cursor-not-allowed text-zinc-600"
-                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                      ? "opacity-30 cursor-not-allowed text-zinc-600"
+                      : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
                       }`}
                     title="Ver período anterior (temporadas mais antigas)"
                   >
@@ -1255,8 +1277,8 @@ export default function ConstructorProfileTabs({
                     }}
                     disabled={chartPeriod === totalPeriods - 1}
                     className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === totalPeriods - 1
-                        ? "opacity-30 cursor-not-allowed text-zinc-600"
-                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                      ? "opacity-30 cursor-not-allowed text-zinc-600"
+                      : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
                       }`}
                     title="Ver próximo período (temporadas mais recentes)"
                   >
@@ -1724,11 +1746,10 @@ export default function ConstructorProfileTabs({
                                   )}
                                 </div>
                                 <span
-                                  className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
-                                    isExpanded
+                                  className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
                                       ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
                                       : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                  }`}
+                                    }`}
                                   aria-hidden="true"
                                 >
                                   <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
@@ -2112,9 +2133,8 @@ export default function ConstructorProfileTabs({
                         <React.Fragment key={driver.driver_id}>
                           <tr
                             onClick={() => setExpandedDriverId(isExpanded ? null : driver.driver_id)}
-                            className={`group cursor-pointer md:cursor-default transition-colors ${
-                              isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
-                            }`}
+                            className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                              }`}
                           >
                             <td className="py-2.5 sm:py-3 px-2.5 sm:px-3 max-w-[175px] sm:max-w-none">
                               <Link
@@ -2138,11 +2158,10 @@ export default function ConstructorProfileTabs({
                                       {driver.driver_full_name}
                                     </span>
                                     <span
-                                      className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
-                                        isExpanded
+                                      className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
                                           ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
                                           : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                      }`}
+                                        }`}
                                       aria-hidden="true"
                                     >
                                       <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
@@ -2301,46 +2320,77 @@ export default function ConstructorProfileTabs({
         {/* ========================================================================= */}
         {activeTab === "races" && (
           <div className="space-y-4 min-w-0 w-full max-w-full">
-            {/* Toolbar com Seletor de Temporada e Contadores Imunes a Compressão */}
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4 rounded-xl border border-white/10 bg-[#12121A] shadow-md w-full min-w-0">
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[200px]">
-                <div className="flex items-center gap-2 shrink-0">
-                  <Flag className="h-4 w-4 text-f1-subtle shrink-0" />
-                  <span className="text-xs font-bold uppercase text-white font-mono shrink-0">
-                    Temporada:
-                  </span>
+            {/* Toolbar com Seletor de Temporada, Pesquisa Geral e Contadores */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-xl border border-white/10 bg-[#12121A] shadow-md w-full min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                {/* Campo de Pesquisa Geral */}
+                <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
+                  <input
+                    type="text"
+                    value={raceSearch}
+                    onChange={(e) => {
+                      setRaceSearch(e.target.value);
+                      setRacesPage(1);
+                    }}
+                    placeholder="Buscar circuito, país, piloto..."
+                    className="w-full pl-9 pr-7 py-1.5 rounded-xl border border-white/15 bg-black/40 text-xs font-medium text-white placeholder-f1-subtle outline-none hover:border-white/30 focus:border-f1-red transition-all"
+                  />
+                  {raceSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRaceSearch("");
+                        setRacesPage(1);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-f1-subtle hover:text-white text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
-                <select
-                  value={selectedSeasonForRaces}
-                  onChange={(e) => {
-                    setSelectedSeasonForRaces(e.target.value);
-                    setRacesPage(1);
-                  }}
-                  className="w-full sm:w-auto flex-1 sm:flex-initial min-w-0 max-w-[280px] min-h-[42px] sm:min-h-0 bg-[#0A0A10] border border-white/10 rounded-xl px-3 py-2 sm:py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer font-mono truncate"
-                >
-                  <option value="all">Todas as Temporadas ({raceLog.length} corridas)</option>
-                  {availableYears.map((y) => (
-                    <option key={y} value={y}>
-                      Temporada {y}
-                    </option>
-                  ))}
-                </select>
+
+                {/* Filtro de Temporada */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 hidden sm:flex">
+                    <Flag className="h-3.5 w-3.5 text-f1-subtle shrink-0" />
+                    <span className="text-xs font-bold uppercase text-white font-mono shrink-0">
+                      Ano:
+                    </span>
+                  </div>
+                  <select
+                    value={selectedSeasonForRaces}
+                    onChange={(e) => {
+                      setSelectedSeasonForRaces(e.target.value);
+                      setRacesPage(1);
+                    }}
+                    className="w-full sm:w-auto min-w-[130px] bg-[#0A0A10] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-white/30 cursor-pointer font-mono truncate"
+                  >
+                    <option value="all">Todas ({availableYears.length} anos)</option>
+                    {availableYears.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 text-xs font-mono text-f1-subtle shrink-0 whitespace-nowrap ml-auto">
                 <span>
                   Exibindo <strong className="text-white">{filteredRaces.length}</strong> {filteredRaces.length === 1 ? "corrida" : "corridas"}
                 </span>
-                {selectedSeasonForRaces !== "all" && (
+                {(selectedSeasonForRaces !== "all" || raceSearch) && (
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedSeasonForRaces("all");
+                      setRaceSearch("");
                       setRacesPage(1);
                     }}
                     className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold active:scale-95 ml-1"
                   >
-                    <RotateCcw className="h-3 w-3" /> Todas
+                    <RotateCcw className="h-3 w-3" /> Limpar
                   </button>
                 )}
               </div>
@@ -2371,176 +2421,202 @@ export default function ConstructorProfileTabs({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {paginatedRaces.map((race, idx) => {
-                      const car1 = race.drivers_results && race.drivers_results[0];
-                      const car2 = race.drivers_results && race.drivers_results[1];
-                      const raceKey = `${race.year}-${race.round_number}-${race.session_name}-${idx}`;
-                      const isExpanded = expandedRaceKey === raceKey;
+                    {paginatedRaces.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center text-xs text-f1-subtle font-mono">
+                          Nenhuma corrida encontrada para os filtros selecionados.
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedRaces.map((race, idx) => {
+                        const car1 = race.drivers_results && race.drivers_results[0];
+                        const car2 = race.drivers_results && race.drivers_results[1];
+                        const raceKey = `${race.year}-${race.round_number}-${race.session_name}-${idx}`;
+                        const isExpanded = expandedRaceKey === raceKey;
 
-                      return (
-                        <React.Fragment key={raceKey}>
-                          <tr
-                            onClick={() => setExpandedRaceKey(isExpanded ? null : raceKey)}
-                            className={`group cursor-pointer md:cursor-default transition-colors ${
-                              isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
-                            }`}
-                          >
-                            <td className="py-2.5 sm:py-3 px-2.5 sm:px-3 font-bold text-white whitespace-nowrap">
-                              <span>{race.year}</span>
-                              <span className="text-f1-subtle block sm:inline sm:ml-1 text-[10px] sm:text-xs">R{race.round_number}</span>
-                            </td>
-                            <td className="py-2.5 sm:py-3 px-2 sm:px-3 max-w-[155px] sm:max-w-none">
-                              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                <Link
-                                  href={`/season/round/${race.round_number}?year=${race.year}`}
-                                  className="text-white font-semibold hover:text-white hover:underline decoration-white/30 transition-colors block truncate pointer-events-none md:pointer-events-auto"
-                                  title={`Ver análise da etapa ${race.round_number} (${race.year})`}
-                                >
-                                  {race.official_event_name}
-                                </Link>
-                                <span
-                                  className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
-                                    isExpanded
-                                      ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
-                                      : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                  }`}
-                                  aria-hidden="true"
-                                >
-                                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                                </span>
-                              </div>
-                              <span className="md:hidden text-[10px] text-f1-subtle block truncate">{race.session_name}</span>
-                            </td>
-                            <td className="py-3 px-3 text-f1-subtle hidden md:table-cell">
-                              {race.session_name}
-                            </td>
-                            <td className="py-2.5 sm:py-3 px-2 sm:px-3">
-                              {/* Desktop: Apenas Carro #1 */}
-                              <div className="hidden md:block">
-                                {car1 ? (
+                        return (
+                          <React.Fragment key={raceKey}>
+                            <tr
+                              onClick={() => setExpandedRaceKey(isExpanded ? null : raceKey)}
+                              className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                                }`}
+                            >
+                              <td className="py-2.5 sm:py-3 px-2.5 sm:px-3 font-bold text-white whitespace-nowrap">
+                                <span>{race.year}</span>
+                                <span className="text-f1-subtle block sm:inline sm:ml-1 text-[10px] sm:text-xs">R{race.round_number}</span>
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 max-w-[155px] sm:max-w-none">
+                                {(() => {
+                                  const circuitDisplayName = race.circuit_name || race.official_event_name;
+                                  const countryName = race.country;
+                                  const countryFlag = getCountryFlag(countryName);
+
+                                  return (
+                                    <>
+                                      <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                        <Link
+                                          href={`/season/round/${race.round_number}?year=${race.year}`}
+                                          className="text-white font-semibold hover:text-white hover:underline decoration-white/30 transition-colors block truncate pointer-events-none md:pointer-events-auto"
+                                          title={`Ver análise da etapa ${race.round_number} (${race.year})`}
+                                        >
+                                          <span className="truncate max-w-[135px] sm:max-w-[220px]">
+                                            {circuitDisplayName}
+                                          </span>
+                                        </Link>
+                                        <span
+                                          className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
+                                              ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                              : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                            }`}
+                                          aria-hidden="true"
+                                        >
+                                          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-normal truncate mt-0.5">
+                                        {countryName ? (
+                                          <span className="inline-flex items-center gap-1 shrink-0 text-zinc-300 font-medium">
+                                            <span className="text-xs" aria-hidden="true">{countryFlag}</span>
+                                            <span>{countryName}</span>
+                                          </span>
+                                        ) : null}
+                                        <span className="md:hidden text-white/30">·</span>
+                                        <span className="md:hidden text-f1-subtle truncate">{race.session_name}</span>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-3 px-3 text-f1-subtle hidden md:table-cell">
+                                {race.session_name}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3">
+                                {/* Desktop: Apenas Carro #1 */}
+                                <div className="hidden md:block">
+                                  {car1 ? (
+                                    <div className="flex items-center gap-2">
+                                      <DriverLink
+                                        driverName={car1.driver_full_name}
+                                        className="text-white font-bold hover:text-white hover:underline decoration-white/30 transition-colors"
+                                        title={`Ver perfil de ${car1.driver_full_name}`}
+                                      >
+                                        {car1.driver_full_name}
+                                      </DriverLink>
+                                      <span className="text-f1-subtle text-[11px]">
+                                        P{car1.grid_position || "—"} ➔ <strong className="text-white">P{car1.finishing_position || car1.status || "DNF"}</strong>
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-white/20">—</span>
+                                  )}
+                                </div>
+                                {/* Mobile: Ambos os carros compactos */}
+                                <div className="md:hidden space-y-0.5 text-[11px]">
+                                  {car1 && (
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-white/90 font-bold truncate max-w-[75px]">
+                                        {car1.driver_full_name ? car1.driver_full_name.split(" ").pop() : "Piloto"}
+                                      </span>
+                                      <strong className="text-white">P{car1.finishing_position || "DNF"}</strong>
+                                    </div>
+                                  )}
+                                  {car2 && (
+                                    <div className="flex items-center justify-between gap-1.5">
+                                      <span className="text-white/90 font-bold truncate max-w-[75px]">
+                                        {car2.driver_full_name ? car2.driver_full_name.split(" ").pop() : "Piloto"}
+                                      </span>
+                                      <strong className="text-white">P{car2.finishing_position || "DNF"}</strong>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 hidden md:table-cell">
+                                {car2 ? (
                                   <div className="flex items-center gap-2">
                                     <DriverLink
-                                      driverName={car1.driver_full_name}
+                                      driverName={car2.driver_full_name}
                                       className="text-white font-bold hover:text-white hover:underline decoration-white/30 transition-colors"
-                                      title={`Ver perfil de ${car1.driver_full_name}`}
+                                      title={`Ver perfil de ${car2.driver_full_name}`}
                                     >
-                                      {car1.driver_full_name}
+                                      {car2.driver_full_name}
                                     </DriverLink>
                                     <span className="text-f1-subtle text-[11px]">
-                                      P{car1.grid_position || "—"} ➔ <strong className="text-white">P{car1.finishing_position || car1.status || "DNF"}</strong>
+                                      P{car2.grid_position || "—"} ➔ <strong className="text-white">P{car2.finishing_position || car2.status || "DNF"}</strong>
                                     </span>
                                   </div>
                                 ) : (
                                   <span className="text-white/20">—</span>
                                 )}
-                              </div>
-                              {/* Mobile: Ambos os carros compactos */}
-                              <div className="md:hidden space-y-0.5 text-[11px]">
-                                {car1 && (
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <span className="text-white/90 font-bold truncate max-w-[75px]">
-                                      {car1.driver_full_name ? car1.driver_full_name.split(" ").pop() : "Piloto"}
-                                    </span>
-                                    <strong className="text-white">P{car1.finishing_position || "DNF"}</strong>
-                                  </div>
-                                )}
-                                {car2 && (
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <span className="text-white/90 font-bold truncate max-w-[75px]">
-                                      {car2.driver_full_name ? car2.driver_full_name.split(" ").pop() : "Piloto"}
-                                    </span>
-                                    <strong className="text-white">P{car2.finishing_position || "DNF"}</strong>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-3 px-3 hidden md:table-cell">
-                              {car2 ? (
-                                <div className="flex items-center gap-2">
-                                  <DriverLink
-                                    driverName={car2.driver_full_name}
-                                    className="text-white font-bold hover:text-white hover:underline decoration-white/30 transition-colors"
-                                    title={`Ver perfil de ${car2.driver_full_name}`}
-                                  >
-                                    {car2.driver_full_name}
-                                  </DriverLink>
-                                  <span className="text-f1-subtle text-[11px]">
-                                    P{car2.grid_position || "—"} ➔ <strong className="text-white">P{car2.finishing_position || car2.status || "DNF"}</strong>
+                              </td>
+                              <td className="py-3 px-3 text-center hidden md:table-cell">
+                                {race.is_one_two ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 text-[10px]">
+                                    🏆 1-2 DOBRADINHA
                                   </span>
-                                </div>
-                              ) : (
-                                <span className="text-white/20">—</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-3 text-center hidden md:table-cell">
-                              {race.is_one_two ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 text-[10px]">
-                                  🏆 1-2 DOBRADINHA
-                                </span>
-                              ) : race.wins_count > 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20 text-[10px]">
-                                  🥇 VITÓRIA
-                                </span>
-                              ) : race.podiums_count > 0 ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 text-[10px]">
-                                  PÓDIO
-                                </span>
-                              ) : (
-                                <span className="text-white/20">—</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 sm:py-3 px-2.5 sm:px-3 text-right font-black text-white whitespace-nowrap">
-                              {race.team_points}
-                            </td>
-                          </tr>
-
-                          {isExpanded && (
-                            <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
-                              <td colSpan={7} className="p-3">
-                                <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
-                                    {car1 && (
-                                      <div className="rounded-lg bg-white/5 p-2.5 border border-white/5 flex items-center justify-between gap-2">
-                                        <DriverLink
-                                          driverName={car1.driver_full_name}
-                                          className="font-sans font-bold text-white text-xs truncate hover:underline"
-                                        >
-                                          {car1.driver_full_name}
-                                        </DriverLink>
-                                        <span className="text-[11px] text-f1-subtle shrink-0">
-                                          P{car1.grid_position || "—"} ➔ <strong className="text-white">P{car1.finishing_position || car1.status || "DNF"}</strong>
-                                        </span>
-                                      </div>
-                                    )}
-                                    {car2 && (
-                                      <div className="rounded-lg bg-white/5 p-2.5 border border-white/5 flex items-center justify-between gap-2">
-                                        <DriverLink
-                                          driverName={car2.driver_full_name}
-                                          className="font-sans font-bold text-white text-xs truncate hover:underline"
-                                        >
-                                          {car2.driver_full_name}
-                                        </DriverLink>
-                                        <span className="text-[11px] text-f1-subtle shrink-0">
-                                          P{car2.grid_position || "—"} ➔ <strong className="text-white">P{car2.finishing_position || car2.status || "DNF"}</strong>
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <Link
-                                    href={`/season/round/${race.round_number}?year=${race.year}`}
-                                    className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
-                                  >
-                                    <span>Abrir Análise do GP ({race.year})</span>
-                                    <ChevronRight className="h-3.5 w-3.5 text-f1-red" />
-                                  </Link>
-                                </div>
+                                ) : race.wins_count > 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold border border-amber-500/20 text-[10px]">
+                                    🥇 VITÓRIA
+                                  </span>
+                                ) : race.podiums_count > 0 ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20 text-[10px]">
+                                    PÓDIO
+                                  </span>
+                                ) : (
+                                  <span className="text-white/20">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2.5 sm:px-3 text-right font-black text-white whitespace-nowrap">
+                                {race.team_points}
                               </td>
                             </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
+
+                            {isExpanded && (
+                              <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
+                                <td colSpan={7} className="p-3">
+                                  <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 font-mono">
+                                      {car1 && (
+                                        <div className="rounded-lg bg-white/5 p-2.5 border border-white/5 flex items-center justify-between gap-2">
+                                          <DriverLink
+                                            driverName={car1.driver_full_name}
+                                            className="font-sans font-bold text-white text-xs truncate hover:underline"
+                                          >
+                                            {car1.driver_full_name}
+                                          </DriverLink>
+                                          <span className="text-[11px] text-f1-subtle shrink-0">
+                                            P{car1.grid_position || "—"} ➔ <strong className="text-white">P{car1.finishing_position || car1.status || "DNF"}</strong>
+                                          </span>
+                                        </div>
+                                      )}
+                                      {car2 && (
+                                        <div className="rounded-lg bg-white/5 p-2.5 border border-white/5 flex items-center justify-between gap-2">
+                                          <DriverLink
+                                            driverName={car2.driver_full_name}
+                                            className="font-sans font-bold text-white text-xs truncate hover:underline"
+                                          >
+                                            {car2.driver_full_name}
+                                          </DriverLink>
+                                          <span className="text-[11px] text-f1-subtle shrink-0">
+                                            P{car2.grid_position || "—"} ➔ <strong className="text-white">P{car2.finishing_position || car2.status || "DNF"}</strong>
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    <Link
+                                      href={`/season/round/${race.round_number}?year=${race.year}`}
+                                      className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
+                                    >
+                                      <span>Abrir Análise do GP ({race.year})</span>
+                                      <ChevronRight className="h-3.5 w-3.5 text-f1-red" />
+                                    </Link>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      }))}
                   </tbody>
                 </table>
               </div>
