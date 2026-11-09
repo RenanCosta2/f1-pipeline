@@ -8,6 +8,12 @@ import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
 import CircuitLink from "@/lib/circuitUtils";
 import { getTeamColor } from "./StandingsWidget";
+import {
+  useTieCarousel,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+  TieCarouselDots,
+} from "@/components/ui/TieCarousel";
 
 interface Props {
   lastRaceResults: SessionSummary[];
@@ -61,8 +67,8 @@ export default function BetweenRacesView({
   const lastRaceWinner = lastRaceResults[0];
   const lastRacePodium = lastRaceResults.slice(0, 3);
 
-  // Fastest Lap (menor tempo de volta numérico)
-  const fastestLapResult = useMemo(() => {
+  // Fastest Lap (menor tempo de volta numérico — suporta empate)
+  const fastestLapResults = useMemo(() => {
     const valid = [...lastRaceResults]
       .map((r) => ({
         result: r,
@@ -70,21 +76,28 @@ export default function BetweenRacesView({
       }))
       .filter((item): item is { result: SessionSummary; secs: number } => item.secs !== null && item.secs > 0);
 
-    if (valid.length === 0) return null;
+    if (valid.length === 0) return [];
     valid.sort((a, b) => a.secs - b.secs);
-    return valid[0].result;
+    const minSecs = valid[0].secs;
+    return valid.filter((item) => Math.abs(item.secs - minSecs) < 1e-4).map((item) => item.result);
   }, [lastRaceResults]);
+  const fastestLapResult = fastestLapResults[0] || null;
+  const flCarousel = useTieCarousel(fastestLapResults.length);
 
-  // Biggest Climber (delta_position > 0, maior escalador)
-  const biggestClimber = useMemo(() => {
+  // Biggest Climber (delta_position > 0, maior escalador — suporta empate)
+  const biggestClimbers = useMemo(() => {
     const valid = [...lastRaceResults].filter((r) => (r.delta_position ?? 0) > 0);
-    if (valid.length === 0) return null;
-    return valid.sort((a, b) => {
+    if (valid.length === 0) return [];
+    valid.sort((a, b) => {
       const deltaDiff = (b.delta_position || 0) - (a.delta_position || 0);
       if (deltaDiff !== 0) return deltaDiff;
       return (a.finishing_position || 99) - (b.finishing_position || 99);
-    })[0];
+    });
+    const maxDelta = valid[0].delta_position || 0;
+    return valid.filter((r) => (r.delta_position || 0) === maxDelta);
   }, [lastRaceResults]);
+  const biggestClimber = biggestClimbers[0] || null;
+  const climberCarousel = useTieCarousel(biggestClimbers.length);
 
   return (
     <div className="space-y-5 sm:space-y-8 animate-fadeIn">
@@ -391,69 +404,88 @@ export default function BetweenRacesView({
             } sm:grid sm:mt-0 grid-cols-2 gap-2.5 sm:gap-4`}
           >
           {/* Card: Volta Mais Rápida */}
-          <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] p-3 sm:p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-1 pb-2 sm:pb-2.5 border-b border-purple-500/20">
+          <div
+            onMouseEnter={flCarousel.pause}
+            onMouseLeave={flCarousel.resume}
+            className={`relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] py-3 sm:py-4 flex flex-col justify-between ${
+              flCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
+            }`}
+          >
+            <TieCarouselEdgeArrows carousel={flCarousel} accent="purple" size="xs" />
+            <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-purple-500/20">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-purple-400 shrink-0" />
                 <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-300 truncate">
                   Volta Rápida
                 </span>
               </div>
-              {fastestLapResult && (
-                <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded shrink-0">
-                  {formatLapTimeDisplay(fastestLapResult.best_lap)}
-                </span>
-              )}
+              <div className="flex items-center gap-2 shrink-0">
+                <TieCarouselDots carousel={flCarousel} accent="purple" />
+                {fastestLapResult && (
+                  <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded">
+                    {formatLapTimeDisplay(fastestLapResult.best_lap)}
+                  </span>
+                )}
+              </div>
             </div>
 
-            {fastestLapResult ? (
-              <div className="mt-2.5 sm:mt-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <DriverLink driverId={fastestLapResult.driver_id} driverName={fastestLapResult.driver_full_name}>
-                    <div
-                      className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
-                      style={{
-                        borderColor: getTeamColor(fastestLapResult.team_name, fastestLapResult.team_color),
-                      }}
-                    >
-                      {fastestLapResult.driver_headshot_url ? (
-                        <img
-                          src={fastestLapResult.driver_headshot_url}
-                          alt={fastestLapResult.driver_full_name}
-                          className="h-full w-full object-cover object-top"
-                        />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-purple-300">
-                          {fastestLapResult.driver_full_name.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                  </DriverLink>
-                  <div className="min-w-0">
-                    <DriverLink driverId={fastestLapResult.driver_id} driverName={fastestLapResult.driver_full_name}>
-                      <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-purple-300 transition-colors">
-                        {fastestLapResult.driver_full_name}
-                      </h4>
-                    </DriverLink>
-                    <TeamLink
-                      teamName={fastestLapResult.team_name}
-                      teamId={fastestLapResult.team_id}
-                      className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
-                    >
-                      {fastestLapResult.team_name}
-                    </TeamLink>
-                  </div>
-                </div>
+            {fastestLapResults.length > 0 ? (
+              <div className="mt-2.5 sm:mt-3">
+                <TieCarouselTrack
+                  carousel={flCarousel}
+                  items={fastestLapResults}
+                  keyExtractor={(item) => item.driver_id || item.driver_full_name}
+                  renderItem={(fl) => (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name}>
+                          <div
+                            className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
+                            style={{
+                              borderColor: getTeamColor(fl.team_name, fl.team_color),
+                            }}
+                          >
+                            {fl.driver_headshot_url ? (
+                              <img
+                                src={fl.driver_headshot_url}
+                                alt={fl.driver_full_name}
+                                className="h-full w-full object-cover object-top"
+                              />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-purple-300">
+                                {fl.driver_full_name.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </DriverLink>
+                        <div className="min-w-0">
+                          <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name}>
+                            <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-purple-300 transition-colors">
+                              {fl.driver_full_name}
+                            </h4>
+                          </DriverLink>
+                          <TeamLink
+                            teamName={fl.team_name}
+                            teamId={fl.team_id}
+                            className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
+                          >
+                            {fl.team_name}
+                          </TeamLink>
+                        </div>
+                      </div>
 
-                <DriverLink
-                  driverId={fastestLapResult.driver_id}
-                  driverName={fastestLapResult.driver_full_name}
-                  className="hidden sm:inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group shrink-0"
-                  title={`Ver perfil de ${fastestLapResult.driver_full_name}`}
-                >
-                  <span>Perfil</span>
-                  <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </DriverLink>
+                      <DriverLink
+                        driverId={fl.driver_id}
+                        driverName={fl.driver_full_name}
+                        className="hidden lg:inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group shrink-0"
+                        title={`Ver perfil de ${fl.driver_full_name}`}
+                      >
+                        <span>Perfil</span>
+                        <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      </DriverLink>
+                    </div>
+                  )}
+                />
               </div>
             ) : (
               <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
@@ -463,67 +495,87 @@ export default function BetweenRacesView({
           </div>
 
           {/* Card: Maior Escalador */}
-          <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] p-3 sm:p-4 flex flex-col justify-between">
-            <div className="flex items-center justify-between gap-1 pb-2 sm:pb-2.5 border-b border-emerald-500/20">
+          <div
+            onMouseEnter={climberCarousel.pause}
+            onMouseLeave={climberCarousel.resume}
+            className={`relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] py-3 sm:py-4 flex flex-col justify-between ${
+              climberCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
+            }`}
+          >
+            <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
+            <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-emerald-500/20">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 shrink-0" />
                 <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300 truncate">
-                  Escalador
+                  <span className="sm:hidden">Escalador</span>
+                  <span className="hidden sm:inline">Maior Escalador</span>
                 </span>
               </div>
-              {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
-                <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded shrink-0">
-                  +{biggestClimber.delta_position} <span className="hidden sm:inline">pos</span>
-                </span>
-              ) : null}
+              <div className="flex items-center gap-2 shrink-0">
+                <TieCarouselDots carousel={climberCarousel} accent="emerald" />
+                {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
+                  <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded">
+                    +{biggestClimber.delta_position} <span className="hidden sm:inline">pos</span>
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            {biggestClimber ? (
-              <div className="mt-2.5 sm:mt-3 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <DriverLink driverId={biggestClimber.driver_id} driverName={biggestClimber.driver_full_name}>
-                    <div
-                      className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
-                      style={{
-                        borderColor: getTeamColor(biggestClimber.team_name, biggestClimber.team_color),
-                      }}
-                    >
-                      {biggestClimber.driver_headshot_url ? (
-                        <img
-                          src={biggestClimber.driver_headshot_url}
-                          alt={biggestClimber.driver_full_name}
-                          className="h-full w-full object-cover object-top"
-                        />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-emerald-300">
-                          {biggestClimber.driver_full_name.slice(0, 2).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-                  </DriverLink>
-                  <div className="min-w-0">
-                    <DriverLink driverId={biggestClimber.driver_id} driverName={biggestClimber.driver_full_name}>
-                      <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
-                        {biggestClimber.driver_full_name}
-                      </h4>
-                    </DriverLink>
-                    <div className="flex items-center gap-1 font-mono tabular-nums text-[10px] sm:text-xs font-bold">
-                      <span className="text-white/50">P{biggestClimber.grid_position ?? "—"}</span>
-                      <span className="text-emerald-400">➔</span>
-                      <span className="text-emerald-400">P{biggestClimber.finishing_position ?? "—"}</span>
-                    </div>
-                  </div>
-                </div>
+            {biggestClimbers.length > 0 ? (
+              <div className="mt-2.5 sm:mt-3">
+                <TieCarouselTrack
+                  carousel={climberCarousel}
+                  items={biggestClimbers}
+                  keyExtractor={(item) => item.driver_id || item.driver_full_name}
+                  renderItem={(climber) => (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name}>
+                          <div
+                            className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
+                            style={{
+                              borderColor: getTeamColor(climber.team_name, climber.team_color),
+                            }}
+                          >
+                            {climber.driver_headshot_url ? (
+                              <img
+                                src={climber.driver_headshot_url}
+                                alt={climber.driver_full_name}
+                                className="h-full w-full object-cover object-top"
+                              />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-emerald-300">
+                                {climber.driver_full_name.slice(0, 2).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </DriverLink>
+                        <div className="min-w-0">
+                          <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name}>
+                            <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
+                              {climber.driver_full_name}
+                            </h4>
+                          </DriverLink>
+                          <div className="flex items-center gap-1 font-mono tabular-nums text-[10px] sm:text-xs font-bold">
+                            <span className="text-white/50">P{climber.grid_position ?? "—"}</span>
+                            <span className="text-emerald-400">➔</span>
+                            <span className="text-emerald-400">P{climber.finishing_position ?? "—"}</span>
+                          </div>
+                        </div>
+                      </div>
 
-                <DriverLink
-                  driverId={biggestClimber.driver_id}
-                  driverName={biggestClimber.driver_full_name}
-                  className="hidden sm:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group shrink-0"
-                  title={`Ver perfil de ${biggestClimber.driver_full_name}`}
-                >
-                  <span>Perfil</span>
-                  <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </DriverLink>
+                      <DriverLink
+                        driverId={climber.driver_id}
+                        driverName={climber.driver_full_name}
+                        className="hidden lg:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group shrink-0"
+                        title={`Ver perfil de ${climber.driver_full_name}`}
+                      >
+                        <span>Perfil</span>
+                        <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      </DriverLink>
+                    </div>
+                  )}
+                />
               </div>
             ) : (
               <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">

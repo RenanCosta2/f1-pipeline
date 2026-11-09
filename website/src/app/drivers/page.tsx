@@ -14,10 +14,22 @@ export default async function DriversPage() {
   ]);
 
   const currentLeader = standings && standings.length > 0 ? standings[0] : null;
-  const historicLeader =
-    [...drivers]
-      .filter((d) => d.total_world_championships > 0)
-      .sort((a, b) => b.total_world_championships - a.total_world_championships || b.total_wins - a.total_wins)[0] || null;
+  const maxPoints = currentLeader ? Number(currentLeader.total_points || 0) : 0;
+  const currentLeaders =
+    standings && standings.length > 0
+      ? maxPoints > 0
+        ? standings.filter((s) => Number(s.total_points || 0) === maxPoints)
+        : [standings[0]]
+      : [];
+
+  const maxTitles = Math.max(0, ...drivers.map((d) => Number(d.total_world_championships || 0)));
+  const historicLeaders =
+    maxTitles > 0
+      ? [...drivers]
+          .filter((d) => Number(d.total_world_championships || 0) === maxTitles)
+          .sort((a, b) => b.total_wins - a.total_wins)
+      : [];
+  const historicLeader = historicLeaders[0] || null;
 
   const totalDrivers = drivers.length;
   const worldChampionsCount = drivers.filter((d) => d.total_world_championships > 0).length;
@@ -61,7 +73,9 @@ export default async function DriversPage() {
       {/* Régua Spotlight: Líder Atual (2026) vs Maior Campeão da História */}
       <DriversSpotlightStrip
         currentLeader={currentLeader}
+        currentLeaders={currentLeaders}
         historicLeader={historicLeader}
+        historicLeaders={historicLeaders}
         seasonYear={latestYear}
       />
 

@@ -4,16 +4,17 @@ import React from "react";
 import Link from "next/link";
 import { CircuitOverviewItem } from "@/types/f1";
 import { getCountryFlag, getTrackTypeBadge, formatSeasonsRanges } from "@/lib/circuitUtils";
+import DriverLink from "@/lib/driverUtils";
+import TeamLink from "@/lib/teamUtils";
+import {
+  useTieCarousel,
+  TieCarouselControl,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+} from "@/components/ui/TieCarousel";
 import {
   ArrowLeft,
-  Calendar,
-  Flag,
-  Trophy,
-  Timer,
-  Zap,
-  AlertTriangle,
-  MapPin,
-  Shield
+  MapPin
 } from "lucide-react";
 
 interface Props {
@@ -23,7 +24,25 @@ interface Props {
 export default function CircuitProfileHero({ overview }: Props) {
   const trackBadge = getTrackTypeBadge(overview.track_type);
   const countryFlag = getCountryFlag(overview.country);
-  const teamColor = overview.most_wins_team_color || "#E10600";
+
+  const tiedDrivers =
+    overview.most_wins_drivers && overview.most_wins_drivers.length > 0
+      ? overview.most_wins_drivers
+      : overview.most_wins_driver
+        ? [{ driver_id: overview.most_wins_driver_id, driver_full_name: overview.most_wins_driver, count: overview.most_wins_count || 0 }]
+        : [];
+
+  const tiedTeams =
+    overview.most_wins_teams && overview.most_wins_teams.length > 0
+      ? overview.most_wins_teams
+      : overview.most_wins_team
+        ? [{ team_name: overview.most_wins_team, team_color: overview.most_wins_team_color, count: overview.most_wins_team_count || 0 }]
+        : [];
+
+  const driverCarousel = useTieCarousel(tiedDrivers.length);
+  const teamCarousel = useTieCarousel(tiedTeams.length);
+  const activeTeam = tiedTeams.length > 0 ? tiedTeams[teamCarousel.index] : null;
+  const teamColor = activeTeam?.team_color || overview.most_wins_team_color || "#E10600";
 
   return (
     <div className="space-y-3">
@@ -96,12 +115,16 @@ export default function CircuitProfileHero({ overview }: Props) {
                 <span className="text-white font-bold">{overview.location}</span>
                 <span>•</span>
                 <span className="text-zinc-300">{overview.country}</span>
-                {overview.most_wins_team && (
+                {activeTeam && (
                   <>
                     <span className="text-white/20">•</span>
-                    <span className="flex items-center gap-1 font-mono text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
                       <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                      <strong className="text-white">{overview.most_wins_team}</strong> ({overview.most_wins_team_count}v)
+                      <TeamLink teamName={activeTeam.team_name} className="font-bold text-white hover:underline">
+                        {activeTeam.team_name}
+                      </TeamLink>{" "}
+                      ({activeTeam.count}v)
+                      <TieCarouselControl carousel={teamCarousel} accent="zinc" showLabel={false} size="xs" />
                     </span>
                   </>
                 )}
@@ -151,13 +174,33 @@ export default function CircuitProfileHero({ overview }: Props) {
             </div>
 
             {/* 4. Maior Vencedor */}
-            <div className="col-span-2 sm:col-span-1 rounded-xl border border-white/5 bg-[#12121A] px-2.5 sm:px-3 py-2 text-center min-w-0 sm:min-w-[95px]">
+            <div
+              onMouseEnter={driverCarousel.pause}
+              onMouseLeave={driverCarousel.resume}
+              className={`relative overflow-hidden col-span-2 sm:col-span-1 rounded-xl border border-white/5 bg-[#12121A] py-2 text-center min-w-0 sm:min-w-[105px] ${
+                driverCarousel.isTied ? "px-4" : "px-2.5 sm:px-3"
+              }`}
+            >
+              <TieCarouselEdgeArrows carousel={driverCarousel} accent="amber" size="xs" />
               <span className="block text-[9px] sm:text-[10px] font-bold uppercase text-amber-400 tracking-wider">
                 Top Piloto
               </span>
-              <span className="text-xs sm:text-sm font-black text-amber-300 block mt-0.5 truncate font-sans" title={overview.most_wins_driver || "—"}>
-                {overview.most_wins_driver ? overview.most_wins_driver.split(' ').pop() : "—"}
-              </span>
+              {tiedDrivers.length > 0 ? (
+                <TieCarouselTrack
+                  carousel={driverCarousel}
+                  items={tiedDrivers}
+                  keyExtractor={(d) => d.driver_id || d.driver_full_name}
+                  renderItem={(d) => (
+                    <span className="text-xs sm:text-sm font-black text-amber-300 block mt-0.5 truncate font-sans" title={d.driver_full_name}>
+                      <DriverLink driverId={d.driver_id || undefined} driverName={d.driver_full_name} className="hover:underline">
+                        {d.driver_full_name.split(" ").pop()}
+                      </DriverLink>
+                    </span>
+                  )}
+                />
+              ) : (
+                <span className="text-xs sm:text-sm font-black text-amber-300 block mt-0.5 truncate font-sans">—</span>
+              )}
               <span className="text-[9px] sm:text-[10px] text-amber-400 font-mono block -mt-0.5">
                 {overview.most_wins_count ? `${overview.most_wins_count} vitórias` : "—"}
               </span>

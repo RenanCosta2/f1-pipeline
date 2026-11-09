@@ -227,6 +227,8 @@ export interface RaceWeekendInfo {
         all_time_session?: string;
         max_speed_kmh?: number;
         max_speed_driver?: string;
+        max_speed_team?: string;
+        max_speed_drivers?: { driver: string; team?: string; year: number }[];
         max_speed_year?: number;
         total_laps_analyzed?: number;
         most_wins_driver: string;
@@ -237,6 +239,22 @@ export interface RaceWeekendInfo {
         most_poles_count: number;
         typical_strategy: string;
     };
+}
+
+export interface CircuitTiedDriverItem {
+    driver_id?: string | null;
+    driver_full_name: string;
+    driver_code?: string | null;
+    driver_nationality?: string | null;
+    driver_headshot_url?: string | null;
+    count: number;
+}
+
+export interface CircuitTiedTeamItem {
+    team_id?: string | null;
+    team_name: string;
+    team_color?: string | null;
+    count: number;
 }
 
 export interface SeasonRaceSummary {
@@ -695,6 +713,7 @@ export interface CircuitOverviewItem {
     most_wins_team?: string | null;
     most_wins_team_color?: string | null;
     most_wins_team_count?: number;
+    most_wins_teams?: CircuitTiedTeamItem[];
 
     // Maior vencedor de GP
     most_wins_driver_id?: string | null;
@@ -703,6 +722,7 @@ export interface CircuitOverviewItem {
     most_wins_driver_nationality?: string | null;
     most_wins_driver_headshot_url?: string | null;
     most_wins_count?: number;
+    most_wins_drivers?: CircuitTiedDriverItem[];
 
     // Maior número de pódios em GP
     most_podiums_driver_id?: string | null;
@@ -711,6 +731,7 @@ export interface CircuitOverviewItem {
     most_podiums_driver_nationality?: string | null;
     most_podiums_driver_headshot_url?: string | null;
     most_podiums_count?: number;
+    most_podiums_drivers?: CircuitTiedDriverItem[];
 
     // Maior número de poles
     most_poles_driver_id?: string | null;
@@ -719,6 +740,7 @@ export interface CircuitOverviewItem {
     most_poles_driver_nationality?: string | null;
     most_poles_driver_headshot_url?: string | null;
     most_poles_count?: number;
+    most_poles_drivers?: CircuitTiedDriverItem[];
 
     // Maior vencedor de sprint
     most_sprint_wins_driver_id?: string | null;
@@ -727,6 +749,7 @@ export interface CircuitOverviewItem {
     most_sprint_wins_driver_nationality?: string | null;
     most_sprint_wins_driver_headshot_url?: string | null;
     most_sprint_wins_count?: number;
+    most_sprint_wins_drivers?: CircuitTiedDriverItem[];
 
     // Recorde de volta em corrida
     race_lap_record_driver_id?: string | null;

@@ -41,6 +41,12 @@ import IdealLapCard from "@/components/IdealLapCard";
 import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
 import CircuitLink from "@/lib/circuitUtils";
+import {
+  useTieCarousel,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+  TieCarouselDots,
+} from "@/components/ui/TieCarousel";
 
 const MONTHS_LONG_PT = [
   "janeiro", "fevereiro", "março", "abril", "maio", "junho",
@@ -163,32 +169,42 @@ export default function GrandPrixWeekendExplorer({
     })[0]?.best_lap;
   }, [sessionResults]);
 
-  const fastestLapDriver = useMemo(() => {
-    if (!fastestLap) return null;
-    return sessionResults.find((r) => r.best_lap === fastestLap);
+  const fastestLapDrivers = useMemo(() => {
+    if (!fastestLap) return [];
+    return sessionResults.filter((r) => r.best_lap === fastestLap);
   }, [sessionResults, fastestLap]);
+  const fastestLapDriver = fastestLapDrivers[0] || null;
+  const flCarousel = useTieCarousel(fastestLapDrivers.length);
 
-  // Piloto com maior Speed Trap
-  const topSpeedRecord = useMemo(() => {
-    if (!maxSpeed || maxSpeed.length === 0) return null;
+  // Piloto(s) com maior Speed Trap
+  const topSpeedRecords = useMemo(() => {
+    if (!maxSpeed || maxSpeed.length === 0) return [];
     const sorted = [...maxSpeed].sort(
       (a, b) => (b.max_speed_trap || 0) - (a.max_speed_trap || 0)
     );
-    return sorted[0] || null;
+    const maxTrap = sorted[0]?.max_speed_trap;
+    if (!maxTrap) return sorted[0] ? [sorted[0]] : [];
+    return sorted.filter((s) => s.max_speed_trap === maxTrap);
   }, [maxSpeed]);
+  const topSpeedRecord = topSpeedRecords[0] || null;
+  const speedCarousel = useTieCarousel(topSpeedRecords.length);
 
-  // Maior escalador de posições (Grid -> Chegada)
-  const biggestClimber = useMemo(() => {
+  // Maior(es) escalador(es) de posições (Grid -> Chegada)
+  const biggestClimbers = useMemo(() => {
     const eligible = sessionResults.filter(
       (r) => r.delta_position !== null && r.delta_position !== undefined && Number(r.delta_position) > 0
     );
-    if (eligible.length === 0) return null;
-    return [...eligible].sort((a, b) => {
+    if (eligible.length === 0) return [];
+    const sorted = [...eligible].sort((a, b) => {
       const diff = Number(b.delta_position || 0) - Number(a.delta_position || 0);
       if (diff !== 0) return diff;
       return Number(a.finishing_position || 99) - Number(b.finishing_position || 99);
-    })[0];
+    });
+    const maxDelta = Number(sorted[0].delta_position || 0);
+    return sorted.filter((r) => Number(r.delta_position || 0) === maxDelta);
   }, [sessionResults]);
+  const biggestClimber = biggestClimbers[0] || null;
+  const climberCarousel = useTieCarousel(biggestClimbers.length);
 
   // Setores absolutos e volta ideal teórica (S1 + S2 + S3)
   const bestSectors = useMemo(() => {
@@ -244,14 +260,18 @@ export default function GrandPrixWeekendExplorer({
     };
   }, [idealLaps]);
 
-  // Piloto com maior eficiência teórica (menor delta ideal)
-  const mostEfficientDriver = useMemo(() => {
-    if (!idealLaps || idealLaps.length === 0) return null;
+  // Piloto(s) com maior eficiência teórica (menor delta ideal)
+  const mostEfficientDrivers = useMemo(() => {
+    if (!idealLaps || idealLaps.length === 0) return [];
     const sorted = [...idealLaps].sort((a, b) =>
       (a.delta_ideal_lap || "9:99:999").localeCompare(b.delta_ideal_lap || "9:99:999")
     );
-    return sorted[0] || null;
+    const minDelta = sorted[0]?.delta_ideal_lap;
+    if (!minDelta) return sorted[0] ? [sorted[0]] : [];
+    return sorted.filter((d) => d.delta_ideal_lap === minDelta);
   }, [idealLaps]);
+  const mostEfficientDriver = mostEfficientDrivers[0] || null;
+  const effCarousel = useTieCarousel(mostEfficientDrivers.length);
 
   const totalLaps = useMemo(() => {
     return winner?.laps_completed
@@ -514,80 +534,112 @@ export default function GrandPrixWeekendExplorer({
         </div>
 
         {/* Card 2: Volta Mais Rápida (Purple Lap) */}
-        <div className="rounded-xl border border-purple-500/30 bg-[#13111E] p-2.5 sm:p-4 flex items-center justify-between">
-          <div className="min-w-0 pr-1 sm:pr-2">
+        <div
+          className="relative rounded-xl border border-purple-500/30 bg-[#13111E] p-2.5 sm:p-4 flex flex-col justify-between overflow-hidden"
+          onMouseEnter={flCarousel.pause}
+          onMouseLeave={flCarousel.resume}
+        >
+          <TieCarouselEdgeArrows carousel={flCarousel} accent="purple" size="xs" position="metric" />
+          <div className="flex items-center justify-between gap-1.5">
             <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1 sm:gap-1.5 truncate">
               <span className="h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
               <span className="sm:hidden">Volta Rápida</span>
               <span className="hidden sm:inline">Volta Mais Rápida</span>
             </span>
-            <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight truncate">
-              {fastestLap || "—"}
-            </div>
-            {fastestLapDriver ? (
-              <DriverLink driverId={fastestLapDriver.driver_id} driverName={fastestLapDriver.driver_full_name} className="block">
-                <p className="text-[10px] sm:text-[11px] text-f1-subtle hover:text-purple-300 transition-colors truncate mt-0.5 font-bold sm:font-normal">
-                  <span className="sm:hidden">{fastestLapDriver.driver_full_name.split(" ").slice(-1)[0]}</span>
-                  <span className="hidden sm:inline">{fastestLapDriver.driver_full_name}</span>
-                </p>
-              </DriverLink>
-            ) : (
-              <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
-            )}
-            {fastestLapDriver?.team_name ? (
-              <TeamLink
-                teamName={fastestLapDriver.team_name}
-                className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
-                title={`Ver perfil de ${fastestLapDriver.team_name}`}
-              >
-                {fastestLapDriver.team_name}
-              </TeamLink>
-            ) : null}
+            <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 shrink-0">
+              FL
+            </span>
           </div>
 
-          <span className="font-mono text-[10px] sm:text-xs font-bold text-purple-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-purple-500/10 border border-purple-500/20 shrink-0">
-            FL
-          </span>
+          <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
+            <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
+              {fastestLap || "—"}
+            </div>
+            <TieCarouselDots carousel={flCarousel} accent="purple" />
+          </div>
+
+          {fastestLapDrivers.length > 0 ? (
+            <TieCarouselTrack
+              carousel={flCarousel}
+              items={fastestLapDrivers}
+              renderItem={(d) => (
+                <div className="min-w-0">
+                  <DriverLink driverId={d.driver_id} driverName={d.driver_full_name} className="block">
+                    <p className="text-[11px] sm:text-xs text-white hover:text-purple-300 transition-colors truncate mt-0.5 font-bold">
+                      {d.driver_full_name}
+                    </p>
+                  </DriverLink>
+                  {d.team_name ? (
+                    <TeamLink
+                      teamName={d.team_name}
+                      className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
+                      title={`Ver perfil de ${d.team_name}`}
+                    >
+                      {d.team_name}
+                    </TeamLink>
+                  ) : null}
+                </div>
+              )}
+            />
+          ) : (
+            <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
+          )}
         </div>
 
         {/* Card 3: Speed Trap (Corrida) ou Volta Ideal Teórica (Quali/Treino) ou Pilotos no Grid */}
         {isRaceSession ? (
-          <div className="rounded-xl border border-amber-500/30 bg-[#14120C] p-2.5 sm:p-4 flex items-center justify-between">
-            <div className="min-w-0 pr-1 sm:pr-2">
+          <div
+            className="relative rounded-xl border border-amber-500/30 bg-[#14120C] p-2.5 sm:p-4 flex flex-col justify-between overflow-hidden"
+            onMouseEnter={speedCarousel.pause}
+            onMouseLeave={speedCarousel.resume}
+          >
+            <TieCarouselEdgeArrows carousel={speedCarousel} accent="amber" size="xs" position="metric" />
+            <div className="flex items-center justify-between gap-1.5">
               <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1 sm:gap-1.5 truncate">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
                 <span className="sm:hidden">Speed Trap</span>
                 <span className="hidden sm:inline">Speed Trap Máximo</span>
               </span>
-              <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight truncate">
-                {topSpeedRecord?.max_speed_trap ? `${Number(topSpeedRecord.max_speed_trap).toFixed(1)} km/h` : "—"}
-              </div>
-              {topSpeedRecord ? (
-                <DriverLink driverName={topSpeedRecord.driver_full_name} className="block">
-                  <p className="text-[10px] sm:text-[11px] text-f1-subtle hover:text-amber-300 transition-colors truncate mt-0.5 font-bold sm:font-normal">
-                    <span className="sm:hidden">{topSpeedRecord.driver_full_name.split(" ").slice(-1)[0]}</span>
-                    <span className="hidden sm:inline">{topSpeedRecord.driver_full_name}</span>
-                  </p>
-                </DriverLink>
-              ) : (
-                <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
-              )}
-              <div className="flex items-center gap-1 sm:gap-2 mt-0.5 text-[9px] sm:text-[10px] text-amber-400/80 font-mono truncate">
-                {topSpeedRecord?.team_name ? (
-                  <TeamLink
-                    teamName={topSpeedRecord.team_name}
-                    className="hover:text-white hover:underline transition-colors truncate"
-                    title={`Ver perfil de ${topSpeedRecord.team_name}`}
-                  >
-                    {topSpeedRecord.team_name}
-                  </TeamLink>
-                ) : null}
-              </div>
+              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-amber-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
+                TRAP
+              </span>
             </div>
 
-            <span className="font-mono text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
-              TRAP
-            </span>
+            <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${speedCarousel.isTied ? "px-2.5" : ""}`}>
+              <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
+                {topSpeedRecord?.max_speed_trap ? `${Number(topSpeedRecord.max_speed_trap).toFixed(1)} km/h` : "—"}
+              </div>
+              <TieCarouselDots carousel={speedCarousel} accent="amber" />
+            </div>
+
+            {topSpeedRecords.length > 0 ? (
+              <TieCarouselTrack
+                carousel={speedCarousel}
+                items={topSpeedRecords}
+                renderItem={(rec) => (
+                  <div className="min-w-0">
+                    <DriverLink driverName={rec.driver_full_name} className="block">
+                      <p className="text-[11px] sm:text-xs text-white hover:text-amber-300 transition-colors truncate mt-0.5 font-bold">
+                        {rec.driver_full_name}
+                      </p>
+                    </DriverLink>
+                    <div className="flex items-center gap-1 sm:gap-2 mt-0.5 text-[9px] sm:text-[10px] text-amber-400/80 font-mono truncate">
+                      {rec.team_name ? (
+                        <TeamLink
+                          teamName={rec.team_name}
+                          className="hover:text-white hover:underline transition-colors truncate"
+                          title={`Ver perfil de ${rec.team_name}`}
+                        >
+                          {rec.team_name}
+                        </TeamLink>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              />
+            ) : (
+              <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
+            )}
           </div>
         ) : bestSectors?.theoreticalLap ? (
           <div className="rounded-xl border border-purple-500/30 bg-[#13111E] p-2.5 sm:p-4 flex items-center justify-between">
@@ -630,100 +682,136 @@ export default function GrandPrixWeekendExplorer({
 
         {/* Card 4: Maior Escalador (Corrida) ou Eficiência Teórica (Quali/Treino) ou Resumo */}
         {isRaceSession && biggestClimber ? (
-          <div className="rounded-xl border border-emerald-500/30 bg-[#101716] p-2.5 sm:p-4 flex items-center justify-between">
-            <div className="min-w-0 pr-1 sm:pr-2">
+          <div
+            className={`relative rounded-xl border border-emerald-500/30 bg-[#101716] py-2.5 sm:py-4 flex flex-col justify-between overflow-hidden ${
+              climberCarousel.isTied ? "px-4.5 sm:px-5" : "px-2.5 sm:px-4"
+            }`}
+            onMouseEnter={climberCarousel.pause}
+            onMouseLeave={climberCarousel.resume}
+          >
+            <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
+            <div className="flex items-center justify-between gap-1.5">
               <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1 sm:gap-1.5 truncate">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
                 <span className="sm:hidden">Escalador</span>
                 <span className="hidden sm:inline">Maior Escalador</span>
               </span>
-              <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight flex items-baseline gap-1 truncate">
-                <span className="text-emerald-400">+{biggestClimber.delta_position}</span>
-                <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
-                  (P{biggestClimber.grid_position}➔P{biggestClimber.finishing_position})
-                </span>
-              </div>
-              <DriverLink driverId={biggestClimber.driver_id} driverName={biggestClimber.driver_full_name} className="block">
-                <p className="text-[10px] sm:text-[11px] text-white/90 hover:text-emerald-300 transition-colors truncate font-bold sm:font-semibold mt-0.5">
-                  <span className="sm:hidden">{biggestClimber.driver_full_name.split(" ").slice(-1)[0]}</span>
-                  <span className="hidden sm:inline">{biggestClimber.driver_full_name}</span>
-                </p>
-              </DriverLink>
-              {biggestClimber.team_name ? (
-                <TeamLink
-                  teamName={biggestClimber.team_name}
-                  className="text-[9px] sm:text-[10px] font-mono block truncate hover:text-white hover:underline transition-colors"
-                  style={{ color: biggestClimber.team_color || undefined }}
-                  title={`Ver perfil de ${biggestClimber.team_name}`}
-                >
-                  {biggestClimber.team_name}
-                </TeamLink>
-              ) : null}
+              <TieCarouselDots carousel={climberCarousel} accent="emerald" />
             </div>
 
-            <DriverLink
-              driverId={biggestClimber.driver_id}
-              driverName={biggestClimber.driver_full_name}
-              className="relative flex h-8 w-8 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-              style={{ borderColor: biggestClimber.team_color || "#10B981" }}
-              title={`Ver perfil de ${biggestClimber.driver_full_name}`}
-            >
-              {biggestClimber.driver_headshot_url ? (
-                <img
-                  src={biggestClimber.driver_headshot_url}
-                  alt={biggestClimber.driver_full_name}
-                  className="h-full w-full object-cover object-top"
-                />
-              ) : (
-                <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">
-                  +{biggestClimber.delta_position}
-                </span>
+            <TieCarouselTrack
+              carousel={climberCarousel}
+              items={biggestClimbers}
+              renderItem={(climber) => (
+                <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
+                  <div className="min-w-0 pr-1 sm:pr-2">
+                    <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight flex items-baseline gap-1 truncate">
+                      <span className="text-emerald-400">+{climber.delta_position}</span>
+                      <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
+                        (P{climber.grid_position}➔P{climber.finishing_position})
+                      </span>
+                    </div>
+                    <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name} className="block">
+                      <p className="text-[11px] sm:text-xs text-white hover:text-emerald-300 transition-colors truncate font-bold mt-0.5">
+                        {climber.driver_full_name}
+                      </p>
+                    </DriverLink>
+                    {climber.team_name ? (
+                      <TeamLink
+                        teamName={climber.team_name}
+                        className="text-[9px] sm:text-[10px] font-mono block truncate hover:text-white hover:underline transition-colors"
+                        style={{ color: climber.team_color || undefined }}
+                        title={`Ver perfil de ${climber.team_name}`}
+                      >
+                        {climber.team_name}
+                      </TeamLink>
+                    ) : null}
+                  </div>
+
+                  <DriverLink
+                    driverId={climber.driver_id}
+                    driverName={climber.driver_full_name}
+                    className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                    style={{ borderColor: climber.team_color || "#10B981" }}
+                    title={`Ver perfil de ${climber.driver_full_name}`}
+                  >
+                    {climber.driver_headshot_url ? (
+                      <img
+                        src={climber.driver_headshot_url}
+                        alt={climber.driver_full_name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    ) : (
+                      <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">
+                        +{climber.delta_position}
+                      </span>
+                    )}
+                  </DriverLink>
+                </div>
               )}
-            </DriverLink>
+            />
           </div>
         ) : isQualiSession && mostEfficientDriver ? (
-          <div className="rounded-xl border border-emerald-500/30 bg-[#101716] p-2.5 sm:p-4 flex items-center justify-between">
-            <div className="min-w-0 pr-1 sm:pr-2">
+          <div
+            className={`relative rounded-xl border border-emerald-500/30 bg-[#101716] py-2.5 sm:py-4 flex flex-col justify-between overflow-hidden ${
+              effCarousel.isTied ? "px-4.5 sm:px-5" : "px-2.5 sm:px-4"
+            }`}
+            onMouseEnter={effCarousel.pause}
+            onMouseLeave={effCarousel.resume}
+          >
+            <TieCarouselEdgeArrows carousel={effCarousel} accent="emerald" size="xs" />
+            <div className="flex items-center justify-between gap-1.5">
               <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1 sm:gap-1.5 truncate">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
                 <span className="sm:hidden">Eficiência</span>
                 <span className="hidden sm:inline">Maior Eficiência</span>
               </span>
-              <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight truncate">
-                {mostEfficientDriver.delta_ideal_lap === "0:00:000" || mostEfficientDriver.delta_ideal_lap === "0:00.000"
-                  ? "100% Perfeita"
-                  : `+${mostEfficientDriver.delta_ideal_lap}`}
-              </div>
-              <DriverLink driverName={mostEfficientDriver.driver_full_name} className="block">
-                <p className="text-[10px] sm:text-[11px] text-white/90 hover:text-emerald-300 transition-colors truncate font-bold sm:font-semibold mt-0.5">
-                  <span className="sm:hidden">{mostEfficientDriver.driver_full_name.split(" ").slice(-1)[0]}</span>
-                  <span className="hidden sm:inline">{mostEfficientDriver.driver_full_name}</span>
-                </p>
-              </DriverLink>
-              <span
-                className="text-[9px] sm:text-[10px] font-mono block truncate"
-                style={{ color: mostEfficientDriver.team_color || undefined }}
-              >
-                {mostEfficientDriver.team_name}
-              </span>
+              <TieCarouselDots carousel={effCarousel} accent="emerald" />
             </div>
 
-            <DriverLink
-              driverName={mostEfficientDriver.driver_full_name}
-              className="relative flex h-8 w-8 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-              style={{ borderColor: mostEfficientDriver.team_color || "#10B981" }}
-              title={`Ver perfil de ${mostEfficientDriver.driver_full_name}`}
-            >
-              {mostEfficientDriver.driver_headshot_url ? (
-                <img
-                  src={mostEfficientDriver.driver_headshot_url}
-                  alt={mostEfficientDriver.driver_full_name}
-                  className="h-full w-full object-cover object-top"
-                />
-              ) : (
-                <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">EFF</span>
+            <TieCarouselTrack
+              carousel={effCarousel}
+              items={mostEfficientDrivers}
+              renderItem={(eff) => (
+                <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
+                  <div className="min-w-0 pr-1 sm:pr-2">
+                    <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
+                      {eff.delta_ideal_lap === "0:00:000" || eff.delta_ideal_lap === "0:00.000"
+                        ? "100% Perfeita"
+                        : `+${eff.delta_ideal_lap}`}
+                    </div>
+                    <DriverLink driverName={eff.driver_full_name} className="block">
+                      <p className="text-[11px] sm:text-xs text-white hover:text-emerald-300 transition-colors truncate font-bold mt-0.5">
+                        {eff.driver_full_name}
+                      </p>
+                    </DriverLink>
+                    <span
+                      className="text-[9px] sm:text-[10px] font-mono block truncate"
+                      style={{ color: eff.team_color || undefined }}
+                    >
+                      {eff.team_name}
+                    </span>
+                  </div>
+
+                  <DriverLink
+                    driverName={eff.driver_full_name}
+                    className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                    style={{ borderColor: eff.team_color || "#10B981" }}
+                    title={`Ver perfil de ${eff.driver_full_name}`}
+                  >
+                    {eff.driver_headshot_url ? (
+                      <img
+                        src={eff.driver_headshot_url}
+                        alt={eff.driver_full_name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    ) : (
+                      <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">EFF</span>
+                    )}
+                  </DriverLink>
+                </div>
               )}
-            </DriverLink>
+            />
           </div>
         ) : isPracticeSession && p2Driver ? (
           <div className="rounded-xl border border-sky-500/30 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">

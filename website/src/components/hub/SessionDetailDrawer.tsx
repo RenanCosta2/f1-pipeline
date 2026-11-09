@@ -8,6 +8,12 @@ import { getTeamColor, getTeamAbbr } from "./StandingsWidget";
 import DriverLink from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
 import CircuitLink from "@/lib/circuitUtils";
+import {
+  useTieCarousel,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+  TieCarouselDots,
+} from "@/components/ui/TieCarousel";
 
 interface Props {
   isOpen: boolean;
@@ -48,30 +54,40 @@ export default function SessionDetailDrawer({
   const sessionType = (session?.session_name || session?.name || "").toLowerCase();
   const isRaceOrSprint = sessionType.includes("race") || sessionType === "sprint" || session?.code === "R" || session?.code === "S";
 
-  // Identifica a melhor volta da sessão para exibição no card e destaque em roxo
-  const fastestLapInfo = useMemo(() => {
+  // Identifica a(s) melhor(es) volta(s) da sessão para exibição no card e destaque em roxo
+  const fastestLapsInfo = useMemo(() => {
     const valid = results.filter((r) => r.best_lap && r.best_lap.trim() !== "" && r.best_lap !== "—");
-    if (valid.length === 0) return null;
-    return [...valid].sort((a, b) => a.best_lap!.localeCompare(b.best_lap!))[0];
+    if (valid.length === 0) return [];
+    const sorted = [...valid].sort((a, b) => a.best_lap!.localeCompare(b.best_lap!));
+    const bestLap = sorted[0].best_lap;
+    return sorted.filter((r) => r.best_lap === bestLap);
   }, [results]);
+  const fastestLapInfo = fastestLapsInfo[0] || null;
+  const flCarousel = useTieCarousel(fastestLapsInfo.length);
 
-  // Identifica o maior escalador em corridas (maior ganho de posições)
-  const biggestClimberInfo = useMemo(() => {
+  // Identifica o(s) maior(es) escalador(es) em corridas (maior ganho de posições)
+  const biggestClimbersInfo = useMemo(() => {
     const valid = results.filter(
       (r) => r.delta_position != null && r.grid_position != null && r.finishing_position != null
     );
-    if (valid.length === 0) return null;
+    if (valid.length === 0) return [];
     const sorted = [...valid].sort((a, b) => (b.delta_position || 0) - (a.delta_position || 0));
     const top = sorted[0];
-    if (!top || (top.delta_position || 0) <= 0) return null;
-    return {
-      driver: top.driver_full_name,
-      team: top.team_name,
-      gained: top.delta_position,
-      grid: top.grid_position,
-      finish: top.finishing_position
-    };
+    if (!top || (top.delta_position || 0) <= 0) return [];
+    const maxDelta = top.delta_position;
+    return sorted
+      .filter((r) => r.delta_position === maxDelta)
+      .map((r) => ({
+        driver: r.driver_full_name,
+        driverId: r.driver_id,
+        team: r.team_name,
+        gained: r.delta_position,
+        grid: r.grid_position,
+        finish: r.finishing_position
+      }));
   }, [results]);
+  const biggestClimberInfo = biggestClimbersInfo[0] || null;
+  const climberCarousel = useTieCarousel(biggestClimbersInfo.length);
 
   useEffect(() => {
     setMounted(true);
@@ -188,32 +204,47 @@ export default function SessionDetailDrawer({
         <div className="grid grid-cols-2 gap-px border-b border-white/10 bg-white/10">
           {isRaceOrSprint ? (
             /* Card 1: Maior Escalador na Corrida */
-            <div className="bg-[#151520] p-3 sm:p-4 min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-emerald-400">
+            <div
+              className="relative bg-[#151520] p-3 sm:p-4 min-w-0 overflow-hidden"
+              onMouseEnter={climberCarousel.pause}
+              onMouseLeave={climberCarousel.resume}
+            >
+              <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" position="metric" />
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-emerald-400 min-w-0">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 <span className="truncate">Maior Escalador</span>
               </div>
               {biggestClimberInfo ? (
                 <>
-                  <p className="font-mono tabular-nums text-base sm:text-xl font-black text-emerald-400 mt-1 truncate">
-                    +{biggestClimberInfo.gained} {biggestClimberInfo.gained === 1 ? "POSIÇÃO" : "POSIÇÕES"}
-                  </p>
-                  <p className="text-xs text-f1-subtle truncate">
-                    <DriverLink
-                      driverName={biggestClimberInfo.driver}
-                      className="font-bold text-white/90 hover:text-emerald-300 transition-colors"
-                      title={`Ver perfil de ${biggestClimberInfo.driver}`}
-                    >
-                      {biggestClimberInfo.driver}
-                    </DriverLink>{" "}
-                    (P{biggestClimberInfo.grid} → P{biggestClimberInfo.finish}) ·{" "}
-                    <TeamLink
-                      teamName={biggestClimberInfo.team}
-                      className="hover:text-emerald-300 transition-colors"
-                    >
-                      {biggestClimberInfo.team}
-                    </TeamLink>
-                  </p>
+                  <div className={`flex items-baseline justify-between gap-2 mt-1 ${climberCarousel.isTied ? "px-2.5" : ""}`}>
+                    <p className="font-mono tabular-nums text-base sm:text-xl font-black text-emerald-400 truncate">
+                      +{biggestClimberInfo.gained} {biggestClimberInfo.gained === 1 ? "POSIÇÃO" : "POSIÇÕES"}
+                    </p>
+                    <TieCarouselDots carousel={climberCarousel} accent="emerald" />
+                  </div>
+                  <TieCarouselTrack
+                    carousel={climberCarousel}
+                    items={biggestClimbersInfo}
+                    renderItem={(c) => (
+                      <p className="text-xs text-f1-subtle truncate">
+                        <DriverLink
+                          driverId={c.driverId}
+                          driverName={c.driver}
+                          className="font-bold text-white/90 hover:text-emerald-300 transition-colors"
+                          title={`Ver perfil de ${c.driver}`}
+                        >
+                          {c.driver}
+                        </DriverLink>{" "}
+                        (P{c.grid} → P{c.finish}) ·{" "}
+                        <TeamLink
+                          teamName={c.team}
+                          className="hover:text-emerald-300 transition-colors"
+                        >
+                          {c.team}
+                        </TeamLink>
+                      </p>
+                    )}
+                  />
                 </>
               ) : (
                 <>
@@ -259,25 +290,39 @@ export default function SessionDetailDrawer({
           )}
 
           {/* Card 2: Volta Mais Rápida (para todas as sessões) */}
-          <div className="bg-[#151520] p-3 sm:p-4 min-w-0">
-            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-purple-400">
+          <div
+            className="relative bg-[#151520] p-3 sm:p-4 min-w-0 overflow-hidden"
+            onMouseEnter={flCarousel.pause}
+            onMouseLeave={flCarousel.resume}
+          >
+            <TieCarouselEdgeArrows carousel={flCarousel} accent="purple" size="xs" position="metric" />
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-bold uppercase text-purple-400 min-w-0">
               <Timer className="h-3.5 w-3.5 text-purple-400 shrink-0" />
               <span className="truncate">Volta Mais Rápida</span>
             </div>
             {fastestLapInfo ? (
               <>
-                <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-purple-400 mt-1 truncate">{fastestLapInfo.best_lap}</p>
-                <p className="text-xs text-f1-subtle truncate">
-                  <DriverLink driverId={fastestLapInfo.driver_id} driverName={fastestLapInfo.driver_full_name} className="font-bold text-white/90 hover:text-purple-300 transition-colors">
-                    {fastestLapInfo.driver_full_name}
-                  </DriverLink> ·{" "}
-                  <TeamLink
-                    teamName={fastestLapInfo.team_name}
-                    className="hover:text-purple-300 transition-colors"
-                  >
-                    {fastestLapInfo.team_name}
-                  </TeamLink>
-                </p>
+                <div className={`flex items-baseline justify-between gap-2 mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
+                  <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-purple-400 truncate">{fastestLapInfo.best_lap}</p>
+                  <TieCarouselDots carousel={flCarousel} accent="purple" />
+                </div>
+                <TieCarouselTrack
+                  carousel={flCarousel}
+                  items={fastestLapsInfo}
+                  renderItem={(fl) => (
+                    <p className="text-xs text-f1-subtle truncate">
+                      <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name} className="font-bold text-white/90 hover:text-purple-300 transition-colors">
+                        {fl.driver_full_name}
+                      </DriverLink> ·{" "}
+                      <TeamLink
+                        teamName={fl.team_name}
+                        className="hover:text-purple-300 transition-colors"
+                      >
+                        {fl.team_name}
+                      </TeamLink>
+                    </p>
+                  )}
+                />
               </>
             ) : (
               <>

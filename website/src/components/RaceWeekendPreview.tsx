@@ -1,8 +1,11 @@
+"use client";
+
 import { Calendar, Clock, Trophy, MapPin, Gauge, Flag, Zap, Award } from "lucide-react";
 import { RaceWeekendInfo } from "@/types/f1";
 import DriverLink, { parseDriverNames } from "@/lib/driverUtils";
 import CircuitLink from "@/lib/circuitUtils";
 import CircuitRecordDrivers from "@/components/CircuitRecordDrivers";
+import { useTieCarousel, TieCarouselEdgeArrows } from "@/components/ui/TieCarousel";
 
 interface Props {
   data: RaceWeekendInfo;
@@ -11,8 +14,8 @@ interface Props {
 export default function RaceWeekendPreview({ data }: Props) {
   const winsDrivers = parseDriverNames(data.circuit_records.most_wins_drivers || data.circuit_records.most_wins_driver);
   const polesDrivers = parseDriverNames(data.circuit_records.most_poles_drivers || data.circuit_records.most_poles_driver);
-  const isWinsTied = winsDrivers.length > 1;
-  const isPolesTied = polesDrivers.length > 1;
+  const winsCarousel = useTieCarousel(winsDrivers.length);
+  const polesCarousel = useTieCarousel(polesDrivers.length);
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-f1-border bg-gradient-to-br from-[#181824] via-[#12121C] to-[#0A0A0F] p-6 lg:p-8 shadow-2xl">
@@ -102,25 +105,25 @@ export default function RaceWeekendPreview({ data }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Record 1: Most Wins */}
-            <div className="rounded-lg border border-f1-border/50 bg-[#161622] p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-semibold text-f1-subtle uppercase flex items-center gap-1.5">
-                  <Award className="h-3.5 w-3.5 text-amber-400" />
-                  {isWinsTied ? "Maiores Vencedores no Circuito" : "Maior Vencedor no Circuito"}
-                </span>
-                {isWinsTied && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    <span className="w-1 h-1 rounded-full bg-amber-400/80" />
-                    Empate ({winsDrivers.length})
-                  </span>
-                )}
-              </div>
+            <div
+              onMouseEnter={winsCarousel.pause}
+              onMouseLeave={winsCarousel.resume}
+              className={`relative overflow-hidden rounded-lg border border-f1-border/50 bg-[#161622] py-4 flex flex-col justify-between ${
+                winsCarousel.isTied ? "px-7" : "px-4"
+              }`}
+            >
+              <TieCarouselEdgeArrows carousel={winsCarousel} accent="amber" />
+              <span className="text-[11px] font-semibold text-f1-subtle uppercase flex items-center gap-1.5">
+                <Award className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                {winsCarousel.isTied ? "Maiores Vencedores no Circuito" : "Maior Vencedor no Circuito"}
+              </span>
               <div className="mt-2">
                 <CircuitRecordDrivers
                   drivers={data.circuit_records.most_wins_drivers || data.circuit_records.most_wins_driver}
                   accentColor="amber"
                   size="lg"
                   emptyText="Sem histórico registrado"
+                  carousel={winsCarousel}
                 />
                 <p className="mt-1.5 text-xs text-amber-400 font-bold">
                   {data.circuit_records.most_wins_count > 0 ? `${data.circuit_records.most_wins_count} vitórias` : "0 vitórias registradas"}
@@ -129,25 +132,25 @@ export default function RaceWeekendPreview({ data }: Props) {
             </div>
 
             {/* Record 2: Most Poles */}
-            <div className="rounded-lg border border-f1-border/50 bg-[#161622] p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[11px] font-semibold text-f1-subtle uppercase flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-purple-400" />
-                  {isPolesTied ? "Recordistas de Poles" : "Recordista de Poles"}
-                </span>
-                {isPolesTied && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    <span className="w-1 h-1 rounded-full bg-purple-400/80" />
-                    Empate ({polesDrivers.length})
-                  </span>
-                )}
-              </div>
+            <div
+              onMouseEnter={polesCarousel.pause}
+              onMouseLeave={polesCarousel.resume}
+              className={`relative overflow-hidden rounded-lg border border-f1-border/50 bg-[#161622] py-4 flex flex-col justify-between ${
+                polesCarousel.isTied ? "px-7" : "px-4"
+              }`}
+            >
+              <TieCarouselEdgeArrows carousel={polesCarousel} accent="purple" />
+              <span className="text-[11px] font-semibold text-f1-subtle uppercase flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                {polesCarousel.isTied ? "Recordistas de Poles" : "Recordista de Poles"}
+              </span>
               <div className="mt-2">
                 <CircuitRecordDrivers
                   drivers={data.circuit_records.most_poles_drivers || data.circuit_records.most_poles_driver}
                   accentColor="purple"
                   size="lg"
                   emptyText="Sem histórico registrado"
+                  carousel={polesCarousel}
                 />
                 <p className="mt-1.5 text-xs text-purple-400 font-bold">
                   {data.circuit_records.most_poles_count > 0 ? `${data.circuit_records.most_poles_count} pole positions` : "0 poles registradas"}

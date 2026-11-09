@@ -682,6 +682,8 @@ export const mockUpcomingRace: RaceWeekendInfo = {
     all_time_session: "Classificação",
     max_speed_kmh: 354.0,
     max_speed_driver: "Sergio Pérez",
+    max_speed_team: "Red Bull Racing",
+    max_speed_drivers: [{ driver: "Sergio Pérez", team: "Red Bull Racing", year: 2023 }],
     max_speed_year: 2023,
     total_laps_analyzed: 4500,
     most_wins_driver: "Max Verstappen",

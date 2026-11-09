@@ -10,6 +10,12 @@ import {
 } from "@/types/f1";
 import DriverLink, { getDriverProfileUrl } from "@/lib/driverUtils";
 import TeamLink from "@/lib/teamUtils";
+import {
+  useTieCarousel,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+  TieCarouselDots,
+} from "@/components/ui/TieCarousel";
 import { getTrackTypeBadge, formatSeasonsRanges } from "@/lib/circuitUtils";
 import {
   ResponsiveContainer,
@@ -618,6 +624,98 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
     return teamStats.slice(start, start + TEAMS_PER_PAGE);
   }, [teamStats, teamsPage]);
 
+  const hallOfFameTies = useMemo(() => {
+    const maxWins = Math.max(0, ...drivers.map((d) => Number(d.race_wins ?? d.total_wins) || 0));
+    const winsList =
+      overview.most_wins_drivers && overview.most_wins_drivers.length > 0
+        ? overview.most_wins_drivers
+        : maxWins > 0
+          ? drivers
+              .filter((d) => (Number(d.race_wins ?? d.total_wins) || 0) === maxWins)
+              .map((d) => ({
+                driver_id: d.driver_id,
+                driver_full_name: d.driver_full_name,
+                driver_code: d.driver_abbreviation,
+                driver_headshot_url: d.driver_headshot_url,
+                count: maxWins
+              }))
+          : overview.most_wins_driver
+            ? [{
+                driver_id: overview.most_wins_driver_id,
+                driver_full_name: overview.most_wins_driver,
+                driver_code: overview.most_wins_driver_code,
+                driver_headshot_url: overview.most_wins_driver_headshot_url,
+                count: overview.most_wins_count || 0
+              }]
+            : [];
+
+    const maxPodiums = Math.max(0, ...drivers.map((d) => Number(d.race_podiums ?? d.total_podiums) || 0));
+    const podiumsList =
+      overview.most_podiums_drivers && overview.most_podiums_drivers.length > 0
+        ? overview.most_podiums_drivers
+        : maxPodiums > 0
+          ? drivers
+              .filter((d) => (Number(d.race_podiums ?? d.total_podiums) || 0) === maxPodiums)
+              .map((d) => ({
+                driver_id: d.driver_id,
+                driver_full_name: d.driver_full_name,
+                driver_code: d.driver_abbreviation,
+                driver_headshot_url: d.driver_headshot_url,
+                count: maxPodiums
+              }))
+          : overview.most_podiums_driver
+            ? [{
+                driver_id: overview.most_podiums_driver_id,
+                driver_full_name: overview.most_podiums_driver,
+                driver_code: overview.most_podiums_driver_code,
+                driver_headshot_url: overview.most_podiums_driver_headshot_url,
+                count: overview.most_podiums_count || 0
+              }]
+            : [];
+
+    const maxPoles = Math.max(0, ...drivers.map((d) => Number(d.race_poles) || 0));
+    const polesList =
+      overview.most_poles_drivers && overview.most_poles_drivers.length > 0
+        ? overview.most_poles_drivers
+        : maxPoles > 0
+          ? drivers
+              .filter((d) => (Number(d.race_poles) || 0) === maxPoles)
+              .map((d) => ({
+                driver_id: d.driver_id,
+                driver_full_name: d.driver_full_name,
+                driver_code: d.driver_abbreviation,
+                driver_headshot_url: d.driver_headshot_url,
+                count: maxPoles
+              }))
+          : overview.most_poles_driver
+            ? [{
+                driver_id: overview.most_poles_driver_id,
+                driver_full_name: overview.most_poles_driver,
+                driver_code: overview.most_poles_driver_code,
+                driver_headshot_url: overview.most_poles_driver_headshot_url,
+                count: overview.most_poles_count || 0
+              }]
+            : [];
+
+    const teamsList =
+      overview.most_wins_teams && overview.most_wins_teams.length > 0
+        ? overview.most_wins_teams
+        : overview.most_wins_team
+          ? [{
+              team_name: overview.most_wins_team,
+              team_color: overview.most_wins_team_color,
+              count: overview.most_wins_team_count || 0
+            }]
+          : [];
+
+    return { winsList, podiumsList, polesList, teamsList };
+  }, [drivers, overview]);
+
+  const hofWinsCarousel = useTieCarousel(hallOfFameTies.winsList.length);
+  const hofPodiumsCarousel = useTieCarousel(hallOfFameTies.podiumsList.length);
+  const hofPolesCarousel = useTieCarousel(hallOfFameTies.polesList.length);
+  const hofTeamsCarousel = useTieCarousel(hallOfFameTies.teamsList.length);
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
       {/* ========================================================================= */}
@@ -640,136 +738,215 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
 
           <div className="space-y-2">
             {/* Mais Vitorioso */}
-            {overview.most_wins_driver && (
-              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
-                    {overview.most_wins_driver_headshot_url ? (
-                      <img
-                        src={overview.most_wins_driver_headshot_url}
-                        alt={overview.most_wins_driver}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      overview.most_wins_driver_code || "F1"
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-amber-400 block -mb-0.5">
-                      Mais Vitorioso
-                    </span>
-                    <DriverLink
-                      driverName={overview.most_wins_driver}
-                      className="font-bold text-white text-xs truncate block hover:text-amber-300 transition-colors"
-                      title={`Ver perfil de ${overview.most_wins_driver}`}
-                    >
-                      {overview.most_wins_driver}
-                    </DriverLink>
-                  </div>
-                </div>
-                <span className="font-mono font-black text-amber-400 text-xs shrink-0">
-                  {overview.most_wins_count}V
-                </span>
+            {hallOfFameTies.winsList.length > 0 && (
+              <div
+                onMouseEnter={hofWinsCarousel.pause}
+                onMouseLeave={hofWinsCarousel.resume}
+                className={`relative overflow-hidden py-2.5 rounded-xl bg-white/[0.02] border border-white/5 ${
+                  hofWinsCarousel.isTied ? "px-5" : "px-2.5"
+                }`}
+              >
+                <TieCarouselEdgeArrows carousel={hofWinsCarousel} accent="amber" size="xs" />
+                <TieCarouselTrack
+                  carousel={hofWinsCarousel}
+                  items={hallOfFameTies.winsList}
+                  keyExtractor={(d) => d.driver_id || d.driver_full_name}
+                  renderItem={(cur) => (
+                    <div className="flex items-center gap-2.5 min-w-0 w-full">
+                      <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
+                        {cur.driver_headshot_url ? (
+                          <img
+                            src={cur.driver_headshot_url}
+                            alt={cur.driver_full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          cur.driver_code || "F1"
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-amber-400">
+                            Mais Vitorioso
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <TieCarouselDots carousel={hofWinsCarousel} accent="amber" />
+                            <span className="font-mono font-black text-amber-400 text-xs">
+                              {overview.most_wins_count}V
+                            </span>
+                          </div>
+                        </div>
+                        <DriverLink
+                          driverId={cur.driver_id || undefined}
+                          driverName={cur.driver_full_name}
+                          className="font-bold text-white text-xs sm:text-sm truncate block hover:text-amber-300 transition-colors mt-0.5"
+                          title={`Ver perfil de ${cur.driver_full_name}`}
+                        >
+                          {cur.driver_full_name}
+                        </DriverLink>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             )}
 
             {/* Mais Pódios */}
-            {overview.most_podiums_driver && (
-              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
-                    {overview.most_podiums_driver_headshot_url ? (
-                      <img
-                        src={overview.most_podiums_driver_headshot_url}
-                        alt={overview.most_podiums_driver}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      overview.most_podiums_driver_code || "F1"
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-blue-400 block -mb-0.5">
-                      Mais Pódios
-                    </span>
-                    <DriverLink
-                      driverName={overview.most_podiums_driver}
-                      className="font-bold text-white text-xs truncate block hover:text-blue-300 transition-colors"
-                      title={`Ver perfil de ${overview.most_podiums_driver}`}
-                    >
-                      {overview.most_podiums_driver}
-                    </DriverLink>
-                  </div>
-                </div>
-                <span className="font-mono font-black text-blue-300 text-xs shrink-0">
-                  {overview.most_podiums_count}P
-                </span>
+            {hallOfFameTies.podiumsList.length > 0 && (
+              <div
+                onMouseEnter={hofPodiumsCarousel.pause}
+                onMouseLeave={hofPodiumsCarousel.resume}
+                className={`relative overflow-hidden py-2.5 rounded-xl bg-white/[0.02] border border-white/5 ${
+                  hofPodiumsCarousel.isTied ? "px-5" : "px-2.5"
+                }`}
+              >
+                <TieCarouselEdgeArrows carousel={hofPodiumsCarousel} accent="blue" size="xs" />
+                <TieCarouselTrack
+                  carousel={hofPodiumsCarousel}
+                  items={hallOfFameTies.podiumsList}
+                  keyExtractor={(d) => d.driver_id || d.driver_full_name}
+                  renderItem={(cur) => (
+                    <div className="flex items-center gap-2.5 min-w-0 w-full">
+                      <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
+                        {cur.driver_headshot_url ? (
+                          <img
+                            src={cur.driver_headshot_url}
+                            alt={cur.driver_full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          cur.driver_code || "F1"
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-blue-400">
+                            Mais Pódios
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <TieCarouselDots carousel={hofPodiumsCarousel} accent="blue" />
+                            <span className="font-mono font-black text-blue-300 text-xs">
+                              {overview.most_podiums_count}P
+                            </span>
+                          </div>
+                        </div>
+                        <DriverLink
+                          driverId={cur.driver_id || undefined}
+                          driverName={cur.driver_full_name}
+                          className="font-bold text-white text-xs sm:text-sm truncate block hover:text-blue-300 transition-colors mt-0.5"
+                          title={`Ver perfil de ${cur.driver_full_name}`}
+                        >
+                          {cur.driver_full_name}
+                        </DriverLink>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             )}
 
             {/* Rei da Pole */}
-            {overview.most_poles_driver && (
-              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
-                    {overview.most_poles_driver_headshot_url ? (
-                      <img
-                        src={overview.most_poles_driver_headshot_url}
-                        alt={overview.most_poles_driver}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      overview.most_poles_driver_code || "F1"
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-purple-400 block -mb-0.5">
-                      Rei da Pole
-                    </span>
-                    <DriverLink
-                      driverName={overview.most_poles_driver}
-                      className="font-bold text-white text-xs truncate block hover:text-purple-300 transition-colors"
-                      title={`Ver perfil de ${overview.most_poles_driver}`}
-                    >
-                      {overview.most_poles_driver}
-                    </DriverLink>
-                  </div>
-                </div>
-                <span className="font-mono font-black text-purple-300 text-xs shrink-0">
-                  {overview.most_poles_count} Poles
-                </span>
+            {hallOfFameTies.polesList.length > 0 && (
+              <div
+                onMouseEnter={hofPolesCarousel.pause}
+                onMouseLeave={hofPolesCarousel.resume}
+                className={`relative overflow-hidden py-2.5 rounded-xl bg-white/[0.02] border border-white/5 ${
+                  hofPolesCarousel.isTied ? "px-5" : "px-2.5"
+                }`}
+              >
+                <TieCarouselEdgeArrows carousel={hofPolesCarousel} accent="purple" size="xs" />
+                <TieCarouselTrack
+                  carousel={hofPolesCarousel}
+                  items={hallOfFameTies.polesList}
+                  keyExtractor={(d) => d.driver_id || d.driver_full_name}
+                  renderItem={(cur) => (
+                    <div className="flex items-center gap-2.5 min-w-0 w-full">
+                      <div className="w-8 h-8 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 flex items-center justify-center font-mono font-black text-xs text-white">
+                        {cur.driver_headshot_url ? (
+                          <img
+                            src={cur.driver_headshot_url}
+                            alt={cur.driver_full_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          cur.driver_code || "F1"
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-purple-400">
+                            Rei da Pole
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <TieCarouselDots carousel={hofPolesCarousel} accent="purple" />
+                            <span className="font-mono font-black text-purple-300 text-xs">
+                              {overview.most_poles_count} Poles
+                            </span>
+                          </div>
+                        </div>
+                        <DriverLink
+                          driverId={cur.driver_id || undefined}
+                          driverName={cur.driver_full_name}
+                          className="font-bold text-white text-xs sm:text-sm truncate block hover:text-purple-300 transition-colors mt-0.5"
+                          title={`Ver perfil de ${cur.driver_full_name}`}
+                        >
+                          {cur.driver_full_name}
+                        </DriverLink>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             )}
 
             {/* Equipe Dominante */}
-            {overview.most_wins_team && (
-              <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${overview.most_wins_team_color || "#E10600"}22` }}
-                  >
-                    <Shield
-                      className="h-4 w-4"
-                      style={{ color: overview.most_wins_team_color || "#E10600" }}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 block -mb-0.5">
-                      Equipe Top
-                    </span>
-                    <TeamLink
-                      teamName={overview.most_wins_team}
-                      className="font-bold text-white text-xs truncate block hover:underline hover:text-white transition-colors"
-                      title={`Ver perfil de ${overview.most_wins_team}`}
-                    >
-                      {overview.most_wins_team}
-                    </TeamLink>
-                  </div>
-                </div>
-                <span className="font-mono font-black text-white text-xs shrink-0">
-                  {overview.most_wins_team_count}V
-                </span>
+            {hallOfFameTies.teamsList.length > 0 && (
+              <div
+                onMouseEnter={hofTeamsCarousel.pause}
+                onMouseLeave={hofTeamsCarousel.resume}
+                className={`relative overflow-hidden py-2.5 rounded-xl bg-white/[0.02] border border-white/5 ${
+                  hofTeamsCarousel.isTied ? "px-5" : "px-2.5"
+                }`}
+              >
+                <TieCarouselEdgeArrows carousel={hofTeamsCarousel} accent="emerald" size="xs" />
+                <TieCarouselTrack
+                  carousel={hofTeamsCarousel}
+                  items={hallOfFameTies.teamsList}
+                  keyExtractor={(t) => t.team_name}
+                  renderItem={(cur) => (
+                    <div className="flex items-center gap-2.5 min-w-0 w-full">
+                      <div
+                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center shrink-0"
+                        style={{ backgroundColor: `${cur.team_color || "#E10600"}22` }}
+                      >
+                        <Shield
+                          className="h-4 w-4"
+                          style={{ color: cur.team_color || "#E10600" }}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] uppercase font-bold text-emerald-400">
+                            Equipe Top
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <TieCarouselDots carousel={hofTeamsCarousel} accent="emerald" />
+                            <span className="font-mono font-black text-white text-xs">
+                              {overview.most_wins_team_count}V
+                            </span>
+                          </div>
+                        </div>
+                        <TeamLink
+                          teamName={cur.team_name}
+                          className="font-bold text-white text-xs sm:text-sm truncate block hover:underline hover:text-white transition-colors mt-0.5"
+                          title={`Ver perfil de ${cur.team_name}`}
+                        >
+                          {cur.team_name}
+                        </TeamLink>
+                      </div>
+                    </div>
+                  )}
+                />
               </div>
             )}
           </div>

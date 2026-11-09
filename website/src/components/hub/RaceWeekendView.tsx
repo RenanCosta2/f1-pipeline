@@ -1,19 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   MapPin,
   Calendar,
   ChevronRight,
-  ChevronDown,
   Clock,
-  ArrowUpRight,
-  Sparkles
+  ArrowUpRight
 } from "lucide-react";
 import { RaceWeekendInfo } from "@/types/f1";
 import DriverLink, { parseDriverNames } from "@/lib/driverUtils";
+import TeamLink from "@/lib/teamUtils";
 import CircuitLink from "@/lib/circuitUtils";
 import CircuitRecordDrivers from "@/components/CircuitRecordDrivers";
+import {
+  useTieCarousel,
+  TieCarouselEdgeArrows,
+  TieCarouselTrack,
+  TieCarouselDots,
+} from "@/components/ui/TieCarousel";
 
 interface Props {
   raceInfo: RaceWeekendInfo;
@@ -29,15 +34,21 @@ interface Props {
 
 export default function RaceWeekendView({ raceInfo, onSelectSession }: Props) {
   const sessions = raceInfo?.sessions || [];
-  // Accordion: No mobile inicia recolhido para priorizar as sessões na primeira tela
-  const [recordsOpen, setRecordsOpen] = useState(false);
 
   const rec = raceInfo?.circuit_records;
   const hasHistorical = rec?.has_historical_data ?? Number(rec?.total_laps_analyzed) > 0;
   const winsDrivers = parseDriverNames(rec?.most_wins_drivers || rec?.most_wins_driver);
   const polesDrivers = parseDriverNames(rec?.most_poles_drivers || rec?.most_poles_driver);
-  const isWinsTied = winsDrivers.length > 1;
-  const isPolesTied = polesDrivers.length > 1;
+  const speedDrivers =
+    rec?.max_speed_drivers && rec.max_speed_drivers.length > 0
+      ? rec.max_speed_drivers
+      : rec?.max_speed_driver && rec.max_speed_driver !== "—"
+        ? [{ driver: rec.max_speed_driver, team: rec.max_speed_team, year: rec.max_speed_year || 0 }]
+        : [];
+
+  const winsCarousel = useTieCarousel(winsDrivers.length);
+  const polesCarousel = useTieCarousel(polesDrivers.length);
+  const speedCarousel = useTieCarousel(speedDrivers.length);
 
   return (
     <div className="space-y-5 sm:space-y-7 animate-fadeIn">
@@ -100,9 +111,182 @@ export default function RaceWeekendView({ raceInfo, onSelectSession }: Props) {
       </div>
 
       {/* ===================================================================== */}
-      {/* 2. SESSÕES DO FINAL DE SEMANA (PRIORIDADE #1 NO DOM MOBILE)           */}
-      {/* No mobile: Lista ergonômica de cards horizontais (alvo >= 56px);      */}
-      {/* No desktop (sm+): Grid horizontal de 5 colunas.                       */}
+      {/* 2. RAIO-X HISTÓRICO DO CIRCUITO (ACIMA DO CRONOGRAMA)                 */}
+      {/* ===================================================================== */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-f1-subtle">
+          <span className="h-1.5 w-1.5 rounded-full bg-f1-red" />
+          <span>Raio-X Histórico do Circuito</span>
+        </div>
+
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3">
+          {/* Record 1: Most Wins */}
+          <div
+            onMouseEnter={winsCarousel.pause}
+            onMouseLeave={winsCarousel.resume}
+            className="relative overflow-hidden rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between"
+          >
+            <TieCarouselEdgeArrows carousel={winsCarousel} accent="amber" position="metric" />
+            <div>
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                {winsCarousel.isTied ? "Maiores Vencedores" : "Maior Vencedor"}
+              </span>
+              <div className={`mt-2 flex items-baseline justify-between gap-2 ${winsCarousel.isTied ? "px-2.5" : ""}`}>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-mono tabular-nums text-xl sm:text-2xl font-black text-amber-400">
+                    {hasHistorical && rec?.most_wins_count ? rec.most_wins_count : "0"}
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-500 uppercase">vitórias</span>
+                </div>
+                <TieCarouselDots carousel={winsCarousel} accent="amber" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5">
+              <CircuitRecordDrivers
+                drivers={rec?.most_wins_drivers || rec?.most_wins_driver}
+                accentColor="amber"
+                emptyText="Sem histórico no DW"
+                carousel={winsCarousel}
+              />
+            </div>
+          </div>
+
+          {/* Record 2: Most Poles */}
+          <div
+            onMouseEnter={polesCarousel.pause}
+            onMouseLeave={polesCarousel.resume}
+            className="relative overflow-hidden rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between"
+          >
+            <TieCarouselEdgeArrows carousel={polesCarousel} accent="purple" position="metric" />
+            <div>
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                {polesCarousel.isTied ? "Recordistas de Poles" : "Recordista de Poles"}
+              </span>
+              <div className={`mt-2 flex items-baseline justify-between gap-2 ${polesCarousel.isTied ? "px-2.5" : ""}`}>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="font-mono tabular-nums text-xl sm:text-2xl font-black text-purple-400">
+                    {hasHistorical && rec?.most_poles_count ? rec.most_poles_count : "0"}
+                  </span>
+                  <span className="font-mono text-[10px] text-zinc-500 uppercase">poles</span>
+                </div>
+                <TieCarouselDots carousel={polesCarousel} accent="purple" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5">
+              <CircuitRecordDrivers
+                drivers={rec?.most_poles_drivers || rec?.most_poles_driver}
+                accentColor="purple"
+                emptyText="Sem histórico no DW"
+                carousel={polesCarousel}
+              />
+            </div>
+          </div>
+
+          {/* Record 3: Lap Records (Quali & Race) */}
+          <div className="rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between">
+            <div>
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Volta Mais Rápida
+              </span>
+              <div className="mt-2 space-y-1.5">
+                <div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-mono text-zinc-500 uppercase">Quali:</span>
+                    <span className="font-mono tabular-nums font-bold text-white text-xs">
+                      {hasHistorical && rec?.all_time_record && rec?.all_time_record !== "—"
+                        ? rec.all_time_record
+                        : "—"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 truncate text-right">
+                    {hasHistorical && rec?.all_time_holder && rec?.all_time_holder !== "—" ? (
+                      <DriverLink driverName={rec.all_time_holder} className="hover:text-zinc-300">
+                        {rec.all_time_holder}
+                        {rec.all_time_year && rec.all_time_year > 0 ? ` (${rec.all_time_year})` : ""}
+                      </DriverLink>
+                    ) : null}
+                  </p>
+                </div>
+
+                <div className="pt-1 border-t border-white/5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-mono text-emerald-400/80 uppercase">Corrida:</span>
+                    <span className="font-mono tabular-nums font-bold text-emerald-400 text-xs">
+                      {hasHistorical && rec?.lap_record && rec?.lap_record !== "—"
+                        ? rec.lap_record
+                        : "—"}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 truncate text-right">
+                    {hasHistorical && rec?.lap_record_holder && rec?.lap_record_holder !== "—" ? (
+                      <DriverLink driverName={rec.lap_record_holder} className="hover:text-emerald-300">
+                        {rec.lap_record_holder}
+                        {rec.lap_record_year && rec.lap_record_year > 0 ? ` (${rec.lap_record_year})` : ""}
+                      </DriverLink>
+                    ) : null}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Record 4: Top Speed Trap */}
+          <div
+            onMouseEnter={speedCarousel.pause}
+            onMouseLeave={speedCarousel.resume}
+            className="relative overflow-hidden rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between"
+          >
+            <TieCarouselEdgeArrows carousel={speedCarousel} accent="blue" position="metric" />
+            <div>
+              <span className="block font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                Velocidade Máxima
+              </span>
+              <div className={`mt-2 flex items-baseline justify-between gap-2 ${speedCarousel.isTied ? "px-2.5" : ""}`}>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-xl sm:text-2xl font-mono tabular-nums font-black text-blue-400">
+                    {rec?.max_speed_kmh && Number(rec.max_speed_kmh) > 0 ? rec.max_speed_kmh : "—"}
+                  </span>
+                  {rec?.max_speed_kmh && Number(rec.max_speed_kmh) > 0 ? (
+                    <span className="font-mono text-[10px] text-zinc-500 uppercase">km/h</span>
+                  ) : null}
+                </div>
+                <TieCarouselDots carousel={speedCarousel} accent="blue" />
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-white/5">
+              {speedDrivers.length > 0 ? (
+                <TieCarouselTrack
+                  carousel={speedCarousel}
+                  items={speedDrivers}
+                  keyExtractor={(s, i) => `${s.driver}-${s.team || ''}-${i}`}
+                  renderItem={(s) => (
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm text-zinc-300 truncate font-semibold">
+                        <DriverLink driverName={s.driver} className="hover:text-blue-300 text-white font-bold">
+                          {s.driver}
+                        </DriverLink>
+                        {s.year > 0 ? <span className="text-zinc-500 font-mono text-[11px] ml-1">({s.year})</span> : null}
+                      </p>
+                      {(s.team || rec?.max_speed_team) ? (
+                        <p className="text-[10px] sm:text-[11px] text-blue-400/90 font-mono truncate mt-0.5">
+                          <TeamLink teamName={s.team || rec?.max_speed_team!} className="hover:text-white hover:underline transition-colors">
+                            {s.team || rec?.max_speed_team}
+                          </TeamLink>
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                />
+              ) : (
+                <p className="text-xs text-white/40 truncate">Aguardando telemetria</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* 3. SESSÕES DO FINAL DE SEMANA (CRONOGRAMA & RESULTADOS)               */}
       {/* ===================================================================== */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -279,182 +463,6 @@ export default function RaceWeekendView({ raceInfo, onSelectSession }: Props) {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* ===================================================================== */}
-      {/* 3. RAIO-X HISTÓRICO DO CIRCUITO (ACCORDION NO MOBILE, ABERTO EM MD+)  */}
-      {/* Esconde curiosidades secundárias sob demanda no celular               */}
-      {/* ===================================================================== */}
-      <div className="rounded-2xl border border-white/10 bg-[#0E0E15] md:border-0 md:bg-transparent overflow-hidden">
-        {/* Botão Accordion (Interativo no Mobile < md, Cabeçalho estático em md+) */}
-        <button
-          type="button"
-          onClick={() => setRecordsOpen(!recordsOpen)}
-          aria-expanded={recordsOpen}
-          className="w-full min-h-[52px] md:min-h-0 px-4 py-3 md:p-0 md:mb-3 flex items-center justify-between text-left md:cursor-default active:bg-white/[0.03] md:active:bg-transparent transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-amber-400 md:hidden" />
-            <span className="hidden md:inline-block h-1.5 w-1.5 rounded-full bg-f1-red" />
-            <div>
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-white md:text-f1-subtle block">
-                Raio-X Histórico do Circuito
-              </span>
-              <span className="text-[11px] text-f1-subtle md:hidden">
-                Recordes de vitórias, poles, volta rápida e speed trap
-              </span>
-            </div>
-          </div>
-
-          <span className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70">
-            <ChevronDown
-              className={`h-4 w-4 transition-transform duration-200 ${
-                recordsOpen ? "rotate-180 text-f1-red" : ""
-              }`}
-            />
-          </span>
-        </button>
-
-        {/* Grid de Recordes: Visível se aberto no mobile, sempre visível em md+ */}
-        <div
-          className={`${
-            recordsOpen ? "grid p-3.5 pt-0 border-t border-white/5" : "hidden"
-          } md:grid md:p-0 md:border-0 grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-3`}
-        >
-          {/* Record 1: Most Wins */}
-          <div className="rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                  {isWinsTied ? "Maiores Vencedores" : "Maior Vencedor"}
-                </span>
-                {isWinsTied && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    Empate ({winsDrivers.length})
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-mono tabular-nums text-xl sm:text-2xl font-black text-amber-400">
-                  {hasHistorical && rec?.most_wins_count ? rec.most_wins_count : "0"}
-                </span>
-                <span className="font-mono text-[10px] text-zinc-500 uppercase">vitórias</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-white/5">
-              <CircuitRecordDrivers
-                drivers={rec?.most_wins_drivers || rec?.most_wins_driver}
-                accentColor="amber"
-                emptyText="Sem histórico no DW"
-              />
-            </div>
-          </div>
-
-          {/* Record 2: Most Poles */}
-          <div className="rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between gap-1">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                  {isPolesTied ? "Recordistas de Poles" : "Recordista de Poles"}
-                </span>
-                {isPolesTied && (
-                  <span className="inline-flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-zinc-400 shrink-0">
-                    Empate ({polesDrivers.length})
-                  </span>
-                )}
-              </div>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="font-mono tabular-nums text-xl sm:text-2xl font-black text-purple-400">
-                  {hasHistorical && rec?.most_poles_count ? rec.most_poles_count : "0"}
-                </span>
-                <span className="font-mono text-[10px] text-zinc-500 uppercase">poles</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-white/5">
-              <CircuitRecordDrivers
-                drivers={rec?.most_poles_drivers || rec?.most_poles_driver}
-                accentColor="purple"
-                emptyText="Sem histórico no DW"
-              />
-            </div>
-          </div>
-
-          {/* Record 3: Lap Records (Quali & Race) */}
-          <div className="rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between">
-            <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                Volta Mais Rápida
-              </span>
-              <div className="mt-2 space-y-1.5">
-                <div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-mono text-zinc-500 uppercase">Quali:</span>
-                    <span className="font-mono tabular-nums font-bold text-white text-xs">
-                      {hasHistorical && rec?.all_time_record && rec?.all_time_record !== "—"
-                        ? rec.all_time_record
-                        : "—"}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 truncate text-right">
-                    {hasHistorical && rec?.all_time_holder && rec?.all_time_holder !== "—" ? (
-                      <DriverLink driverName={rec.all_time_holder} className="hover:text-zinc-300">
-                        {rec.all_time_holder}
-                        {rec.all_time_year && rec.all_time_year > 0 ? ` (${rec.all_time_year})` : ""}
-                      </DriverLink>
-                    ) : null}
-                  </p>
-                </div>
-
-                <div className="pt-1 border-t border-white/5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-mono text-emerald-400/80 uppercase">Corrida:</span>
-                    <span className="font-mono tabular-nums font-bold text-emerald-400 text-xs">
-                      {hasHistorical && rec?.lap_record && rec?.lap_record !== "—"
-                        ? rec.lap_record
-                        : "—"}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 truncate text-right">
-                    {hasHistorical && rec?.lap_record_holder && rec?.lap_record_holder !== "—" ? (
-                      <DriverLink driverName={rec.lap_record_holder} className="hover:text-emerald-300">
-                        {rec.lap_record_holder}
-                        {rec.lap_record_year && rec.lap_record_year > 0 ? ` (${rec.lap_record_year})` : ""}
-                      </DriverLink>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Record 4: Top Speed Trap */}
-          <div className="rounded-xl border border-white/10 bg-[#12121A] p-3.5 sm:p-4 flex flex-col justify-between">
-            <div>
-              <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                Velocidade Máxima
-              </span>
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-xl sm:text-2xl font-mono tabular-nums font-black text-blue-400">
-                  {hasHistorical && rec?.max_speed_kmh ? rec.max_speed_kmh : "—"}
-                </span>
-                {hasHistorical && rec?.max_speed_kmh ? (
-                  <span className="font-mono text-[10px] text-zinc-500 uppercase">km/h</span>
-                ) : null}
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-white/5">
-              <p className="text-xs text-zinc-400 truncate">
-                {hasHistorical && rec?.max_speed_driver && rec?.max_speed_driver !== "—" ? (
-                  <DriverLink driverName={rec.max_speed_driver} className="hover:text-blue-300">
-                    {rec.max_speed_driver} ({rec.max_speed_year})
-                  </DriverLink>
-                ) : (
-                  <span className="text-white/40">Aguardando telemetria</span>
-                )}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

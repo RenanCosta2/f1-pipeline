@@ -14,10 +14,22 @@ export default async function TeamsPage() {
   ]);
 
   const currentLeader = standings && standings.length > 0 ? standings[0] : null;
-  const historicLeader =
-    [...constructors]
-      .filter((c) => c.total_world_championships > 0)
-      .sort((a, b) => b.total_world_championships - a.total_world_championships || b.total_wins - a.total_wins)[0] || null;
+  const maxPoints = currentLeader ? Number(currentLeader.total_points || 0) : 0;
+  const currentLeaders =
+    standings && standings.length > 0
+      ? maxPoints > 0
+        ? standings.filter((s) => Number(s.total_points || 0) === maxPoints)
+        : [standings[0]]
+      : [];
+
+  const maxTitles = Math.max(0, ...constructors.map((c) => Number(c.total_world_championships || 0)));
+  const historicLeaders =
+    maxTitles > 0
+      ? [...constructors]
+          .filter((c) => Number(c.total_world_championships || 0) === maxTitles)
+          .sort((a, b) => b.total_wins - a.total_wins)
+      : [];
+  const historicLeader = historicLeaders[0] || null;
 
   const totalTeams = constructors.length;
   const worldChampionsCount = constructors.filter((c) => c.total_world_championships > 0).length;
@@ -61,7 +73,9 @@ export default async function TeamsPage() {
       {/* Régua Spotlight: Líder de Construtores (2026) vs Maior Campeã da História */}
       <ConstructorsSpotlightStrip
         currentLeader={currentLeader}
+        currentLeaders={currentLeaders}
         historicLeader={historicLeader}
+        historicLeaders={historicLeaders}
         seasonYear={latestYear}
       />
 
