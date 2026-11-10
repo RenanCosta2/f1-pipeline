@@ -160,6 +160,15 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
         logger.error("POSTGRES_CONNECTION_URL is required but was not provided.")
         sys.exit(1)
 
+    # A carga usa o Session Pooler (porta 5432): sessão dedicada, necessária para COPY, DDL e a troca
+    # atômica de tabelas. O site lê pelo Transaction Pooler (6543) via POSTGRES_WEB_URL.
+    if "pooler.supabase.com:6543" in postgres_url:
+        logger.warning(
+            "POSTGRES_CONNECTION_URL aponta para o Transaction Pooler (porta 6543). "
+            "A sincronizacao deve usar o Session Pooler (porta 5432); "
+            "a porta 6543 e reservada ao site (POSTGRES_WEB_URL)."
+        )
+
     if postgres_url.startswith("postgresql://"):
         postgres_url = postgres_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 

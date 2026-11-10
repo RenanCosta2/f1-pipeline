@@ -145,6 +145,7 @@ services:
       - /app/.next
     environment:
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
+      - POSTGRES_WEB_URL=${POSTGRES_WEB_URL:-}
       - PORT=3000
       - HOSTNAME=0.0.0.0
     restart: unless-stopped

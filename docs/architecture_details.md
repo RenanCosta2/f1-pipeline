@@ -58,7 +58,19 @@ Conectar uma aplicação web pública diretamente ao BigQuery traria dois proble
   - **`incremental_year` (para modelos temporais com coluna `year`)**: Compara a temporada máxima e a quantidade de linhas no PostgreSQL com o BigQuery. Em execuções normais, transfere **apenas os dados da temporada ativa** (ex: `WHERE year >= 2026`), reduzindo em mais de **90%** o volume de dados trafegados e o tempo de sincronização.
   - **`full_replace` (para tabelas de resumo de carreira/circuitos sem coluna `year` ou via `--full-refresh`)**: Carrega os dados em uma tabela temporária (`_tmp`) e realiza a troca atômica (`DROP` + `ALTER TABLE RENAME`) dentro de uma única transação, garantindo **zero downtime** para os usuários do dashboard.
 - **Protocolo Nativo `COPY FROM STDIN`**: Em vez de executar milhares de `INSERT` lentos, utiliza um buffer CSV em memória conectado diretamente ao protocolo `COPY` do PostgreSQL via `psycopg2`.
+- **Conexão dedicada à escrita (Session Pooler, porta `5432`)**: a carga usa `POSTGRES_CONNECTION_URL`, pois `COPY`, DDL e a troca atômica de tabelas exigem uma sessão dedicada. O script emite um aviso caso a variável aponte para a porta `6543`.
 - **Mapeamento Automático de Tipos e Índices B-Tree**: Converte automaticamente tipos avançados do BigQuery (`REPEATED` → `ARRAY`, `JSON/RECORD` → `JSONB`) e cria índices B-Tree compostos nas tabelas do PostgreSQL de acordo com as colunas-chave detectadas (`year`, `round_number`, `driver_id`, `team_id`, `circuit_id`).
+
+### 2.6 Camada de Acesso do Web App (Next.js + Vercel)
+O site é servido por funções *serverless*, o que cria dois custos recorrentes: a **partida a frio** da função e a **abertura de conexões** (TCP + SSL) com o banco. A camada [`website/src/lib/db.ts`](../website/src/lib/db.ts) trata ambos:
+- **Conexão de leitura via Transaction Pooler (porta `6543`)**: o site lê por `POSTGRES_WEB_URL`, com conexões multiplexadas e curtas, enquanto o pipeline escreve pelo Session Pooler (`5432`). Sem `POSTGRES_WEB_URL`, a URL é derivada da variável legada trocando a porta.
+- **Cache persistente (Next.js Data Cache)**: todas as consultas passam por `unstable_cache`, que sobrevive a *cold starts* e deploys (o `Map` em memória é perdido a cada partida a frio). Há duas faixas de validade: `live` (5 min, consultas que filtram o ano corrente) e `standard` (30 min, histórico e agregados).
+- **ISR nas páginas estáticas**: catálogo e perfis de pilotos, equipes e circuitos usam `revalidate = 1800`, servindo o HTML direto do CDN (*stale-while-revalidate*).
+- **Região da função co-locada com o banco**: `preferredRegion = "pdx1"` (Oregon) aproxima a função do Supabase (AWS `us-west-2`), reduzindo a latência de cada query.
+- **Sem cascatas de consultas**: ano e rodada padrão só são consultados quando a URL não os informa, e a lista de rodadas é buscada em paralelo.
+
+> [!NOTE]
+> Os dados exibidos podem ficar defasados em até **5 min** (temporada corrente) ou **30 min** (histórico) após uma sincronização da *Serving Layer*. Como a DAG roda a cada hora nos fins de semana de corrida, isso não é perceptível na prática.
 
 ---
 

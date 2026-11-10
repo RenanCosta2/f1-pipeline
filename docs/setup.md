@@ -46,13 +46,20 @@ O Supabase atua como a **Serving Layer** relacional de baixa latência que armaz
 
 ### 2.1 Obter a Connection String do PostgreSQL
 1. Acesse o painel do seu projeto no Supabase e clique no botão **Connect** no menu superior.
-2. Na seção **Connection String**, selecione a aba **URI** e escolha o modo **Session Pooler** (porta `5432`).
-3. A URL terá o formato:
+2. Na seção **Connection String**, selecione a aba **URI**. O projeto usa **duas conexões com propostas distintas**, ambas pelo pooler (compatível com IPv4):
+
+   | Uso | Modo | Porta | Variável | Por quê |
+   | :--- | :--- | :---: | :--- | :--- |
+   | **Pipeline** (`sync_serving_layer.py`) | Session Pooler | `5432` | `POSTGRES_CONNECTION_URL` | Sessão dedicada: necessária para `COPY`, DDL e a troca atômica de tabelas. |
+   | **Site** (Next.js / Vercel) | Transaction Pooler | `6543` | `POSTGRES_WEB_URL` | Conexões multiplexadas: ideal para muitas leituras curtas em ambiente serverless. |
+
+3. As URLs terão o formato:
    ```text
-   postgresql://postgres.<PROJECT_REF>:<SUA_SENHA>@aws-0-<REGIAO>.pooler.supabase.com:5432/postgres
+   postgresql://postgres.<PROJECT_REF>:<SUA_SENHA>@aws-0-<REGIAO>.pooler.supabase.com:5432/postgres   # pipeline
+   postgresql://postgres.<PROJECT_REF>:<SUA_SENHA>@aws-0-<REGIAO>.pooler.supabase.com:6543/postgres   # site
    ```
 > [!TIP]
-> Utilizar o **Session Pooler (`pooler.supabase.com:5432`)** garante compatibilidade total com redes IPv4 dentro dos containers Docker e gerencia eficientemente o pool de conexões entre o script de sincronização e o Next.js.
+> No deploy da Vercel, configure `POSTGRES_WEB_URL` (porta `6543`) nas variáveis de ambiente do projeto. Se ela for omitida, o site deriva a URL trocando `5432` por `6543` a partir de `POSTGRES_CONNECTION_URL`.
 
 ---
 
@@ -82,7 +89,10 @@ GOOGLE_APPLICATION_CREDENTIALS=gcp-credentials.json
 # ==============================================================================
 # 2. SUPABASE POSTGRESQL (SERVING LAYER - WEBSITE MARTS)
 # ==============================================================================
+# Pipeline (escrita) -> Session Pooler, porta 5432
 POSTGRES_CONNECTION_URL=postgresql://postgres.<PROJECT_REF>:<PASSWORD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres
+# Site (leitura) -> Transaction Pooler, porta 6543
+POSTGRES_WEB_URL=postgresql://postgres.<PROJECT_REF>:<PASSWORD>@aws-0-<REGION>.pooler.supabase.com:6543/postgres
 
 # ==============================================================================
 # 3. APACHE AIRFLOW CONFIGURATION
