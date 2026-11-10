@@ -16,6 +16,7 @@ END
 {% macro format_gap(seconds) %}
 CASE 
     WHEN {{ seconds }} IS NULL THEN NULL
+    WHEN CAST({{ seconds }} AS FLOAT64) < 0 THEN NULL
     WHEN CAST({{ seconds }} AS FLOAT64) >= 60 THEN CONCAT('+', FORMAT('%d:%06.3f', CAST(FLOOR(CAST({{ seconds }} AS FLOAT64) / 60) AS INT64), CAST({{ seconds }} AS FLOAT64) - FLOOR(CAST({{ seconds }} AS FLOAT64) / 60) * 60))
     ELSE CONCAT('+', FORMAT('%.3f', CAST({{ seconds }} AS FLOAT64)), 's')
 END

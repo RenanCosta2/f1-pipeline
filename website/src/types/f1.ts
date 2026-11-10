@@ -102,6 +102,9 @@ export interface SessionSummary {
     stops: number | null;
     gap_to_leader?: string | null;
     interval_to_car_ahead?: string | null;
+    q1?: string | null;
+    q2?: string | null;
+    q3?: string | null;
     best_lap: string | null;
     status: string | null;
     laps_completed: number | null;
