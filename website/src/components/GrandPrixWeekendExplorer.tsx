@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useMemo, useTransition, useEffect } from "react";
 import Link from "next/link";
@@ -29,9 +29,9 @@ import {
   Sparkles,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown,
   Minus,
   ArrowUpRight,
+  ArrowUpDown,
   ChevronDown,
   ExternalLink,
   Loader2,
@@ -204,184 +204,92 @@ export default function GrandPrixWeekendExplorer({
     winner.team_name.trim().toLowerCase() === p2Driver.team_name.trim().toLowerCase()
   );
 
-  const isSprintQuali = activeSession.toLowerCase().includes("sprint");
-  const qPrefix = isSprintQuali ? "SQ" : "Q";
   // Segmentos de Qualificação (Q1, Q2, Q3 / SQ1, SQ2, SQ3)
   const isSprintQuali = activeSession.toLowerCase().includes("sprint");
   const qPrefix = isSprintQuali ? "SQ" : "Q";
 
-  const toSeconds = (s: string) => {
-    const hasQ1 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
-      [sessionResults]
-    );
-    const hasQ2 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
-      [sessionResults]
-    );
-    const hasQ3 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
-      [sessionResults]
-    );
-    const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
-    const hasQ1 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
-      [sessionResults]
-    );
-    const hasQ2 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
-      [sessionResults]
-    );
-    const hasQ3 = useMemo(
-      () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
-      [sessionResults]
-    );
-    const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
+  const hasQ1 = useMemo(
+    () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
+    [sessionResults]
+  );
+  const hasQ2 = useMemo(
+    () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
+    [sessionResults]
+  );
+  const hasQ3 = useMemo(
+    () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
+    [sessionResults]
+  );
+  const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
 
-    // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
-    const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
-      const toSeconds = (s?: string | null) => {
-        if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
-        const parts = s.split(":");
-        if (parts.length === 2) {
-          return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
-          return parts.length === 2 ? parseFloat(parts[0]) * 60 + parseFloat(parts[1]) : parseFloat(s) || Infinity;
+  // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
+  const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
+    const toSeconds = (s?: string | null) => {
+      if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
+      const parts = s.split(":");
+      return parts.length === 2 ? parseFloat(parts[0]) * 60 + parseFloat(parts[1]) : parseFloat(s) || Infinity;
+    };
+
+    let minSec = Infinity;
+    let bestTime: string | null = null;
+    let bestSegment: string | null = null;
+
+    if (hasQualiSegments) {
+      sessionResults.forEach((r) => {
+        const check = (t: string | null | undefined, seg: string) => {
+          const s = toSeconds(t);
+          if (s < minSec) {
+            minSec = s;
+            bestTime = t!;
+            bestSegment = seg;
+          }
         };
-        // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
-        const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
-          const toSeconds = (s?: string | null) => {
-            if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
-            const parts = s.split(":");
-            return parts.length === 2 ? parseFloat(parts[0]) * 60 + parseFloat(parts[1]) : parseFloat(s) || Infinity;
-          };
+        if (hasQ1 && r.q1) check(r.q1, `${qPrefix}1`);
+        if (hasQ2 && r.q2) check(r.q2, `${qPrefix}2`);
+        if (hasQ3 && r.q3) check(r.q3, `${qPrefix}3`);
+      });
+    }
 
-          let minSec = Infinity;
-          let bestTime: string | null = null;
-          let bestSegment: string | null = null;
-          let minSec = Infinity;
-          let bestTime: string | null = null;
-          let bestSegment: string | null = null;
+    if (!bestTime || minSec === Infinity) {
+      sessionResults.forEach((r) => {
+        const s = toSeconds(r.best_lap);
+        if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
+          minSec = s;
+          bestTime = r.best_lap;
+          bestSegment = null;
+        }
+      });
+    }
 
-          if (hasQualiSegments) {
-            sessionResults.forEach((r) => {
-              const check = (t: string | null | undefined, seg: string) => {
-                const s = toSeconds(t);
-                if (s < minSec) {
-                  minSec = s;
-                  bestTime = t!;
-                  bestSegment = seg;
-                }
-              };
-              if (hasQ1 && r.q1) check(r.q1, `${qPrefix}1`);
-              if (hasQ2 && r.q2) check(r.q2, `${qPrefix}2`);
-              if (hasQ3 && r.q3) check(r.q3, `${qPrefix}3`);
-            });
-            if (hasQualiSegments) {
-              sessionResults.forEach((r) => {
-                const check = (t: string | null | undefined, seg: string) => {
-                  const s = toSeconds(t);
-                  if (s < minSec) {
-                    minSec = s;
-                    bestTime = t!;
-                    bestSegment = seg;
-                  }
-                };
-                if (hasQ1 && r.q1) check(r.q1, `${qPrefix}1`);
-                if (hasQ2 && r.q2) check(r.q2, `${qPrefix}2`);
-                if (hasQ3 && r.q3) check(r.q3, `${qPrefix}3`);
-              });
-            }
+    if (!bestTime || minSec === Infinity) {
+      return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] as SessionSummary[] };
+    }
 
-            if (!bestTime || minSec === Infinity) {
-              sessionResults.forEach((r) => {
-                const s = toSeconds(r.best_lap);
-                if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
-                  minSec = s;
-                  bestTime = r.best_lap;
-                  bestSegment = null;
-                }
-              });
-            }
-            if (!bestTime || minSec === Infinity) {
-              sessionResults.forEach((r) => {
-                const s = toSeconds(r.best_lap);
-                if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
-                  minSec = s;
-                  bestTime = r.best_lap;
-                  bestSegment = null;
-                }
-              });
-            }
+    const matchedDrivers: SessionSummary[] = [];
+    sessionResults.forEach((r) => {
+      if (hasQualiSegments) {
+        if (
+          (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
+          (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
+          (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
+          r.best_lap === bestTime
+        ) {
+          if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
+            matchedDrivers.push(r);
+          }
+        }
+      } else if (r.best_lap === bestTime) {
+        matchedDrivers.push(r);
+      }
+    });
 
-            if (!bestTime || minSec === Infinity) {
-              return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] };
-              if (!bestTime || minSec === Infinity) {
-                return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] as SessionSummary[] };
-              }
+    return {
+      fastestLap: bestTime,
+      fastestLapSegment: bestSegment,
+      fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
+    };
+  }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
 
-              const matchedDrivers: SessionSummary[] = [];
-              sessionResults.forEach((r) => {
-                if (hasQualiSegments) {
-                  if (
-                    (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
-                    (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
-                    (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
-                    r.best_lap === bestTime
-                  ) {
-                    if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
-                      matchedDrivers.push(r);
-                    }
-                  }
-                } else if (r.best_lap === bestTime) {
-                  matchedDrivers.push(r);
-                }
-              });
-
-              const matchedDrivers: SessionSummary[] = [];
-              sessionResults.forEach((r) => {
-                if (hasQualiSegments) {
-                  if (
-                    (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
-                    (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
-                    (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
-                    r.best_lap === bestTime
-                  ) {
-                    if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
-                      matchedDrivers.push(r);
-                    }
-                  }
-                } else if (r.best_lap === bestTime) {
-                  matchedDrivers.push(r);
-                }
-                return parseFloat(s);
-              });
-              return {
-                fastestLap: bestTime,
-                fastestLapSegment: bestSegment,
-                fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
-              };
-            }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
-
-        return {
-          fastestLap: bestTime,
-          fastestLapSegment: bestSegment,
-          fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
-        };
-      }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
-
-    return [...valid].sort((a, b) => {
-      const tA = toSeconds(a.best_lap!);
-      const tB = toSeconds(b.best_lap!);
-      if (isNaN(tA)) return 1;
-      if (isNaN(tB)) return -1;
-      return tA - tB;
-    })[0]?.best_lap;
-  }, [sessionResults]);
-
-  const fastestLapDrivers = useMemo(() => {
-    if (!fastestLap) return [];
-    return sessionResults.filter((r) => r.best_lap === fastestLap);
-  }, [sessionResults, fastestLap]);
   const fastestLapDriver = fastestLapDrivers[0] || null;
   const flCarousel = useTieCarousel(fastestLapDrivers.length);
 
@@ -496,34 +404,14 @@ export default function GrandPrixWeekendExplorer({
   const [mobileChartTab, setMobileChartTab] = useState<"laps" | "pace" | "tyres">("laps");
   const [expandedDriverRow, setExpandedDriverRow] = useState<string | number | null>(null);
 
-  // Segmentos de Qualificação (Q1, Q2, Q3 / SQ1, SQ2, SQ3)
-  const isSprintQuali = activeSession.toLowerCase().includes("sprint");
-  const qPrefix = isSprintQuali ? "SQ" : "Q";
   type SortField = "pos" | "driver" | "q1" | "q2" | "q3" | "time" | "gap" | "points";
   type SortDirection = "asc" | "desc";
 
-  const hasQ1 = useMemo(
-    () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
-    [sessionResults]
-  );
-  const hasQ2 = useMemo(
-    () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
-    [sessionResults]
-  );
-  const hasQ3 = useMemo(
-    () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
-    [sessionResults]
-  );
-  const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
   const [sortField, setSortField] = useState<SortField>("pos");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   // Segmento ativo no Mobile ("final" | "q1" | "q2" | "q3")
   const [mobileQualiSegment, setMobileQualiSegment] = useState<"final" | "q1" | "q2" | "q3">("final");
-
-  useEffect(() => {
-    setMobileQualiSegment("final");
-  }, [activeSession]);
 
   // Melhores voltas em cada segmento para destaque púrpura (purple sector/lap)
   const bestQ1Time = useMemo(() => {
@@ -624,9 +512,7 @@ export default function GrandPrixWeekendExplorer({
     if (availableMobileSegments.length === 0) return;
     const idx = availableMobileSegments.indexOf(mobileQualiSegment);
     const nextIdx = (idx + 1) % availableMobileSegments.length;
-    setMobileQualiSegment(availableMobileSegments[nextIdx]);
-    const nextSeg = availableMobileSegments[nextIdx];
-    selectMobileSegment(nextSeg);
+    selectMobileSegment(availableMobileSegments[nextIdx]);
   };
 
   const toSecHelper = (s?: string | null) => {
@@ -1583,123 +1469,118 @@ export default function GrandPrixWeekendExplorer({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <div className="md:hidden flex flex-col gap-2">
-                    {/* Seletor de Segmentos no Mobile (Q1, Q2, Q3, Final) */}
-                    {hasQualiSegments && (
-                      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10">
-                        <span className="text-[11px] font-mono text-f1-subtle font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-                          <Timer className="h-3.5 w-3.5 text-f1-red" />
-                          <span>Segmento:</span>
-                        </span>
-                        <div className="inline-flex items-center rounded-lg bg-black/60 p-0.5 border border-white/10">
-                          {availableMobileSegments.map((seg) => {
-                            const isSelected = mobileQualiSegment === seg;
-                            const label = seg === "final" ? "Final" : `${qPrefix}${seg.slice(1)}`;
-                            return (
-                              <button
-                                key={seg}
-                                type="button"
-                                onClick={() => selectMobileSegment(seg)}
-                                className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all ${isSelected
-                                  ? "bg-f1-red text-white shadow-sm"
-                                  : "text-zinc-400 hover:text-white"
-                                  }`}
-                              >
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Dica de toque */}
-                    <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
-                      <span className="flex items-center gap-1.5">
-                        <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                        <span>Toque em qualquer linha para expandir detalhes e perfil</span>
-                      </span>
+                    <div className="md:hidden flex flex-col gap-2">
+                      {/* Seletor de Segmentos no Mobile (Q1, Q2, Q3, Final) */}
                       {hasQualiSegments && (
-                        <span className="font-mono text-[10px] text-f1-red font-bold">
-                          {mobileQualiSegment === "final" ? "Tempo Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
-                    <div className="overflow-x-auto sm:overflow-x-visible">
-                      <table className="w-full text-left border-collapse table-fixed md:table-auto">
-                        <thead>
-                          <tr className="border-b border-white/10 bg-white/[0.02] text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-f1-subtle">
-                            <th className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center">Pos</th>
-                            <th
-                              onClick={() => handleSort("pos")}
-                              className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center cursor-pointer hover:text-white transition-colors select-none"
-                              title="Ordenar por Posição Final"
-                            >
-                              <span className="inline-flex items-center gap-1 justify-center">
-                                <span>Pos</span>
-                                {sortField === "pos" ? (
-                                  sortDirection === "asc" ? (
-                                    <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                  ) : (
-                                    <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                  )
-                                ) : null}
-                              </span>
-                            </th>
-
-                            {isRaceSession && <th className="py-3.5 px-3 w-20 text-center hidden md:table-cell">Largada</th>}
-                            {isRaceSession && <th className="py-2.5 sm:py-3 px-0.5 sm:px-3 w-8 sm:w-20 text-center">+/-</th>}
-                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-4">Piloto</th>
-
-                            <th
-                              onClick={() => handleSort("driver")}
-                              className="py-2.5 sm:py-3 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0 cursor-pointer hover:text-white transition-colors select-none"
-                              title="Ordenar por Nome do Piloto"
-                            >
-                              <span className="inline-flex items-center gap-1">
-                                <span>Piloto</span>
-                                {sortField === "driver" ? (
-                                  sortDirection === "asc" ? (
-                                    <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                  ) : (
-                                    <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                  )
-                                ) : null}
-                              </span>
-                            </th>
-
-                            <th className="py-3.5 px-4 hidden md:table-cell">Equipe</th>
-                            <th className="py-3.5 px-3 text-center hidden lg:table-cell">Nº</th>
-
-                            {/* Colunas de Tempo / Segmentos */}
-                            {hasQualiSegments ? (
-                              <>
-                                {/* Mobile: coluna única dinâmica */}
-                                <th
-                                  onClick={cycleMobileSegment}
-                                  className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer"
-                                  title="Toque para alternar segmento (Q1, Q2, Q3, Final)"
-                                  className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer select-none"
-                                  title="Toque para alternar e ordenar por segmento (Q1, Q2, Q3, Final)"
+                        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10">
+                          <span className="text-[11px] font-mono text-f1-subtle font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                            <Timer className="h-3.5 w-3.5 text-f1-red" />
+                            <span>Segmento:</span>
+                          </span>
+                          <div className="inline-flex items-center rounded-lg bg-black/60 p-0.5 border border-white/10">
+                            {availableMobileSegments.map((seg) => {
+                              const isSelected = mobileQualiSegment === seg;
+                              const label = seg === "final" ? "Final" : `${qPrefix}${seg.slice(1)}`;
+                              return (
+                                <button
+                                  key={seg}
+                                  type="button"
+                                  onClick={() => selectMobileSegment(seg)}
+                                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all ${
+                                    isSelected
+                                      ? "bg-f1-red text-white shadow-sm"
+                                      : "text-zinc-400 hover:text-white"
+                                  }`}
                                 >
-                                  <span className="inline-flex items-center gap-1 justify-end font-mono text-f1-red font-bold">
-                                    <span>{mobileQualiSegment === "final" ? "Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}</span>
-                                    <ArrowUpDown className="h-2.5 w-2.5 opacity-70" />
-                                  </span>
-                                </th>
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
-                                {/* Desktop: colunas individuais Q1, Q2, Q3 */}
-                                {/* Desktop: colunas individuais Q1, Q2, Q3 com ordenação interativa */}
-                                {hasQ1 && (
-                                  <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
-                                    {qPrefix}1
+                      {/* Dica de toque */}
+                      <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
+                        <span className="flex items-center gap-1.5">
+                          <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                          <span>Toque em qualquer linha para ver detalhes e perfil</span>
+                        </span>
+                        {hasQualiSegments && (
+                          <span className="font-mono text-[10px] text-f1-red font-bold">
+                            {mobileQualiSegment === "final" ? "Tempo Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
+                      <div className="overflow-x-auto sm:overflow-x-visible">
+                        <table className="w-full text-left border-collapse table-auto">
+                          <thead>
+                            <tr className="border-b border-white/10 bg-white/[0.02] text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-f1-subtle">
+                              <th
+                                onClick={() => handleSort("pos")}
+                                className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center cursor-pointer hover:text-white transition-colors select-none"
+                                title="Ordenar por Posição Final"
+                              >
+                                <span className="inline-flex items-center gap-1 justify-center">
+                                  <span>Pos</span>
+                                  {sortField === "pos" ? (
+                                    sortDirection === "asc" ? (
+                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    )
+                                  ) : null}
+                                </span>
+                              </th>
+
+                              {isRaceSession && <th className="py-3.5 px-3 w-20 text-center hidden md:table-cell">Largada</th>}
+                              {isRaceSession && <th className="py-2.5 sm:py-3 px-0.5 sm:px-3 w-8 sm:w-20 text-center">+/-</th>}
+
+                              <th
+                                onClick={() => handleSort("driver")}
+                                className="py-2.5 sm:py-3 px-1.5 sm:px-4 min-w-[130px] sm:min-w-0 w-full cursor-pointer hover:text-white transition-colors select-none"
+                                title="Ordenar por Nome do Piloto"
+                              >
+                                <span className="inline-flex items-center gap-1">
+                                  <span>Piloto</span>
+                                  {sortField === "driver" ? (
+                                    sortDirection === "asc" ? (
+                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    )
+                                  ) : null}
+                                </span>
+                              </th>
+
+                              <th className="py-3.5 px-4 hidden md:table-cell">Equipe</th>
+                              <th className="py-3.5 px-3 text-center hidden lg:table-cell">Nº</th>
+
+                              {/* Colunas de Tempo / Segmentos */}
+                              {hasQualiSegments ? (
+                                <>
+                                  {/* Mobile: coluna única dinâmica */}
+                                  <th
+                                    onClick={cycleMobileSegment}
+                                    className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer select-none"
+                                    title="Toque para alternar e ordenar por segmento (Q1, Q2, Q3, Final)"
+                                  >
+                                    <span className="inline-flex items-center gap-1 justify-end font-mono text-f1-red font-bold">
+                                      <span>{mobileQualiSegment === "final" ? "Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}</span>
+                                      <ArrowUpDown className="h-2.5 w-2.5 opacity-70" />
+                                    </span>
+                                  </th>
+
+                                  {/* Desktop: colunas individuais Q1, Q2, Q3 com ordenação interativa */}
+                                  {hasQ1 && (
                                     <th
                                       onClick={() => handleSort("q1")}
-                                      className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q1" ? "text-purple-300 font-black" : "hover:text-white"
-                                        }`}
+                                      className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${
+                                        sortField === "q1" ? "text-purple-300 font-black" : "hover:text-white"
+                                      }`}
                                       title={`Ordenar pelos tempos do ${qPrefix}1 (mais rápidos primeiro)`}
                                     >
                                       <span className="inline-flex items-center gap-1 justify-end">
@@ -1710,186 +1591,82 @@ export default function GrandPrixWeekendExplorer({
                                           ) : (
                                             <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
                                           )
-                                          < th
-                                      onClick={() => handleSort("q1")}
-                                        className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q1" ? "text-purple-300 font-black" : "hover:text-white"
-                                          }`}
-                                        title={`Ordenar pelos tempos do ${qPrefix}1 (mais rápidos primeiro)`}
-                                    >
-                                        <span className="inline-flex items-center gap-1 justify-end">
-                                          <span>{qPrefix}1</span>
-                                          {sortField === "q1" ? (
-                                            sortDirection === "asc" ? (
-                                              <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                            ) : (
-                                              <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                            )}
-                                        </span>
-                                    </th>
-                                )}
-                                    {hasQ2 && (
-                                      <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
-                                        {qPrefix}2
-                                        <th
-                                          onClick={() => handleSort("q2")}
-                                          className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
-                                            }`}
-                                          title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
-                                        >
-                                          <span className="inline-flex items-center gap-1 justify-end">
-                                            <span>{qPrefix}2</span>
-                                            {sortField === "q2" ? (
-                                              sortDirection === "asc" ? (
-                                                <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                              ) : (
-                                                <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                              )
-                                            ) : (
-                                              <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                            )}
-                                          </span>
-                                        </th>
-                                )}
-                                        {hasQ3 && (
-                                            <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
-                                              {qPrefix}3
-                                              <th
-                                                onClick={() => handleSort("q3")}
-                                                className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q3" ? "text-purple-300 font-black" : "hover:text-white"
-                                                  }`}
-                                                title={`Ordenar pelos tempos do ${qPrefix}3 (mais rápidos primeiro)`}
-                                              >
-                                                <span className="inline-flex items-center gap-1 justify-end">
-                                                  <span>{qPrefix}3</span>
-                                                  {sortField === "q3" ? (
-                                                    sortDirection === "asc" ? (
-                                                      <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                                    ) : (
-                                                      <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                                    )
-                                                  ) : (
-                                                    <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                                  )}
-                                                </span>
-                                              </th>
-                                )}
-                                            </>
-                                            <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                        )
                                         ) : (
-                                        <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                          <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
                                         )}
                                       </span>
                                     </th>
-                                )}
-                                {hasQ2 && (
-                                  <th
-                                    onClick={() => handleSort("q2")}
-                                    className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
+                                  )}
+                                  {hasQ2 && (
+                                    <th
+                                      onClick={() => handleSort("q2")}
+                                      className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${
+                                        sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
                                       }`}
-                                    title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
-                                  >
-                                    <span className="inline-flex items-center gap-1 justify-end">
-                                      <span>{qPrefix}2</span>
-                                      {sortField === "q2" ? (
-                                        sortDirection === "asc" ? (
-                                          <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                        ) : (
-                                          <th className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"}`}>
-                                            <span className="sm:hidden">Tempo</span>
-                                            <span className="hidden sm:inline">Melhor Volta / Tempo</span>
-                                            <th
-                                              onClick={() => handleSort("time")}
-                                              className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right cursor-pointer hover:text-white transition-colors select-none ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"}`}
-                                              title="Ordenar por Tempo"
-                                            >
-                                              <span className="inline-flex items-center gap-1 justify-end">
-                                                <span className="sm:hidden">Tempo</span>
-                                                <span className="hidden sm:inline">Melhor Volta / Tempo</span>
-                                                {sortField === "time" ? (
-                                                  sortDirection === "asc" ? (
-                                                    <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                  ) : (
-                                                    <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                  )
-                                                ) : null}
-                                              </span>
-                                            </th>
-                            )}
+                                      title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
+                                    >
+                                      <span className="inline-flex items-center gap-1 justify-end">
+                                        <span>{qPrefix}2</span>
+                                        {sortField === "q2" ? (
+                                          sortDirection === "asc" ? (
+                                            <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          ) : (
                                             <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                            )
-                                            ) : (
-                                            <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                        )}
-                                          </span>
-                                    </th>
-                                )}
-                                {hasQ3 && (
-                                  <th
-                                    onClick={() => handleSort("q3")}
-                                    className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q3" ? "text-purple-300 font-black" : "hover:text-white"
-                                      }`}
-                                    title={`Ordenar pelos tempos do ${qPrefix}3 (mais rápidos primeiro)`}
-                                  >
-                                    <span className="inline-flex items-center gap-1 justify-end">
-                                      <span>{qPrefix}3</span>
-                                      {sortField === "q3" ? (
-                                        sortDirection === "asc" ? (
-                                          <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          )
                                         ) : (
-                                          <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                        )
-                                      ) : (
-                                        <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                      )}
-                                    </span>
-                                  </th>
-                                )}
-                              </>
-                            ) : (
-                              <th
-                                onClick={() => handleSort("time")}
-                                className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right cursor-pointer hover:text-white transition-colors select-none ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"
+                                          <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                        )}
+                                      </span>
+                                    </th>
+                                  )}
+                                  {hasQ3 && (
+                                    <th
+                                      onClick={() => handleSort("q3")}
+                                      className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${
+                                        sortField === "q3" ? "text-purple-300 font-black" : "hover:text-white"
+                                      }`}
+                                      title={`Ordenar pelos tempos do ${qPrefix}3 (mais rápidos primeiro)`}
+                                    >
+                                      <span className="inline-flex items-center gap-1 justify-end">
+                                        <span>{qPrefix}3</span>
+                                        {sortField === "q3" ? (
+                                          sortDirection === "asc" ? (
+                                            <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          ) : (
+                                            <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          )
+                                        ) : (
+                                          <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                        )}
+                                      </span>
+                                    </th>
+                                  )}
+                                </>
+                              ) : (
+                                <th
+                                  onClick={() => handleSort("time")}
+                                  className={`py-2.5 sm:py-3 px-1.5 sm:px-4 text-right cursor-pointer hover:text-white transition-colors select-none ${
+                                    isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"
                                   }`}
-                                title="Ordenar por Tempo"
-                              >
-                                <span className="inline-flex items-center gap-1 justify-end">
-                                  <span className="sm:hidden">Tempo</span>
-                                  <span className="hidden sm:inline">Melhor Volta / Tempo</span>
-                                  {sortField === "time" ? (
-                                    sortDirection === "asc" ? (
-                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    ) : (
-                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    )
-                                  ) : null}
-                                </span>
-                              </th>
-                            )}
+                                  title="Ordenar por Tempo"
+                                >
+                                  <span className="inline-flex items-center gap-1 justify-end">
+                                    <span className="sm:hidden">Tempo</span>
+                                    <span className="hidden sm:inline">Melhor Volta / Tempo</span>
+                                    {sortField === "time" ? (
+                                      sortDirection === "asc" ? (
+                                        <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                      ) : (
+                                        <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                      )
+                                    ) : null}
+                                  </span>
+                                </th>
+                              )}
 
-                            <th className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24">
-                              <span className="sm:hidden">Gap</span>
-                              <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
                               <th
                                 onClick={() => handleSort("gap")}
-                                className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
-                                title="Ordenar por Gap"
-                              >
-                                <span className="inline-flex items-center gap-1 justify-end">
-                                  <span className="sm:hidden">Gap</span>
-                                  <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
-                                  {sortField === "gap" ? (
-                                    sortDirection === "asc" ? (
-                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    ) : (
-                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    )
-                                  ) : null}
-                                </span>
-                              </th>
-                              <th
-                                onClick={() => handleSort("gap")}
-                                className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
+                                className="py-2.5 sm:py-3 px-1.5 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
                                 title="Ordenar por Gap"
                               >
                                 <span className="inline-flex items-center gap-1 justify-end">
@@ -1908,7 +1685,6 @@ export default function GrandPrixWeekendExplorer({
                               {!hasQualiSegments && <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th>}
                               <th className={`py-3.5 px-3 text-center ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>Voltas</th>
                               {isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th>}
-                              {isRaceSession && <th className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16">Pts</th>}
                               {isRaceSession && (
                                 <th
                                   onClick={() => handleSort("points")}
@@ -1927,535 +1703,484 @@ export default function GrandPrixWeekendExplorer({
                                   </span>
                                 </th>
                               )}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5 text-xs">
-                          {sessionResults.map((row, index) => {
-                            {
-                              sortedSessionResults.map((row, index) => {
-                                { !hasQualiSegments && <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th> }
-                                <th className={`py-3.5 px-3 text-center ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>Voltas</th>
-                                { isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th> }
-                                {
-                                  isRaceSession && (
-                                    <th
-                                      onClick={() => handleSort("points")}
-                                      className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16 cursor-pointer hover:text-white transition-colors select-none"
-                                      title="Ordenar por Pontos"
-                                    >
-                                      <span className="inline-flex items-center gap-1 justify-end">
-                                        <span>Pts</span>
-                                        {sortField === "points" ? (
-                                          sortDirection === "asc" ? (
-                                            <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                          ) : (
-                                            <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                          )
-                                        ) : null}
-                                      </span>
-                                    </th>
-                                  )
-                                }
                             </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5 text-xs">
-                        {sortedSessionResults.map((row, index) => {
-                          const pos = row.finishing_position ?? index + 1;
-                          const teamColor = row.team_color || "#E10600";
-                          const isFastestLap = Boolean(row.best_lap && row.best_lap === fastestLap);
-                          const rowId = row.driver_id || row.driver_full_name || index;
-                          const isExpanded = expandedDriverRow === rowId;
+                          </thead>
+                          <tbody className="divide-y divide-white/5 text-xs">
+                            {sortedSessionResults.map((row, index) => {
+                              const pos = row.finishing_position ?? index + 1;
+                              const teamColor = row.team_color || "#E10600";
+                              const isFastestLap = Boolean(row.best_lap && row.best_lap === fastestLap);
+                              const rowId = row.driver_id || row.driver_full_name || index;
+                              const isExpanded = expandedDriverRow === rowId;
 
-                          // Verificação de ordenação por segmento Q
-                          const isSegmentSorted = sortField === "q1" || sortField === "q2" || sortField === "q3";
-                          const currentSegmentTime = isSegmentSorted ? row[sortField] : null;
-                          const hasTimeInSortedSegment = Boolean(
-                            currentSegmentTime &&
-                            currentSegmentTime !== "—" &&
-                            currentSegmentTime !== "-" &&
-                            currentSegmentTime.trim() !== ""
-                          );
+                              // Verificação de ordenação por segmento Q
+                              const isSegmentSorted = sortField === "q1" || sortField === "q2" || sortField === "q3";
+                              const currentSegmentTime = isSegmentSorted ? row[sortField] : null;
+                              const hasTimeInSortedSegment = Boolean(
+                                currentSegmentTime &&
+                                currentSegmentTime !== "—" &&
+                                currentSegmentTime !== "-" &&
+                                currentSegmentTime.trim() !== ""
+                              );
 
-                          const displayPos = isSegmentSorted
-                            ? hasTimeInSortedSegment
-                              ? index + 1
-                              : "—"
-                            : pos;
+                              const displayPos = isSegmentSorted
+                                ? hasTimeInSortedSegment
+                                  ? index + 1
+                                  : "—"
+                                : pos;
 
-                          const segmentLeaderTime = isSegmentSorted ? sortedSessionResults[0]?.[sortField] : null;
-                          const displayGap = isSegmentSorted
-                            ? hasTimeInSortedSegment
-                              ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
-                              : "—"
-                            : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
+                              const segmentLeaderTime = isSegmentSorted ? sortedSessionResults[0]?.[sortField] : null;
+                              const displayGap = isSegmentSorted
+                                ? hasTimeInSortedSegment
+                                  ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
+                                  : "—"
+                                : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
 
-                          return (
-                            <React.Fragment key={`${row.session_sk}-${row.driver_id || index}`}>
-                              <tr
-                                onClick={() => setExpandedDriverRow(isExpanded ? null : rowId)}
-                                className={`group transition-colors cursor-pointer md:cursor-default ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
-                                  }`}
-                              >
-                                {/* Posição */}
-                                <td className="py-2 sm:py-3.5 pl-2 sm:pl-6 pr-1 sm:pr-3 text-center font-bold">
-                                  <span
-                                    className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${pos === 1
-                                      ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                                      : pos === 2
-                                      className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${displayPos === 1
-                                                            className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${displayPos === 1
-                                        ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                                        : displayPos === 2
-                                          ? "bg-slate-300 font-black text-black"
-                                          : pos === 3
-                                            ? "bg-amber-700 font-black text-white"
-                                            : "bg-white/5 text-gray-300"
+                              return (
+                                <React.Fragment key={`${row.session_sk}-${row.driver_id || index}`}>
+                                  <tr
+                                    onClick={() => setExpandedDriverRow(isExpanded ? null : rowId)}
+                                    className={`group transition-colors cursor-pointer md:cursor-default ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
                                       }`}
-                                          : displayPos === 3
-                                  ? "bg-amber-700 font-black text-white"
-                                  : displayPos === "—"
-                                  ? "bg-white/5 text-gray-500 font-medium"
-                                  : "bg-white/5 text-gray-300"
-                                      }`}
-                                    >
-                                  {pos}
-                                  {displayPos}
-                                </span>
-                              </td>
-                              ? "bg-slate-300 font-black text-black"
-                              : displayPos === 3
-                              ? "bg-amber-700 font-black text-white"
-                              : displayPos === "—"
-                              ? "bg-white/5 text-gray-500 font-medium"
-                              : "bg-white/5 text-gray-300"
-                                                            }`}
-                                                          >
-                              {displayPos}
-                            </span>
-                                                        </td>
-
-                      {/* Largada (Corrida) */}
-                      {isRaceSession && (
-                        <td className="py-3.5 px-3 text-center font-mono hidden md:table-cell">
-                          {row.grid_position != null ? (
-                            <span
-                              title={`Largou na posição ${row.grid_position}`}
-                              className="inline-flex items-center justify-center rounded bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-gray-300"
-                            >
-                              P{row.grid_position}
-                            </span>
-                          ) : (
-                            <span className="text-f1-subtle text-xs">—</span>
-                          )}
-                        </td>
-                      )}
-
-                      {/* Evolução / Ganho ou Perda de Posições (Corrida) */}
-                      {isRaceSession && (
-                        <td className="py-2 sm:py-3.5 px-0.5 sm:px-3 text-center">
-                          {row.delta_position != null ? (
-                            row.delta_position > 0 ? (
-                              <span
-                                title={`Largou em P${row.grid_position} e ganhou ${row.delta_position} posição(ões)`}
-                                className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-emerald-400"
-                              >
-                                <ArrowUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                +{row.delta_position}
-                              </span>
-                            ) : row.delta_position < 0 ? (
-                              <span
-                                title={`Largou em P${row.grid_position} e perdeu ${Math.abs(row.delta_position)} posição(ões)`}
-                                className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-rose-400"
-                              >
-                                <ArrowDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                {row.delta_position}
-                              </span>
-                            ) : (
-                              <span
-                                title={`Largou em P${row.grid_position} e manteve a posição`}
-                                className="inline-flex items-center gap-0.5 rounded bg-white/5 border border-white/10 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-white/40"
-                              >
-                                <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                0
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-f1-subtle text-xs">—</span>
-                          )}
-                        </td>
-                      )}
-
-                      {/* Piloto */}
-                      <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0">
-                        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-                          <DriverLink
-                            driverId={row.driver_id}
-                            driverName={row.driver_full_name}
-                            className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
-                            style={{ borderColor: teamColor }}
-                            title={`Ver perfil de ${row.driver_full_name}`}
-                          >
-                            {row.driver_headshot_url ? (
-                              <img
-                                src={row.driver_headshot_url}
-                                alt={row.driver_full_name}
-                                className="h-full w-full object-cover object-top"
-                              />
-                            ) : (
-                              <span className="font-mono text-[8px] sm:text-[9px] font-black text-white">
-                                {row.driver_full_name.slice(0, 3).toUpperCase()}
-                              </span>
-                            )}
-                          </DriverLink>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1 min-w-0">
-                              <DriverLink
-                                driverId={row.driver_id}
-                                driverName={row.driver_full_name}
-                                className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors truncate pointer-events-none md:pointer-events-auto"
-                                title={`Ver perfil de ${row.driver_full_name}`}
-                              >
-                                {row.driver_full_name}
-                              </DriverLink>
-                              {isSegmentSorted && row.finishing_position != null && (
-                                <span
-                                  className="font-mono text-[9px] text-f1-subtle/80 bg-white/5 px-1 py-0.2 rounded shrink-0 hidden sm:inline"
-                                  title={`Posição Oficial de Grid: P${row.finishing_position}`}
-                                >
-                                  P{row.finishing_position}
-                                </span>
-                              )}
-                              <ChevronDown
-                                className={`h-2.5 w-2.5 text-white/40 transition-transform duration-200 shrink-0 md:hidden ml-auto ${isExpanded ? "rotate-180 text-f1-red" : ""
-                                  }`}
-                              />
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-f1-subtle leading-tight mt-0.5 truncate">
-                              <span className="truncate">
-                                {row.team_name}
-                              </span>
-                              {isSegmentSorted && row.finishing_position != null && (
-                                <span className="sm:hidden font-mono text-[9px] text-amber-400/90 shrink-0">
-                                  • P{row.finishing_position}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Equipe */}
-                      <td className="py-3.5 px-4 hidden md:table-cell">
-                        <TeamLink
-                          teamId={row.team_id}
-                          teamName={row.team_name}
-                          className="flex items-center gap-2 group/team"
-                          title={`Ver perfil da equipe ${row.team_name}`}
-                        >
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: teamColor }}
-                          />
-                          <span className="font-medium text-gray-200 group-hover/team:text-white group-hover/team:underline decoration-white/30 transition-colors">
-                            {row.team_name}
-                          </span>
-                        </TeamLink>
-                      </td>
-
-                      {/* Número */}
-                      <td className="py-3.5 px-3 text-center font-mono font-bold text-f1-subtle hidden lg:table-cell">
-                        #{row.driver_number}
-                      </td>
-
-                      {/* Colunas de Tempo / Segmentos */}
-                      {hasQualiSegments ? (
-                        <>
-                          {/* Mobile: valor do segmento ativo */}
-                          <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap md:hidden">
-                            {(() => {
-                              const segTime =
-                                mobileQualiSegment === "q1"
-                                  ? row.q1
-                                  : mobileQualiSegment === "q2"
-                                    ? row.q2
-                                    : mobileQualiSegment === "q3"
-                                      ? row.q3
-                                      : row.best_lap;
-
-                              const isSegBest =
-                                (mobileQualiSegment === "q1" && segTime && segTime === bestQ1Time) ||
-                                (mobileQualiSegment === "q2" && segTime && segTime === bestQ2Time) ||
-                                (mobileQualiSegment === "q3" && segTime && segTime === bestQ3Time) ||
-                                (mobileQualiSegment === "final" && isFastestLap);
-
-                              if (!segTime || segTime === "—" || segTime === "-") {
-                                return <span className="text-f1-subtle/40 text-[10px] sm:text-xs font-mono">—</span>;
-                              }
-
-                              if (isSegBest) {
-                                return (
-                                  <div className="inline-flex items-center gap-0.5 justify-end">
-                                    <span
-                                      title={`Melhor tempo de ${mobileQualiSegment === "final" ? "Sessão" : mobileQualiSegment.toUpperCase()}`}
-                                      className="inline-flex items-center gap-0.5 rounded bg-purple-500/20 border border-purple-500/40 px-1 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_8px_rgba(168,85,247,0.25)]"
-                                    >
-                                      <Timer className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                      <span>{segTime}</span>
-                                    </span>
-                                  </div>
-                                );
-                              }
-
-                              return <span className="text-white/80 font-mono text-[10px] sm:text-xs">{segTime}</span>;
-                            })()}
-                          </td>
-
-                          {/* Desktop: Q1 */}
-                          {hasQ1 && (
-                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                              {row.q1 ? (
-                                row.q1 === bestQ1Time ? (
-                                  <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}1`}>
-                                    {row.q1}
-                                  </span>
-                                ) : (
-                                  <span className="text-white/80">{row.q1}</span>
-                                )
-                              ) : (
-                                <span className="text-f1-subtle/40">—</span>
-                              )}
-                            </td>
-                          )}
-
-                          {/* Desktop: Q2 */}
-                          {hasQ2 && (
-                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                              {row.q2 ? (
-                                row.q2 === bestQ2Time ? (
-                                  <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}2`}>
-                                    {row.q2}
-                                  </span>
-                                ) : (
-                                  <span className="text-white/80">{row.q2}</span>
-                                )
-                              ) : (
-                                <span className="text-f1-subtle/40">—</span>
-                              )}
-                            </td>
-                          )}
-
-                          {/* Desktop: Q3 */}
-                          {hasQ3 && (
-                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                              {row.q3 ? (
-                                row.q3 === bestQ3Time ? (
-                                  <span
-                                    title={`Melhor tempo no ${qPrefix}3 (Pole Position)`}
-                                    className="inline-flex items-center gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-purple-300 font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]"
                                   >
-                                    <Timer className="h-3 w-3 text-purple-400 shrink-0" />
-                                    <span>{row.q3}</span>
-                                  </span>
-                                ) : (
-                                  <span className="text-white/90 font-medium">{row.q3}</span>
-                                )
-                              ) : (
-                                <span className="text-f1-subtle/40">—</span>
-                              )}
-                            </td>
-                          )}
-                        </>
-                      ) : (
-                        <td className={`py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
-                          {isFastestLap ? (
-                            <div className="inline-flex items-center gap-1 justify-end">
-                              <span
-                                title="Volta Mais Rápida da Sessão (Fastest Lap)"
-                                className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1 sm:px-2 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]"
-                              >
-                                <Timer className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
-                                <span>{row.best_lap}</span>
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-white/80 font-mono text-[10px] sm:text-xs">{row.best_lap || "—"}</span>
-                          )}
-                        </td>
-                      )}
+                                    {/* Posição */}
+                                    <td className="py-2 sm:py-3.5 pl-2 sm:pl-6 pr-1 sm:pr-3 text-center font-bold">
+                                      <span
+                                        className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${
+                                          displayPos === 1
+                                            ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                                            : displayPos === 2
+                                            ? "bg-slate-300 font-black text-black"
+                                            : displayPos === 3
+                                            ? "bg-amber-700 font-black text-white"
+                                            : displayPos === "—"
+                                            ? "bg-white/5 text-gray-500 font-medium"
+                                            : "bg-white/5 text-gray-300"
+                                        }`}
+                                      >
+                                        {displayPos}
+                                      </span>
+                                    </td>
 
-                      {/* Gap Líder */}
-                      <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap text-[10px] sm:text-xs">
-                        {row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—")}
-                        {displayGap}
-                      </td>
+                                    {/* Largada (Corrida) */}
+                                    {isRaceSession && (
+                                      <td className="py-3.5 px-3 text-center font-mono hidden md:table-cell">
+                                        {row.grid_position != null ? (
+                                          <span
+                                            title={`Largou na posição ${row.grid_position}`}
+                                            className="inline-flex items-center justify-center rounded bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-gray-300"
+                                          >
+                                            P{row.grid_position}
+                                          </span>
+                                        ) : (
+                                          <span className="text-f1-subtle text-xs">—</span>
+                                        )}
+                                      </td>
+                                    )}
 
-                      {/* Intervalo */}
-                      {!hasQualiSegments && (
-                        <td className="py-3.5 px-4 text-right font-mono text-f1-subtle hidden lg:table-cell">
-                          {row.interval_to_car_ahead || "—"}
-                        </td>
-                      )}
+                                    {/* Evolução / Ganho ou Perda de Posições (Corrida) */}
+                                    {isRaceSession && (
+                                      <td className="py-2 sm:py-3.5 px-0.5 sm:px-3 text-center">
+                                        {row.delta_position != null ? (
+                                          row.delta_position > 0 ? (
+                                            <span
+                                              title={`Largou em P${row.grid_position} e ganhou ${row.delta_position} posição(ões)`}
+                                              className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-emerald-400"
+                                            >
+                                              <ArrowUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                              +{row.delta_position}
+                                            </span>
+                                          ) : row.delta_position < 0 ? (
+                                            <span
+                                              title={`Largou em P${row.grid_position} e perdeu ${Math.abs(row.delta_position)} posição(ões)`}
+                                              className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-rose-400"
+                                            >
+                                              <ArrowDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                              {row.delta_position}
+                                            </span>
+                                          ) : (
+                                            <span
+                                              title={`Largou em P${row.grid_position} e manteve a posição`}
+                                              className="inline-flex items-center gap-0.5 rounded bg-white/5 border border-white/10 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-white/40"
+                                            >
+                                              <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                              0
+                                            </span>
+                                          )
+                                        ) : (
+                                          <span className="text-f1-subtle text-xs">—</span>
+                                        )}
+                                      </td>
+                                    )}
 
-                      {/* Voltas */}
-                      <td className={`py-3.5 px-3 text-center font-mono font-semibold text-gray-200 ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-                        {row.laps_completed ?? "—"}
-                      </td>
+                                    {/* Piloto */}
+                                    <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 min-w-[130px] sm:min-w-0 w-full">
+                                      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                                        <DriverLink
+                                          driverId={row.driver_id}
+                                          driverName={row.driver_full_name}
+                                          className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
+                                          style={{ borderColor: teamColor }}
+                                          title={`Ver perfil de ${row.driver_full_name}`}
+                                        >
+                                          {row.driver_headshot_url ? (
+                                            <img
+                                              src={row.driver_headshot_url}
+                                              alt={row.driver_full_name}
+                                              className="h-full w-full object-cover object-top"
+                                            />
+                                          ) : (
+                                            <span className="font-mono text-[8px] sm:text-[9px] font-black text-white">
+                                              {row.driver_full_name.slice(0, 3).toUpperCase()}
+                                            </span>
+                                          )}
+                                        </DriverLink>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-1 min-w-0">
+                                            <DriverLink
+                                              driverId={row.driver_id}
+                                              driverName={row.driver_full_name}
+                                              className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors truncate block flex-1 min-w-0 pointer-events-none md:pointer-events-auto"
+                                              title={`Ver perfil de ${row.driver_full_name}`}
+                                            >
+                                              {row.driver_full_name}
+                                            </DriverLink>
+                                            {isSegmentSorted && row.finishing_position != null && (
+                                              <span
+                                                className="font-mono text-[9px] text-f1-subtle/80 bg-white/5 px-1 py-0.2 rounded shrink-0 hidden sm:inline"
+                                                title={`Posição Oficial de Grid: P${row.finishing_position}`}
+                                              >
+                                                P{row.finishing_position}
+                                              </span>
+                                            )}
+                                            <ChevronDown
+                                              className={`h-3 w-3 text-white/40 transition-transform duration-200 shrink-0 md:hidden ml-1 ${
+                                                isExpanded ? "rotate-180 text-f1-red" : ""
+                                              }`}
+                                            />
+                                          </div>
+                                          <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-f1-subtle leading-tight mt-0.5 truncate">
+                                            <span className="truncate">
+                                              {row.team_name}
+                                            </span>
+                                            {isSegmentSorted && row.finishing_position != null && (
+                                              <span className="sm:hidden font-mono text-[9px] text-amber-400/90 shrink-0">
+                                                • P{row.finishing_position}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
 
-                      {/* Paradas (Corrida) */}
-                      {isRaceSession && (
-                        <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-400 hidden md:table-cell">
-                          {row.stops ?? 0}
-                        </td>
-                      )}
+                                    {/* Equipe */}
+                                    <td className="py-3.5 px-4 hidden md:table-cell">
+                                      <TeamLink
+                                        teamId={row.team_id}
+                                        teamName={row.team_name}
+                                        className="flex items-center gap-2 group/team"
+                                        title={`Ver perfil da equipe ${row.team_name}`}
+                                      >
+                                        <span
+                                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                                          style={{ backgroundColor: teamColor }}
+                                        />
+                                        <span className="font-medium text-gray-200 group-hover/team:text-white group-hover/team:underline decoration-white/30 transition-colors">
+                                          {row.team_name}
+                                        </span>
+                                      </TeamLink>
+                                    </td>
 
-                      {/* Pontos (Corrida) */}
-                      {isRaceSession && (
-                        <td className="py-2 sm:py-3.5 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap text-[10px] sm:text-xs">
-                          {row.points ? (
-                            <span className="rounded bg-white/10 px-1 sm:px-2 py-0.5 text-emerald-400 font-mono font-black">
-                              +{row.points}
-                            </span>
-                          ) : (
-                            <span className="text-f1-subtle font-mono">0</span>
-                          )}
-                        </td>
-                      )}
-                    </tr>
+                                    {/* Número */}
+                                    <td className="py-3.5 px-3 text-center font-mono font-bold text-f1-subtle hidden lg:table-cell">
+                                      #{row.driver_number}
+                                    </td>
 
-                    {/* Accordion Expandível Mobile (< md): Detalhes de Telemetria e Estratégia */}
-                    {isExpanded && (
-                      <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                        <td colSpan={isRaceSession ? 5 : 4} className="p-3">
-                          <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div
-                                  className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
-                                  style={{ borderColor: teamColor }}
-                                >
-                                  {row.driver_headshot_url ? (
-                                    <img
-                                      src={row.driver_headshot_url}
-                                      alt={row.driver_full_name}
-                                      className="h-full w-full object-cover object-top"
-                                    />
-                                  ) : (
-                                    <span className="font-mono text-[9px] font-black text-white">
-                                      {row.driver_full_name.slice(0, 3).toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <span className="font-bold text-white text-xs block truncate">{row.driver_full_name}</span>
-                                  <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-1.5 text-[10px] text-f1-subtle hover:text-white truncate">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                                    <span>{row.team_name || "—"}</span>
-                                  </TeamLink>
-                                </div>
-                              </div>
-                              <span className="text-[11px] font-mono text-f1-subtle shrink-0">
-                                Carro: <strong className="text-white">#{row.driver_number || "—"}</strong>
-                              </span>
-                            </div>
+                                    {/* Colunas de Tempo / Segmentos */}
+                                    {hasQualiSegments ? (
+                                      <>
+                                        {/* Mobile: valor do segmento ativo */}
+                                        <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 text-right font-mono font-semibold whitespace-nowrap md:hidden">
+                                          {(() => {
+                                            const segTime =
+                                              mobileQualiSegment === "q1"
+                                                ? row.q1
+                                                : mobileQualiSegment === "q2"
+                                                ? row.q2
+                                                : mobileQualiSegment === "q3"
+                                                ? row.q3
+                                                : row.best_lap;
 
-                            {hasQualiSegments ? (
-                              <div className="space-y-2">
-                                <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                                  <div className={`rounded-lg p-2 border ${row.q1 && row.q1 === bestQ1Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}1</span>
-                                    <span className="text-xs font-black">{row.q1 || "—"}</span>
-                                  </div>
-                                  <div className={`rounded-lg p-2 border ${row.q2 && row.q2 === bestQ2Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}2</span>
-                                    <span className="text-xs font-black">{row.q2 || "—"}</span>
-                                  </div>
-                                  <div className={`rounded-lg p-2 border ${row.q3 && row.q3 === bestQ3Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}3</span>
-                                    <span className="text-xs font-black">{row.q3 || "—"}</span>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                    <span className="block text-[10px] text-f1-subtle uppercase">Tempo Final (Grid)</span>
-                                    <span className="text-xs font-black text-white">{row.best_lap || "—"}</span>
-                                  </div>
-                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                    <span className="block text-[10px] text-f1-subtle uppercase">Gap para a Pole</span>
-                                    <span className="text-xs font-black text-white">{row.gap_to_leader || (pos === 1 ? "Pole Position" : "—")}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                    <span className="block text-[10px] text-f1-subtle uppercase">Melhor Volta / Tempo</span>
-                                    <span className="text-xs font-black text-white">
-                                      {row.best_lap || "—"}
-                                    </span>
-                                  </div>
-                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                    <span className="block text-[10px] text-f1-subtle uppercase">Intervalo Carro Frente</span>
-                                    <span className="text-xs font-black text-white">
-                                      {row.interval_to_car_ahead || "—"}
-                                    </span>
-                                  </div>
-                                </div>
+                                            const isSegBest =
+                                              (mobileQualiSegment === "q1" && segTime && segTime === bestQ1Time) ||
+                                              (mobileQualiSegment === "q2" && segTime && segTime === bestQ2Time) ||
+                                              (mobileQualiSegment === "q3" && segTime && segTime === bestQ3Time) ||
+                                              (mobileQualiSegment === "final" && isFastestLap);
 
-                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                    <span className="block text-[10px] text-f1-subtle uppercase">Voltas Completadas</span>
-                                    <span className="text-xs font-black text-white">
+                                            if (!segTime || segTime === "—" || segTime === "-") {
+                                              return <span className="text-f1-subtle/40 text-[10px] sm:text-xs font-mono">—</span>;
+                                            }
+
+                                            if (isSegBest) {
+                                              return (
+                                                <div className="inline-flex items-center gap-0.5 justify-end">
+                                                  <span
+                                                    title={`Melhor tempo de ${mobileQualiSegment === "final" ? "Sessão" : mobileQualiSegment.toUpperCase()}`}
+                                                    className="inline-flex items-center gap-0.5 rounded bg-purple-500/20 border border-purple-500/40 px-1 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_8px_rgba(168,85,247,0.25)]"
+                                                  >
+                                                    <Timer className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                                    <span>{segTime}</span>
+                                                  </span>
+                                                </div>
+                                              );
+                                            }
+
+                                            return <span className="text-white/80 font-mono text-[10px] sm:text-xs">{segTime}</span>;
+                                          })()}
+                                        </td>
+
+                                        {/* Desktop: Q1 */}
+                                        {hasQ1 && (
+                                          <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                                            {row.q1 ? (
+                                              row.q1 === bestQ1Time ? (
+                                                <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}1`}>
+                                                  {row.q1}
+                                                </span>
+                                              ) : (
+                                                <span className="text-white/80">{row.q1}</span>
+                                              )
+                                            ) : (
+                                              <span className="text-f1-subtle/40">—</span>
+                                            )}
+                                          </td>
+                                        )}
+
+                                        {/* Desktop: Q2 */}
+                                        {hasQ2 && (
+                                          <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                                            {row.q2 ? (
+                                              row.q2 === bestQ2Time ? (
+                                                <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}2`}>
+                                                  {row.q2}
+                                                </span>
+                                              ) : (
+                                                <span className="text-white/80">{row.q2}</span>
+                                              )
+                                            ) : (
+                                              <span className="text-f1-subtle/40">—</span>
+                                            )}
+                                          </td>
+                                        )}
+
+                                        {/* Desktop: Q3 */}
+                                        {hasQ3 && (
+                                          <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                                            {row.q3 ? (
+                                              row.q3 === bestQ3Time ? (
+                                                <span
+                                                  title={`Melhor tempo no ${qPrefix}3 (Pole Position)`}
+                                                  className="inline-flex items-center gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-purple-300 font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                                                >
+                                                  <Timer className="h-3 w-3 text-purple-400 shrink-0" />
+                                                  <span>{row.q3}</span>
+                                                </span>
+                                              ) : (
+                                                <span className="text-white/90 font-medium">{row.q3}</span>
+                                              )
+                                            ) : (
+                                              <span className="text-f1-subtle/40">—</span>
+                                            )}
+                                          </td>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <td className={`py-2 sm:py-3.5 px-1.5 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
+                                        {isFastestLap ? (
+                                          <div className="inline-flex items-center gap-1 justify-end">
+                                            <span
+                                              title="Volta Mais Rápida da Sessão (Fastest Lap)"
+                                              className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1 sm:px-2 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                                            >
+                                              <Timer className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
+                                              <span>{row.best_lap}</span>
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-white/80 font-mono text-[10px] sm:text-xs">{row.best_lap || "—"}</span>
+                                        )}
+                                      </td>
+                                    )}
+
+                                    {/* Gap Líder */}
+                                    <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap text-[10px] sm:text-xs">
+                                      {displayGap}
+                                    </td>
+
+                                    {/* Intervalo */}
+                                    {!hasQualiSegments && (
+                                      <td className="py-3.5 px-4 text-right font-mono text-f1-subtle hidden lg:table-cell">
+                                        {row.interval_to_car_ahead || "—"}
+                                      </td>
+                                    )}
+
+                                    {/* Voltas */}
+                                    <td className={`py-3.5 px-3 text-center font-mono font-semibold text-gray-200 ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
                                       {row.laps_completed ?? "—"}
-                                    </span>
-                                  </div>
-                                  {isRaceSession ? (
-                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                      <span className="block text-[10px] text-f1-subtle uppercase">Grid & Pit Stops</span>
-                                      <span className="text-xs font-black text-white">
-                                        Largou P{row.grid_position ?? "—"} • {row.stops ?? 0} pits
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                      <span className="block text-[10px] text-f1-subtle uppercase">Gap para o Líder</span>
-                                      <span className="text-xs font-black text-white">
-                                        {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </>
-                            )}
+                                    </td>
 
-                            <DriverLink
-                              driverId={row.driver_id}
-                              driverName={row.driver_full_name}
-                              className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
-                            >
-                              <span>Ver Perfil de {row.driver_full_name}</span>
-                              <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
-                            </DriverLink>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                  );
-                                                })
-                                              }
-                                                })}
-                </tbody>
-                                        </table>
+                                    {/* Paradas (Corrida) */}
+                                    {isRaceSession && (
+                                      <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-400 hidden md:table-cell">
+                                        {row.stops ?? 0}
+                                      </td>
+                                    )}
+
+                                    {/* Pontos (Corrida) */}
+                                    {isRaceSession && (
+                                      <td className="py-2 sm:py-3.5 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap text-[10px] sm:text-xs">
+                                        {row.points ? (
+                                          <span className="rounded bg-white/10 px-1 sm:px-2 py-0.5 text-emerald-400 font-mono font-black">
+                                            +{row.points}
+                                          </span>
+                                        ) : (
+                                          <span className="text-f1-subtle font-mono">0</span>
+                                        )}
+                                      </td>
+                                    )}
+                                  </tr>
+
+                                  {/* Accordion Expandível Mobile (< md): Detalhes de Telemetria e Estratégia */}
+                                  {isExpanded && (
+                                    <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                                      <td colSpan={isRaceSession ? 5 : 4} className="p-3">
+                                        <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <div
+                                                className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
+                                                style={{ borderColor: teamColor }}
+                                              >
+                                                {row.driver_headshot_url ? (
+                                                  <img
+                                                    src={row.driver_headshot_url}
+                                                    alt={row.driver_full_name}
+                                                    className="h-full w-full object-cover object-top"
+                                                  />
+                                                ) : (
+                                                  <span className="font-mono text-[9px] font-black text-white">
+                                                    {row.driver_full_name.slice(0, 3).toUpperCase()}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="min-w-0">
+                                                <span className="font-bold text-white text-xs block truncate">{row.driver_full_name}</span>
+                                                <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-1.5 text-[10px] text-f1-subtle hover:text-white truncate">
+                                                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                                  <span>{row.team_name || "—"}</span>
+                                                </TeamLink>
+                                              </div>
+                                            </div>
+                                            <span className="text-[11px] font-mono text-f1-subtle shrink-0">
+                                              Carro: <strong className="text-white">#{row.driver_number || "—"}</strong>
+                                            </span>
+                                          </div>
+
+                                          {hasQualiSegments ? (
+                                            <div className="space-y-2">
+                                              <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                                <div className={`rounded-lg p-2 border ${row.q1 && row.q1 === bestQ1Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}1</span>
+                                                  <span className="text-xs font-black">{row.q1 || "—"}</span>
+                                                </div>
+                                                <div className={`rounded-lg p-2 border ${row.q2 && row.q2 === bestQ2Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}2</span>
+                                                  <span className="text-xs font-black">{row.q2 || "—"}</span>
+                                                </div>
+                                                <div className={`rounded-lg p-2 border ${row.q3 && row.q3 === bestQ3Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                                  <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}3</span>
+                                                  <span className="text-xs font-black">{row.q3 || "—"}</span>
+                                                </div>
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                  <span className="block text-[10px] text-f1-subtle uppercase">Tempo Final (Grid)</span>
+                                                  <span className="text-xs font-black text-white">{row.best_lap || "—"}</span>
+                                                </div>
+                                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                  <span className="block text-[10px] text-f1-subtle uppercase">Gap para a Pole</span>
+                                                  <span className="text-xs font-black text-white">{row.gap_to_leader || (pos === 1 ? "Pole Position" : "—")}</span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <>
+                                              <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                  <span className="block text-[10px] text-f1-subtle uppercase">Melhor Volta / Tempo</span>
+                                                  <span className="text-xs font-black text-white">
+                                                    {row.best_lap || "—"}
+                                                  </span>
+                                                </div>
+                                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                  <span className="block text-[10px] text-f1-subtle uppercase">Intervalo Carro Frente</span>
+                                                  <span className="text-xs font-black text-white">
+                                                    {row.interval_to_car_ahead || "—"}
+                                                  </span>
+                                                </div>
+                                              </div>
+
+                                              <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                                <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                  <span className="block text-[10px] text-f1-subtle uppercase">Voltas Completadas</span>
+                                                  <span className="text-xs font-black text-white">
+                                                    {row.laps_completed ?? "—"}
+                                                  </span>
+                                                </div>
+                                                {isRaceSession ? (
+                                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                    <span className="block text-[10px] text-f1-subtle uppercase">Grid & Pit Stops</span>
+                                                    <span className="text-xs font-black text-white">
+                                                      Largou P{row.grid_position ?? "—"} • {row.stops ?? 0} pits
+                                                    </span>
+                                                  </div>
+                                                ) : (
+                                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                                    <span className="block text-[10px] text-f1-subtle uppercase">Gap para o Líder</span>
+                                                    <span className="text-xs font-black text-white">
+                                                      {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
+                                                    </span>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </>
+                                          )}
+
+                                          <DriverLink
+                                            driverId={row.driver_id}
+                                            driverName={row.driver_full_name}
+                                            className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                          >
+                                            <span>Ver Perfil de {row.driver_full_name}</span>
+                                            <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                                          </DriverLink>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-    </div>
-                            </div >
-              )
-}
-                          </div >
+                  </div>
+              )}
+            </div>
           )}
-                        </>
+        </>
       )}
-                      </div >
-                      );
+    </div>
+  );
 }
