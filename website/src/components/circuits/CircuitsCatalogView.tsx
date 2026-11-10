@@ -141,7 +141,22 @@ export default function CircuitsCatalogView({ circuits }: CircuitsCatalogViewPro
   const [sortKey, setSortKey] = useState<string>("total_gps_completed");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Tipos de pista disponíveis
+  // Tipos de pista disponíveis e Temporada Atual
+  const isCurrentSeasonCircuit = (c: CircuitOverviewItem) => {
+    if (c.years_held && Array.isArray(c.years_held)) {
+      return c.years_held.includes(2026);
+    }
+    if (c.seasons_list) {
+      return c.seasons_list.includes("2026");
+    }
+    return c.last_gp_year === 2026;
+  };
+
+  const activeSeasonCount = useMemo(
+    () => circuits.filter(isCurrentSeasonCircuit).length,
+    [circuits]
+  );
+
   const permanentCount = useMemo(
     () => circuits.filter((c) => (c.track_type || "").toLowerCase() === "permanent").length,
     [circuits]
@@ -183,9 +198,12 @@ export default function CircuitsCatalogView({ circuits }: CircuitsCatalogViewPro
         (c.most_wins_driver && c.most_wins_driver.toLowerCase().includes(q)) ||
         (c.most_wins_team && c.most_wins_team.toLowerCase().includes(q));
 
-      const matchesType =
-        selectedType === "all" ||
-        (c.track_type && c.track_type.toLowerCase() === selectedType.toLowerCase());
+      let matchesType = true;
+      if (selectedType === "current_season") {
+        matchesType = isCurrentSeasonCircuit(c);
+      } else if (selectedType !== "all") {
+        matchesType = Boolean(c.track_type && c.track_type.toLowerCase() === selectedType.toLowerCase());
+      }
 
       return matchesSearch && matchesType;
     });
@@ -254,6 +272,19 @@ export default function CircuitsCatalogView({ circuits }: CircuitsCatalogViewPro
             >
               <span>Todos</span>
               <span className="ml-1 text-[11px] font-mono opacity-80">({circuits.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTypeChange("current_season")}
+              className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
+                selectedType === "current_season"
+                  ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                  : "text-emerald-400 hover:text-white hover:bg-emerald-500/10"
+              }`}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse" />
+              <span>Temporada Atual</span>
+              <span className="ml-1 text-[11px] font-mono opacity-80">({activeSeasonCount})</span>
             </button>
             <button
               type="button"
@@ -376,9 +407,17 @@ export default function CircuitsCatalogView({ circuits }: CircuitsCatalogViewPro
 
                   {/* Topo do Card: Badge de Tipo e Código da Pista */}
                   <div className="flex items-center justify-between gap-1 mb-2 pt-0.5">
-                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badge.badgeClass}`}>
-                      {badge.label}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badge.badgeClass}`}>
+                        {badge.label}
+                      </span>
+                      {isCurrentSeasonCircuit(c) && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold font-mono text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          2026
+                        </span>
+                      )}
+                    </div>
 
                     <span className="text-[10px] font-mono font-bold bg-white/5 px-1.5 py-0.5 rounded border border-white/5 text-white/70">
                       {c.circuit_id.toUpperCase()}
@@ -535,9 +574,16 @@ export default function CircuitsCatalogView({ circuits }: CircuitsCatalogViewPro
 
                       {/* Tipo */}
                       <td className="py-2.5 px-3">
-                        <span className={`inline-flex items-center rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider font-sans ${badge.badgeClass}`}>
-                          {badge.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider font-sans ${badge.badgeClass}`}>
+                            {badge.label}
+                          </span>
+                          {isCurrentSeasonCircuit(c) && (
+                            <span className="inline-flex items-center gap-0.5 rounded px-1 py-0.2 text-[9px] font-bold font-mono bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              2026
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* GPs */}

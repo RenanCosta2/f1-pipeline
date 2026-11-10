@@ -182,6 +182,7 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
   }, []);
   const [mobileSeasonSubView, setMobileSeasonSubView] = useState<"table" | "chart">("chart");
   const [circuitSearch, setCircuitSearch] = useState("");
+  const [circuitFilterSeason, setCircuitFilterSeason] = useState<"all" | "current">("all");
   const [selectedSeason, setSelectedSeason] = useState<string>("all");
 
   // Paginação das tabelas
@@ -355,16 +356,41 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
     return sortedRaceLog.slice(start, start + RACES_PER_PAGE);
   }, [sortedRaceLog, raceLogPage]);
 
+  const CURRENT_SEASON_CIRCUIT_IDS = useMemo(
+    () =>
+      new Set([
+        "albert_park", "hermanos_rodriguez", "interlagos", "monza", "bahrain",
+        "baku_city_circuit", "catalunya", "monaco", "spa_francorchamps",
+        "circuit_gilles_villeneuve", "cota", "zandvoort", "madrid", "hungaroring",
+        "las_vegas", "losail", "marina_bay", "miami", "red_bull_ring", "shanghai",
+        "silverstone", "suzuka", "yas_marina"
+      ]),
+    []
+  );
+
+  const isDriverCircuitInCurrentSeason = (c: DriverCircuitPerformanceItem) => {
+    return c.last_year === 2026 || Boolean(c.circuit_id && CURRENT_SEASON_CIRCUIT_IDS.has(c.circuit_id));
+  };
+
+  const currentSeasonCircuitsCount = useMemo(
+    () => circuits.filter(isDriverCircuitInCurrentSeason).length,
+    [circuits]
+  );
+
   const filteredCircuits = useMemo(() => {
-    if (!circuitSearch.trim()) return circuits;
+    let list = circuits;
+    if (circuitFilterSeason === "current") {
+      list = list.filter(isDriverCircuitInCurrentSeason);
+    }
+    if (!circuitSearch.trim()) return list;
     const term = circuitSearch.toLowerCase();
-    return circuits.filter(
+    return list.filter(
       (c) =>
         c.circuit_name.toLowerCase().includes(term) ||
         (c.country && c.country.toLowerCase().includes(term)) ||
         (c.location && c.location.toLowerCase().includes(term))
     );
-  }, [circuits, circuitSearch]);
+  }, [circuits, circuitSearch, circuitFilterSeason]);
 
   const sortedCircuits = useMemo(() => {
     if (!circuitSortKey) return filteredCircuits;
@@ -2073,34 +2099,74 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
           {activeTab === "circuits" && (
             <div className="space-y-4">
               {/* Barra de Filtro de Circuito */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3.5 shadow-lg">
-                <div className="relative min-w-[260px] flex-1 sm:max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
-                  <input
-                    type="text"
-                    value={circuitSearch}
-                    onChange={(e) => {
-                      setCircuitSearch(e.target.value);
-                      setCircuitsPage(1);
-                    }}
-                    placeholder="Buscar circuito, cidade ou país..."
-                    className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white placeholder-f1-subtle/60 outline-none transition-colors hover:border-white/30 focus:border-f1-red"
-                  />
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3.5 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0">
+                  <div className="relative min-w-[220px] flex-1 sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
+                    <input
+                      type="text"
+                      value={circuitSearch}
+                      onChange={(e) => {
+                        setCircuitSearch(e.target.value);
+                        setCircuitsPage(1);
+                      }}
+                      placeholder="Buscar circuito, cidade ou país..."
+                      className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white placeholder-f1-subtle/60 outline-none transition-colors hover:border-white/30 focus:border-f1-red"
+                    />
+                  </div>
+
+                  {/* Pílulas de Filtro: Todas vs Temporada Atual */}
+                  <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 overflow-x-auto no-scrollbar shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCircuitFilterSeason("all");
+                        setCircuitsPage(1);
+                      }}
+                      className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
+                        circuitFilterSeason === "all"
+                          ? "bg-f1-red text-white shadow-sm shadow-f1-red/30"
+                          : "text-f1-subtle hover:text-white"
+                      }`}
+                    >
+                      <span>Todas as Pistas</span>
+                      <span className="ml-1 text-[11px] font-mono opacity-80">({circuits.length})</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCircuitFilterSeason("current");
+                        setCircuitsPage(1);
+                      }}
+                      className={`px-3 py-1.5 min-h-[36px] sm:min-h-[32px] shrink-0 rounded-lg text-xs font-bold transition-all whitespace-nowrap active:scale-95 inline-flex items-center justify-center leading-none ${
+                        circuitFilterSeason === "current"
+                          ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                          : "text-emerald-400 hover:text-white hover:bg-emerald-500/10"
+                      }`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse" />
+                      <span>Temporada Atual</span>
+                      <span className="ml-1 text-[11px] font-mono opacity-80">({currentSeasonCircuitsCount})</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center justify-between lg:justify-end gap-2 shrink-0">
                   <span className="text-[11px] font-medium text-f1-subtle">
-                    Exibindo {sortedCircuits.length} de {circuits.length} pistas
+                    Exibindo <strong className="text-white font-mono">{sortedCircuits.length}</strong> de <strong className="text-white font-mono">{circuits.length}</strong> pistas
                   </span>
-                  {circuitSortKey && (
+                  {(circuitSortKey || circuitFilterSeason !== "all" || circuitSearch) && (
                     <button
                       type="button"
                       onClick={() => {
                         setCircuitSortKey(null);
+                        setCircuitFilterSeason("all");
+                        setCircuitSearch("");
                         setCircuitsPage(1);
                       }}
                       className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold ml-1"
                     >
-                      <RotateCcw className="h-3 w-3" /> Restaurar
+                      <RotateCcw className="h-3 w-3" /> Limpar Filtros
                     </button>
                   )}
                 </div>
@@ -2266,7 +2332,14 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                                     className="hover:text-white hover:underline decoration-white/30 transition-colors block truncate pointer-events-none md:pointer-events-auto"
                                     title={`Ver perfil do circuito ${c.circuit_name}`}
                                   >
-                                    {c.circuit_name}
+                                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                                      <span className="truncate">{c.circuit_name}</span>
+                                      {isDriverCircuitInCurrentSeason(c) && (
+                                        <span className="hidden sm:inline-flex shrink-0 items-center px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                                          2026
+                                        </span>
+                                      )}
+                                    </span>
                                   </CircuitLink>
                                   <span
                                     className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
@@ -2278,9 +2351,14 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                                     <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                                   </span>
                                 </div>
-                                <span className="md:hidden text-[10px] font-normal text-f1-subtle flex items-center gap-1 truncate">
+                                <span className="md:hidden text-[10px] font-normal text-f1-subtle flex items-center gap-1.5 truncate mt-0.5">
                                   <span>{flag}</span>
                                   <span className="truncate">{c.country}</span>
+                                  {isDriverCircuitInCurrentSeason(c) && (
+                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold text-emerald-400">
+                                      • Ativo 2026
+                                    </span>
+                                  )}
                                 </span>
                               </td>
                               <td className="py-2.5 px-3 text-f1-subtle hidden md:table-cell">
@@ -2366,6 +2444,18 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                               <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
                                 <td colSpan={12} className="p-3">
                                   <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                      <span className="font-bold text-white flex items-center gap-1.5 text-xs">
+                                        <span>{flag}</span>
+                                        <span className="truncate">{c.circuit_name}</span>
+                                      </span>
+                                      {isDriverCircuitInCurrentSeason(c) && (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                          Calendário 2026
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="grid grid-cols-3 gap-2 text-center font-mono">
                                       <div className="rounded-lg bg-white/5 p-2 border border-white/5">
                                         <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
