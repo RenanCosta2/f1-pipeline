@@ -8,6 +8,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from google.cloud import bigquery
 from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.pool import NullPool
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, INTEGER, FLOAT, TEXT
 import numpy as np
 import pandas as pd
@@ -153,12 +154,14 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = candidate
             break
 
-    project_id = os.getenv("GCP_PROJECT_ID", "f1-analytics-platform")
+    project_id = os.getenv("GCP_PROJECT_ID", "f1-analytics-platform").strip("'\"")
     postgres_url = os.getenv("POSTGRES_CONNECTION_URL")
 
     if not postgres_url:
         logger.error("POSTGRES_CONNECTION_URL is required but was not provided.")
         sys.exit(1)
+
+    postgres_url = postgres_url.strip("'\"")
 
     # A carga usa o Session Pooler (porta 5432): sessão dedicada, necessária para COPY, DDL e a troca
     # atômica de tabelas. O site lê pelo Transaction Pooler (6543) via POSTGRES_WEB_URL.
@@ -176,9 +179,14 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
     bq_client = bigquery.Client(project=project_id)
 
     logger.info("Connecting to PostgreSQL serving layer (Supabase)...")
-    engine = create_engine(postgres_url, pool_pre_ping=True)
+    engine = create_engine(
+        postgres_url,
+        poolclass=NullPool,
+        connect_args={"options": "-c statement_timeout=0"},
+    )
 
     with engine.begin() as conn:
+        conn.execute(text("SET statement_timeout = 0;"))
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS website;"))
 
     # Auto-Discovery: dynamically lists all tables/views in website dataset
@@ -242,6 +250,7 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
             # to guarantee 100% column type compatibility even if a column is all-NULL in the delta.
             if strategy == "incremental":
                 with engine.begin() as conn:
+                    conn.execute(text("SET statement_timeout = 0;"))
                     conn.execute(text(f"DROP TABLE IF EXISTS website.{tmp_table};"))
                     conn.execute(
                         text(f"CREATE TABLE website.{tmp_table} (LIKE website.{table_name});")
@@ -278,6 +287,7 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
             quoted_cols = ", ".join(f'"{c}"' for c in df.columns)
 
             with engine.begin() as conn:
+                conn.execute(text("SET statement_timeout = 0;"))
                 if strategy == "full_replace":
                     conn.execute(text(f"DROP TABLE IF EXISTS website.{table_name} CASCADE;"))
                     conn.execute(text(f"ALTER TABLE website.{tmp_table} RENAME TO {table_name};"))
