@@ -320,44 +320,42 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
   };
 
   // Handler unificado de seleção de edição de GP: sincroniza Gráfico, Mini Raio-X e Paginação da Tabela
-  const handleSelectEditionYear = (yearVal: number | string) => {
-    const handleSelectEditionYear = (yearVal: number | string, forcePeriod?: number) => {
-      const y = Number(yearVal);
-      if (!y || isNaN(y)) return;
+  const handleSelectEditionYear = (yearVal: number | string, forcePeriod?: number) => {
+    const y = Number(yearVal);
+    if (!y || isNaN(y)) return;
 
-      setSelectedEditionYear(y);
-      setChartPeriod(getPeriodIndexForYear(y));
+    setSelectedEditionYear(y);
 
-      if (forcePeriod !== undefined) {
-        setChartPeriod(forcePeriod);
-      } else {
-        setChartPeriod((currentPeriod) => {
-          const isLast = currentPeriod === totalPeriods - 1;
-          const start = isLast
-            ? Math.max(0, editionsChartData.length - PERIOD_SIZE)
-            : currentPeriod * PERIOD_SIZE;
-          const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
-          const currentSlice = editionsChartData.slice(start, end);
-          const alreadyVisible = currentSlice.some((e) => Number(e.yearNum) === y);
-          if (alreadyVisible) {
-            return currentPeriod;
-          }
-          return getPeriodIndexForYear(y);
-        });
-      }
+    if (forcePeriod !== undefined) {
+      setChartPeriod(forcePeriod);
+    } else {
+      setChartPeriod((currentPeriod) => {
+        const isLast = currentPeriod === totalPeriods - 1;
+        const start = isLast
+          ? Math.max(0, editionsChartData.length - PERIOD_SIZE)
+          : currentPeriod * PERIOD_SIZE;
+        const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
+        const currentSlice = editionsChartData.slice(start, end);
+        const alreadyVisible = currentSlice.some((e) => Number(e.yearNum) === y);
+        if (alreadyVisible) {
+          return currentPeriod;
+        }
+        return getPeriodIndexForYear(y);
+      });
+    }
 
-      // Navega automaticamente a tabela de edições para a página onde a temporada está
-      const seasonIndex = seasons.findIndex((s) => Number(s.year) === y);
-      if (seasonIndex !== -1) {
-        const targetPage = Math.floor(seasonIndex / SEASONS_PER_PAGE) + 1;
-        setSeasonsPage(targetPage);
-      }
+    // Navega automaticamente a tabela de edições para a página onde a temporada está
+    const seasonIndex = seasons.findIndex((s) => Number(s.year) === y);
+    if (seasonIndex !== -1) {
+      const targetPage = Math.floor(seasonIndex / SEASONS_PER_PAGE) + 1;
+      setSeasonsPage(targetPage);
+    }
 
-      // Se estiver no mobile na aba Raio-X exclusiva, alterna para as Edições para visualização imediata
-      if (activeTab === "overview") {
-        setActiveTab("seasons");
-      }
-    };
+    // Se estiver no mobile na aba Raio-X exclusiva, alterna para as Edições para visualização imediata
+    if (activeTab === "overview") {
+      setActiveTab("seasons");
+    }
+  };
 
     const [chartPeriod, setChartPeriod] = useState<number>(() => {
       return getPeriodIndexForYear(selectedEditionYear);
@@ -1318,7 +1316,6 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       type="button"
                       onClick={() => {
                         const newPeriod = Math.max(0, chartPeriod - 1);
-                        setChartPeriod(newPeriod);
                         const isLast = newPeriod === totalPeriods - 1;
                         const start = isLast
                           ? Math.max(0, editionsChartData.length - PERIOD_SIZE)
@@ -1326,7 +1323,6 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
                         const slice = editionsChartData.slice(start, end);
                         if (slice.length > 0) {
-                          handleSelectEditionYear(slice[slice.length - 1].yearNum);
                           const targetYear = slice.some((e) => e.yearNum === selectedEditionYear)
                             ? selectedEditionYear
                             : slice[slice.length - 1].yearNum;
@@ -1364,7 +1360,6 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                       type="button"
                       onClick={() => {
                         const newPeriod = Math.min(totalPeriods - 1, chartPeriod + 1);
-                        setChartPeriod(newPeriod);
                         const isLast = newPeriod === totalPeriods - 1;
                         const start = isLast
                           ? Math.max(0, editionsChartData.length - PERIOD_SIZE)
@@ -1372,7 +1367,6 @@ export default function CircuitProfileTabs({ overview, seasons, drivers, teams =
                         const end = isLast ? editionsChartData.length : start + PERIOD_SIZE;
                         const slice = editionsChartData.slice(start, end);
                         if (slice.length > 0) {
-                          handleSelectEditionYear(slice[slice.length - 1].yearNum);
                           const targetYear = slice.some((e) => e.yearNum === selectedEditionYear)
                             ? selectedEditionYear
                             : slice[0].yearNum;

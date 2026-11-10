@@ -256,17 +256,17 @@ export default function IdealLapCard({ data, className }: Props) {
       </div>
 
       {/* Main Table: Zero Scroll Horizontal no mobile */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs sm:text-sm">
+      <div className="overflow-x-auto sm:overflow-x-visible">
+        <table className="w-full text-left text-xs sm:text-sm table-fixed sm:table-auto">
           <thead>
             <tr className="border-b border-white/10 text-[10px] sm:text-[11px] font-bold text-f1-subtle uppercase tracking-wider">
-              <th className="pb-2.5 sm:pb-3 w-7 sm:w-10 text-center">Pos</th>
-              <th className="pb-2.5 sm:pb-3">Piloto</th>
+              <th className="pb-2.5 sm:pb-3 w-8 sm:w-10 text-center pl-1 sm:pl-0">Pos</th>
+              <th className="pb-2.5 sm:pb-3 px-1 sm:px-3">Piloto</th>
               <th className="pb-2.5 sm:pb-3 text-center hidden md:table-cell">Melhor S1</th>
               <th className="pb-2.5 sm:pb-3 text-center hidden md:table-cell">Melhor S2</th>
               <th className="pb-2.5 sm:pb-3 text-center hidden md:table-cell">Melhor S3</th>
-              <th className="pb-2.5 sm:pb-3 text-right">Volta Real</th>
-              <th className="pb-2.5 sm:pb-3 text-right whitespace-nowrap">
+              <th className="pb-2.5 sm:pb-3 text-right px-1 sm:px-3 w-20 sm:w-28">Volta Real</th>
+              <th className="pb-2.5 sm:pb-3 text-right pr-2 sm:pr-0 whitespace-nowrap w-16 sm:w-28">
                 <span className="sm:hidden">Delta</span>
                 <span className="hidden sm:inline">Delta Teórico (Eficiência)</span>
               </th>
@@ -284,14 +284,12 @@ export default function IdealLapCard({ data, className }: Props) {
                 <React.Fragment key={item.driver_full_name}>
                   <tr
                     onClick={() => setExpandedDriver(isExpanded ? null : item.driver_full_name)}
-                    className={`group transition-colors cursor-pointer md:cursor-default ${
-                      isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
-                    }`}
+                    className={`group transition-colors cursor-pointer md:cursor-default ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                      }`}
                   >
                     <td className="py-2.5 sm:py-3.5 text-center font-bold font-sans">
-                      <span className={`inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full text-[10px] sm:text-xs font-black ${
-                        idx === 0 ? "bg-amber-400 text-black font-bold" : "text-f1-subtle"
-                      }`}>
+                      <span className={`inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full text-[10px] sm:text-xs font-black ${idx === 0 ? "bg-amber-400 text-black font-bold" : "text-f1-subtle"
+                        }`}>
                         {idx + 1}
                       </span>
                     </td>
@@ -330,11 +328,10 @@ export default function IdealLapCard({ data, className }: Props) {
                               {item.driver_full_name}
                             </DriverLink>
                             <span
-                              className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${
-                                isExpanded
+                              className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
                                   ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
                                   : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                              }`}
+                                }`}
                               aria-hidden="true"
                             >
                               <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
@@ -354,27 +351,24 @@ export default function IdealLapCard({ data, className }: Props) {
 
                     {/* S1 */}
                     <td className="py-2.5 sm:py-3.5 text-center hidden md:table-cell">
-                      <span className={`px-2 py-0.5 rounded font-semibold ${
-                        isBestS1 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded font-semibold ${isBestS1 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
+                        }`}>
                         {item.sector_1 || "—"}
                       </span>
                     </td>
 
                     {/* S2 */}
                     <td className="py-2.5 sm:py-3.5 text-center hidden md:table-cell">
-                      <span className={`px-2 py-0.5 rounded font-semibold ${
-                        isBestS2 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded font-semibold ${isBestS2 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
+                        }`}>
                         {item.sector_2 || "—"}
                       </span>
                     </td>
 
                     {/* S3 */}
                     <td className="py-2.5 sm:py-3.5 text-center hidden md:table-cell">
-                      <span className={`px-2 py-0.5 rounded font-semibold ${
-                        isBestS3 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded font-semibold ${isBestS3 ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40" : "text-slate-300"
+                        }`}>
                         {item.sector_3 || "—"}
                       </span>
                     </td>
@@ -386,11 +380,10 @@ export default function IdealLapCard({ data, className }: Props) {
 
                     {/* Delta & Efficiency */}
                     <td className="py-2.5 sm:py-3.5 text-right font-sans whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 font-mono text-[10px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md ${
-                        isPerfect
+                      <span className={`inline-flex items-center gap-1 font-mono text-[10px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md ${isPerfect
                           ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
                           : "bg-amber-500/10 text-amber-400 border border-amber-500/25"
-                      }`}>
+                        }`}>
                         {isPerfect ? "0.000s" : `+${item.delta_ideal_lap}`}
                       </span>
                     </td>
@@ -398,8 +391,21 @@ export default function IdealLapCard({ data, className }: Props) {
 
                   {isExpanded && (
                     <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn font-sans">
-                      <td colSpan={7} className="p-3">
+                      <td colSpan={4} className="p-3">
                         <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className="w-2.5 h-2.5 rounded-full shrink-0"
+                                style={{ backgroundColor: item.team_color || "#374151" }}
+                              />
+                              <span className="font-bold text-white text-xs truncate">{item.driver_full_name}</span>
+                            </div>
+                            <span className="text-[11px] font-mono text-f1-subtle">
+                              Equipe: <strong className="text-white">{item.team_name || "—"}</strong>
+                            </span>
+                          </div>
+
                           <div className="grid grid-cols-3 gap-2 text-center font-mono">
                             <div className={`rounded-lg p-2 border ${isBestS1 ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
                               <span className="block text-[9px] text-f1-subtle uppercase font-sans">Melhor S1</span>
@@ -419,7 +425,7 @@ export default function IdealLapCard({ data, className }: Props) {
                             driverName={item.driver_full_name}
                             className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
                           >
-                            <span>Ver Perfil Completo do Piloto</span>
+                            <span>Ver Perfil de {item.driver_full_name}</span>
                             <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
                           </DriverLink>
                         </div>

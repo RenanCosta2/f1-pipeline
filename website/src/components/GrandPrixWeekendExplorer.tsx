@@ -172,6 +172,37 @@ export default function GrandPrixWeekendExplorer({
     return sessionResults.find((r) => Number(r.finishing_position) === 2) || null;
   }, [sessionResults]);
 
+  // Margem da Pole / Disputa P1 vs P2 na Qualificação e Treinos
+  const poleMargin = useMemo(() => {
+    if (!p2Driver) return null;
+    if (p2Driver.gap_to_leader && p2Driver.gap_to_leader !== "—" && p2Driver.gap_to_leader !== "-") {
+      return p2Driver.gap_to_leader.startsWith("+") ? p2Driver.gap_to_leader : `+${p2Driver.gap_to_leader}`;
+    }
+    const parseSec = (t?: string | null) => {
+      if (!t) return null;
+      const parts = t.split(":");
+      if (parts.length === 2) {
+        return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+      }
+      return parseFloat(t);
+    };
+    const t1 = parseSec(winner?.best_lap);
+    const t2 = parseSec(p2Driver?.best_lap);
+    if (t1 != null && t2 != null && !isNaN(t1) && !isNaN(t2) && t2 >= t1) {
+      const diff = t2 - t1;
+      return `+${diff.toFixed(3)}s`;
+    }
+    return null;
+  }, [p2Driver, winner]);
+
+  const isFrontRowLockout = Boolean(
+    winner &&
+    p2Driver &&
+    winner.team_name &&
+    p2Driver.team_name &&
+    winner.team_name.trim().toLowerCase() === p2Driver.team_name.trim().toLowerCase()
+  );
+
   // Volta mais rápida da sessão (Fastest Lap / Purple Lap)
   const fastestLap = useMemo(() => {
     const valid = sessionResults.filter(
@@ -286,19 +317,6 @@ export default function GrandPrixWeekendExplorer({
       theoreticalLap
     };
   }, [idealLaps]);
-
-  // Piloto(s) com maior eficiência teórica (menor delta ideal)
-  const mostEfficientDrivers = useMemo(() => {
-    if (!idealLaps || idealLaps.length === 0) return [];
-    const sorted = [...idealLaps].sort((a, b) =>
-      (a.delta_ideal_lap || "9:99:999").localeCompare(b.delta_ideal_lap || "9:99:999")
-    );
-    const minDelta = sorted[0]?.delta_ideal_lap;
-    if (!minDelta) return sorted[0] ? [sorted[0]] : [];
-    return sorted.filter((d) => d.delta_ideal_lap === minDelta);
-  }, [idealLaps]);
-  const mostEfficientDriver = mostEfficientDrivers[0] || null;
-  const effCarousel = useTieCarousel(mostEfficientDrivers.length);
 
   const totalLaps = useMemo(() => {
     return winner?.laps_completed
@@ -891,102 +909,59 @@ export default function GrandPrixWeekendExplorer({
                   )}
                 />
               </div>
-            ) : isQualiSession && mostEfficientDriver ? (
-              <div
-                className={`relative rounded-xl border border-emerald-500/30 bg-[#101716] py-2.5 sm:py-4 flex flex-col justify-between overflow-hidden ${effCarousel.isTied ? "px-4.5 sm:px-5" : "px-2.5 sm:px-4"
-                  }`}
-                onMouseEnter={effCarousel.pause}
-                onMouseLeave={effCarousel.resume}
-              >
-                <TieCarouselEdgeArrows carousel={effCarousel} accent="emerald" size="xs" />
-                <div className="flex items-center justify-between gap-1.5">
-                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1 sm:gap-1.5 truncate">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                    <span className="sm:hidden">Eficiência</span>
-                    <span className="hidden sm:inline">Maior Eficiência</span>
-                  </span>
-                  <TieCarouselDots carousel={effCarousel} accent="emerald" />
-                </div>
-
-                <TieCarouselTrack
-                  carousel={effCarousel}
-                  items={mostEfficientDrivers}
-                  renderItem={(eff) => (
-                    <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
-                      <div className="min-w-0 pr-1 sm:pr-2">
-                        <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
-                          {eff.delta_ideal_lap === "0:00:000" || eff.delta_ideal_lap === "0:00.000"
-                            ? "100% Perfeita"
-                            : `+${eff.delta_ideal_lap}`}
-                        </div>
-                        <DriverLink driverName={eff.driver_full_name} className="block">
-                          <p className="text-[11px] sm:text-xs text-white hover:text-emerald-300 transition-colors truncate font-bold mt-0.5">
-                            {eff.driver_full_name}
-                          </p>
-                        </DriverLink>
-                        <span
-                          className="text-[9px] sm:text-[10px] font-mono block truncate"
-                          style={{ color: eff.team_color || undefined }}
-                        >
-                          {eff.team_name}
-                        </span>
-                      </div>
-
-                      <DriverLink
-                        driverName={eff.driver_full_name}
-                        className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                        style={{ borderColor: eff.team_color || "#10B981" }}
-                        title={`Ver perfil de ${eff.driver_full_name}`}
-                      >
-                        {eff.driver_headshot_url ? (
-                          <img
-                            src={eff.driver_headshot_url}
-                            alt={eff.driver_full_name}
-                            className="h-full w-full object-cover object-top"
-                          />
-                        ) : (
-                          <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">EFF</span>
-                        )}
-                      </DriverLink>
-                    </div>
-                  )}
-                />
-              </div>
-            ) : isPracticeSession && p2Driver ? (
-              <div className="rounded-xl border border-sky-500/30 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
+            ) : p2Driver ? (
+              <div className="rounded-xl border border-sky-500/30 bg-[#0E1520] p-2.5 sm:p-4 flex items-center justify-between">
                 <div className="min-w-0 pr-1 sm:pr-2">
-                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1 sm:gap-1.5 truncate">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
-                    Margem P2
-                  </span>
-                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight flex items-baseline gap-1 truncate">
-                    <span className="text-sky-400">{p2Driver.gap_to_leader || "—"}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1 sm:gap-1.5 truncate">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
+                      {isQualiSession ? "Margem da Pole" : "Margem P2"}
+                    </span>
+                    {isQualiSession && isFrontRowLockout && (
+                      <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded shrink-0">
+                        Lockout
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight flex items-baseline gap-1.5 truncate">
+                    <span className="text-sky-400 font-mono">{poleMargin || p2Driver.gap_to_leader || "—"}</span>
+                    <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
+                      {isQualiSession ? "(P2 • 1ª Fila)" : "(vs P1)"}
+                    </span>
                   </div>
                   <DriverLink driverId={p2Driver.driver_id} driverName={p2Driver.driver_full_name} className="block">
-                    <p className="text-[10px] sm:text-[11px] text-white/90 hover:text-sky-300 transition-colors truncate font-bold sm:font-semibold mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-white hover:text-sky-300 transition-colors truncate mt-0.5 font-bold">
                       <span className="sm:hidden">{p2Driver.driver_full_name.split(" ").slice(-1)[0]}</span>
                       <span className="hidden sm:inline">{p2Driver.driver_full_name}</span>
                     </p>
                   </DriverLink>
+                  <p className="text-[9px] sm:text-[10px] text-f1-subtle font-mono truncate" style={{ color: p2Driver.team_color || undefined }}>
+                    {p2Driver.team_name}
+                  </p>
                 </div>
 
-                <DriverLink
-                  driverId={p2Driver.driver_id}
-                  driverName={p2Driver.driver_full_name}
-                  className="relative flex h-8 w-8 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                  style={{ borderColor: p2Driver.team_color || "#0EA5E9" }}
-                  title={`Ver perfil de ${p2Driver.driver_full_name}`}
-                >
-                  {p2Driver.driver_headshot_url ? (
-                    <img
-                      src={p2Driver.driver_headshot_url}
-                      alt={p2Driver.driver_full_name}
-                      className="h-full w-full object-cover object-top"
-                    />
-                  ) : (
-                    <span className="font-mono text-[9px] sm:text-xs font-bold text-sky-400">P2</span>
-                  )}
-                </DriverLink>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold text-sky-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
+                    {isQualiSession ? "1ª FILA" : "P2 GAP"}
+                  </span>
+                  <DriverLink
+                    driverId={p2Driver.driver_id}
+                    driverName={p2Driver.driver_full_name}
+                    className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                    style={{ borderColor: p2Driver.team_color || "#0EA5E9" }}
+                    title={`Ver perfil de ${p2Driver.driver_full_name}`}
+                  >
+                    {p2Driver.driver_headshot_url ? (
+                      <img
+                        src={p2Driver.driver_headshot_url}
+                        alt={p2Driver.driver_full_name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    ) : (
+                      <span className="font-mono text-[9px] sm:text-xs font-bold text-sky-400">P2</span>
+                    )}
+                  </DriverLink>
+                </div>
               </div>
             ) : isPracticeSession ? (
               <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
@@ -1155,31 +1130,31 @@ export default function GrandPrixWeekendExplorer({
               {/* Tabelas de Ritmo e de Estratégia com Altura Igual e Scrollável */}
               <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch ${mobileChartTab === "laps" ? "hidden lg:grid" : "grid"}`}>
                 <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "pace" ? "block" : "hidden lg:block"}`}>
-                    {
-                      hasRacePace?(
-                        <RacePaceChart data = { racePace } sessionResults = { sessionResults } className = "h-full" />
-                      ): (
-                        < div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl" >
-                          <Gauge className="h-8 w-8 text-f1-subtle/40 mb-2" />
-                          <h4 className="text-sm font-bold text-white">Ritmo de corrida indisponível</h4>
-                          <p className="text-xs text-f1-subtle mt-1 max-w-xs">
-                            {year < 1996
-                              ? "Cálculo de ritmo em ar limpo não disponível para temporadas históricas."
-                              : "Dados de voltas limpas insuficientes para calcular o ritmo médio nesta sessão."}
-                          </p>
-                        </div>
-                      )}
-              </div>
+                  {
+                    hasRacePace ? (
+                      <RacePaceChart data={racePace} sessionResults={sessionResults} className="h-full" />
+                    ) : (
+                      < div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl" >
+                        <Gauge className="h-8 w-8 text-f1-subtle/40 mb-2" />
+                        <h4 className="text-sm font-bold text-white">Ritmo de corrida indisponível</h4>
+                        <p className="text-xs text-f1-subtle mt-1 max-w-xs">
+                          {year < 1996
+                            ? "Cálculo de ritmo em ar limpo não disponível para temporadas históricas."
+                            : "Dados de voltas limpas insuficientes para calcular o ritmo médio nesta sessão."}
+                        </p>
+                      </div>
+                    )}
+                </div>
 
-              <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "tyres" ? "block" : "hidden lg:block"}`}>
-                {hasTyres ? (
-                  <TyreStrategyChart
-                    data={tyreStrategies}
-                    totalLaps={totalLaps}
-                    sessionResults={sessionResults}
-                    className="h-full"
-                  />
-                ) : (
+                <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "tyres" ? "block" : "hidden lg:block"}`}>
+                  {hasTyres ? (
+                    <TyreStrategyChart
+                      data={tyreStrategies}
+                      totalLaps={totalLaps}
+                      sessionResults={sessionResults}
+                      className="h-full"
+                    />
+                  ) : (
                     <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl">
                       <Disc className="h-8 w-8 text-f1-subtle/40 mb-2" />
                       <h4 className="text-sm font-bold text-white">Estratégia de pneus indisponível</h4>
@@ -1189,9 +1164,9 @@ export default function GrandPrixWeekendExplorer({
                           : "Dados de estratégia de pneus indisponíveis para esta sessão."}
                       </p>
                     </div>
-                      )}
-                  </div>
-                  </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -1240,28 +1215,28 @@ export default function GrandPrixWeekendExplorer({
                     </span>
                   </div>
                   <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto sm:overflow-x-visible">
+                      <table className="w-full text-left border-collapse table-fixed md:table-auto">
                         <thead>
                           <tr className="border-b border-white/10 bg-white/[0.02] text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-f1-subtle">
-                            <th className="py-3 pl-3 sm:pl-6 pr-1.5 sm:pr-3 w-10 sm:w-16 text-center">Pos</th>
+                            <th className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center">Pos</th>
                             {isRaceSession && <th className="py-3.5 px-3 w-20 text-center hidden md:table-cell">Largada</th>}
-                            {isRaceSession && <th className="py-3 px-1.5 sm:px-3 w-10 sm:w-20 text-center">+/-</th>}
-                            <th className="py-3 px-2 sm:px-4">Piloto</th>
+                            {isRaceSession && <th className="py-2.5 sm:py-3 px-0.5 sm:px-3 w-8 sm:w-20 text-center">+/-</th>}
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-4">Piloto</th>
                             <th className="py-3.5 px-4 hidden md:table-cell">Equipe</th>
                             <th className="py-3.5 px-3 text-center hidden lg:table-cell">Nº</th>
-                            <th className={`py-3 px-2 sm:px-4 text-right ${isRaceSession ? "hidden md:table-cell" : ""}`}>
+                            <th className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"}`}>
                               <span className="sm:hidden">Tempo</span>
                               <span className="hidden sm:inline">Melhor Volta / Tempo</span>
                             </th>
-                            <th className="py-3 px-2 sm:px-4 text-right">
+                            <th className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24">
                               <span className="sm:hidden">Gap</span>
                               <span className="hidden sm:inline">Gap Líder</span>
                             </th>
                             <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th>
                             <th className="py-3.5 px-3 text-center hidden md:table-cell">Voltas</th>
                             {isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th>}
-                            {isRaceSession && <th className="py-3 pr-3 sm:pr-6 pl-2 sm:pl-3 text-right">Pts</th>}
+                            {isRaceSession && <th className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16">Pts</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-xs">
@@ -1280,9 +1255,9 @@ export default function GrandPrixWeekendExplorer({
                                     }`}
                                 >
                                   {/* Posição */}
-                                  <td className="py-2.5 sm:py-3.5 pl-3 sm:pl-6 pr-1.5 sm:pr-3 text-center font-bold">
+                                  <td className="py-2 sm:py-3.5 pl-2 sm:pl-6 pr-1 sm:pr-3 text-center font-bold">
                                     <span
-                                      className={`inline-flex h-6 w-6 items-center justify-center rounded-md font-mono text-xs ${pos === 1
+                                      className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${pos === 1
                                         ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
                                         : pos === 2
                                           ? "bg-slate-300 font-black text-black"
@@ -1313,30 +1288,30 @@ export default function GrandPrixWeekendExplorer({
 
                                   {/* Evolução / Ganho ou Perda de Posições (Corrida) */}
                                   {isRaceSession && (
-                                    <td className="py-2.5 sm:py-3.5 px-1 sm:px-3 text-center">
+                                    <td className="py-2 sm:py-3.5 px-0.5 sm:px-3 text-center">
                                       {row.delta_position != null ? (
                                         row.delta_position > 0 ? (
                                           <span
                                             title={`Largou em P${row.grid_position} e ganhou ${row.delta_position} posição(ões)`}
-                                            className="inline-flex items-center gap-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/25 px-1 sm:px-1.5 py-0.5 font-mono text-[11px] sm:text-xs font-bold text-emerald-400 shadow-sm"
+                                            className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-emerald-400"
                                           >
-                                            <ArrowUp className="h-3 w-3 stroke-[2.5]" />
+                                            <ArrowUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
                                             +{row.delta_position}
                                           </span>
                                         ) : row.delta_position < 0 ? (
                                           <span
                                             title={`Largou em P${row.grid_position} e perdeu ${Math.abs(row.delta_position)} posição(ões)`}
-                                            className="inline-flex items-center gap-0.5 rounded-md bg-rose-500/10 border border-rose-500/25 px-1 sm:px-1.5 py-0.5 font-mono text-[11px] sm:text-xs font-bold text-rose-400 shadow-sm"
+                                            className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-rose-400"
                                           >
-                                            <ArrowDown className="h-3 w-3 stroke-[2.5]" />
+                                            <ArrowDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
                                             {row.delta_position}
                                           </span>
                                         ) : (
                                           <span
                                             title={`Largou em P${row.grid_position} e manteve a posição`}
-                                            className="inline-flex items-center gap-0.5 rounded-md bg-white/5 border border-white/10 px-1 sm:px-1.5 py-0.5 font-mono text-[11px] sm:text-xs font-bold text-white/40"
+                                            className="inline-flex items-center gap-0.5 rounded bg-white/5 border border-white/10 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-white/40"
                                           >
-                                            <Minus className="h-3 w-3 stroke-[2.5]" />
+                                            <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
                                             0
                                           </span>
                                         )
@@ -1347,12 +1322,12 @@ export default function GrandPrixWeekendExplorer({
                                   )}
 
                                   {/* Piloto */}
-                                  <td className="py-2.5 sm:py-3.5 px-2 sm:px-4 max-w-[160px] sm:max-w-none">
-                                    <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                                  <td className="py-2 sm:py-3.5 px-1.5 sm:px-4">
+                                    <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
                                       <DriverLink
                                         driverId={row.driver_id}
                                         driverName={row.driver_full_name}
-                                        className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
+                                        className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
                                         style={{ borderColor: teamColor }}
                                         title={`Ver perfil de ${row.driver_full_name}`}
                                       >
@@ -1363,32 +1338,32 @@ export default function GrandPrixWeekendExplorer({
                                             className="h-full w-full object-cover object-top"
                                           />
                                         ) : (
-                                          <span className="font-mono text-[9px] font-black text-white">
+                                          <span className="font-mono text-[8px] sm:text-[9px] font-black text-white">
                                             {row.driver_full_name.slice(0, 3).toUpperCase()}
                                           </span>
                                         )}
                                       </DriverLink>
                                       <div className="min-w-0 flex-1">
-                                        <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                        <div className="flex items-center justify-between gap-1 min-w-0">
                                           <DriverLink
                                             driverId={row.driver_id}
                                             driverName={row.driver_full_name}
-                                            className="font-bold text-white hover:text-f1-red transition-colors block truncate pointer-events-none md:pointer-events-auto"
+                                            className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors block truncate pointer-events-none md:pointer-events-auto"
                                             title={`Ver perfil de ${row.driver_full_name}`}
                                           >
                                             {row.driver_full_name}
                                           </DriverLink>
                                           <span
-                                            className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
+                                            className={`md:hidden inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded border shrink-0 transition-all ${isExpanded
                                               ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
                                               : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
                                               }`}
                                             aria-hidden="true"
                                           >
-                                            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                            <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                                           </span>
                                         </div>
-                                        <span className="block md:hidden text-[10px] text-f1-subtle truncate">
+                                        <span className="block md:hidden text-[9px] sm:text-[10px] text-f1-subtle truncate leading-tight mt-0.5">
                                           {row.team_name}
                                         </span>
                                       </div>
@@ -1419,25 +1394,25 @@ export default function GrandPrixWeekendExplorer({
                                   </td>
 
                                   {/* Melhor Volta / Tempo */}
-                                  <td className={`py-2.5 sm:py-3.5 px-2 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
+                                  <td className={`py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
                                     {isFastestLap ? (
                                       <div className="inline-flex items-center gap-1 justify-end">
                                         <span
                                           title="Volta Mais Rápida da Sessão (Fastest Lap)"
-                                          className="inline-flex items-center gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1.5 sm:px-2 py-0.5 text-purple-300 font-bold shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                                          className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1 sm:px-2 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]"
                                         >
-                                          <Timer className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
+                                          <Timer className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
                                           <span>{row.best_lap}</span>
                                         </span>
                                       </div>
                                     ) : (
-                                      <span className="text-white/80">{row.best_lap || "—"}</span>
+                                      <span className="text-white/80 font-mono text-[10px] sm:text-xs">{row.best_lap || "—"}</span>
                                     )}
                                   </td>
 
                                   {/* Gap Líder */}
-                                  <td className="py-2.5 sm:py-3.5 px-2 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap">
-                                    {row.gap_to_leader || "—"}
+                                  <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap text-[10px] sm:text-xs">
+                                    {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
                                   </td>
 
                                   {/* Intervalo */}
@@ -1459,13 +1434,13 @@ export default function GrandPrixWeekendExplorer({
 
                                   {/* Pontos (Corrida) */}
                                   {isRaceSession && (
-                                    <td className="py-2.5 sm:py-3.5 pr-3 sm:pr-6 pl-2 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap">
+                                    <td className="py-2 sm:py-3.5 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap text-[10px] sm:text-xs">
                                       {row.points ? (
-                                        <span className="rounded bg-white/10 px-1.5 sm:px-2 py-0.5 text-emerald-400">
+                                        <span className="rounded bg-white/10 px-1 sm:px-2 py-0.5 text-emerald-400 font-mono font-black">
                                           +{row.points}
                                         </span>
                                       ) : (
-                                        <span className="text-f1-subtle">0</span>
+                                        <span className="text-f1-subtle font-mono">0</span>
                                       )}
                                     </td>
                                   )}
@@ -1474,14 +1449,35 @@ export default function GrandPrixWeekendExplorer({
                                 {/* Accordion Expandível Mobile (< md): Detalhes de Telemetria e Estratégia */}
                                 {isExpanded && (
                                   <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                                    <td colSpan={12} className="p-3">
+                                    <td colSpan={isRaceSession ? 5 : 4} className="p-3">
                                       <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                                          <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-2">
-                                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                                            <span className="font-bold text-white text-xs">{row.team_name || "—"}</span>
-                                          </TeamLink>
-                                          <span className="text-[11px] font-mono text-f1-subtle">
+                                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                                          <div className="flex items-center gap-2 min-w-0">
+                                            <div
+                                              className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
+                                              style={{ borderColor: teamColor }}
+                                            >
+                                              {row.driver_headshot_url ? (
+                                                <img
+                                                  src={row.driver_headshot_url}
+                                                  alt={row.driver_full_name}
+                                                  className="h-full w-full object-cover object-top"
+                                                />
+                                              ) : (
+                                                <span className="font-mono text-[9px] font-black text-white">
+                                                  {row.driver_full_name.slice(0, 3).toUpperCase()}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="min-w-0">
+                                              <span className="font-bold text-white text-xs block truncate">{row.driver_full_name}</span>
+                                              <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-1.5 text-[10px] text-f1-subtle hover:text-white truncate">
+                                                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                                <span>{row.team_name || "—"}</span>
+                                              </TeamLink>
+                                            </div>
+                                          </div>
+                                          <span className="text-[11px] font-mono text-f1-subtle shrink-0">
                                             Carro: <strong className="text-white">#{row.driver_number || "—"}</strong>
                                           </span>
                                         </div>
@@ -1519,7 +1515,7 @@ export default function GrandPrixWeekendExplorer({
                                             <div className="rounded-lg bg-white/5 p-2 border border-white/5">
                                               <span className="block text-[10px] text-f1-subtle uppercase">Gap para o Líder</span>
                                               <span className="text-xs font-black text-white">
-                                                {row.gap_to_leader || "—"}
+                                                {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
                                               </span>
                                             </div>
                                           )}
@@ -1530,7 +1526,7 @@ export default function GrandPrixWeekendExplorer({
                                           driverName={row.driver_full_name}
                                           className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
                                         >
-                                          <span>Ver Perfil Completo do Piloto</span>
+                                          <span>Ver Perfil de {row.driver_full_name}</span>
                                           <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
                                         </DriverLink>
                                       </div>

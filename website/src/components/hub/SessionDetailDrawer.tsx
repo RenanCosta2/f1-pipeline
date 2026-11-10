@@ -457,7 +457,7 @@ export default function SessionDetailDrawer({
         )}
 
         {/* Classification Table */}
-        <div className="flex-1 overflow-y-auto overflow-x-auto p-3.5 sm:p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden sm:overflow-x-auto p-3.5 sm:p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3 text-f1-subtle">
               <Loader2 className="h-7 w-7 animate-spin text-f1-red" />
