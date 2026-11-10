@@ -534,1481 +534,2200 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
   };
 
   // Handler unificado de seleção de temporada: sincroniza Gráfico, Mini Raio-X e Paginação da Tabela
-  const handleSelectSeasonYear = (yearVal: number | string) => {
-    const y = Number(yearVal);
-    if (!y || isNaN(y)) return;
+    const handleSelectSeasonYear = (yearVal: number | string, forcePeriod?: number) => {
+      const y = Number(yearVal);
+      if (!y || isNaN(y)) return;
 
-    setSelectedSeasonYear(y);
-    setChartPeriod(getPeriodIndexForYear(y));
+      setSelectedSeasonYear(y);
+      setChartPeriod(getPeriodIndexForYear(y));
 
-    // Navega automaticamente a tabela de temporadas para a página onde a temporada está
-    const seasonIndex = sortedSeasons.findIndex((s) => Number(s.year) === y);
-    if (seasonIndex !== -1) {
-      const targetPage = Math.floor(seasonIndex / SEASONS_PER_PAGE) + 1;
-      setSeasonsPage(targetPage);
-    }
-  };
+      if (forcePeriod !== undefined) {
+        setChartPeriod(forcePeriod);
+      } else {
+        setChartPeriod((currentPeriod) => {
+          const isLast = currentPeriod === totalPeriods - 1;
+          const start = isLast
+            ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+            : currentPeriod * PERIOD_SIZE;
+          const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+          const currentSlice = seasonPositionData.slice(start, end);
+          const alreadyVisible = currentSlice.some((s) => Number(s.yearNum) === y);
+          if (alreadyVisible) {
+            return currentPeriod;
+          }
+          return getPeriodIndexForYear(y);
+        });
+      }
 
-  const [chartPeriod, setChartPeriod] = useState<number>(() => {
-    return getPeriodIndexForYear(selectedSeasonYear);
-  });
-
-  useEffect(() => {
-    setChartPeriod(getPeriodIndexForYear(selectedSeasonYear, PERIOD_SIZE));
-  }, [PERIOD_SIZE]);
-
-  const visibleSeasonData = useMemo(() => {
-    if (seasonPositionData.length <= PERIOD_SIZE) {
-      return seasonPositionData;
-    }
-    const isLast = chartPeriod === totalPeriods - 1;
-    const start = isLast
-      ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
-      : chartPeriod * PERIOD_SIZE;
-    const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
-    return seasonPositionData.slice(start, end);
-  }, [seasonPositionData, chartPeriod, totalPeriods, PERIOD_SIZE]);
-
-  // ---------------------------------------------------------------------------
-  // CÁLCULOS DO RAIO-X DE CARREIRA
-  // ---------------------------------------------------------------------------
-  const careerStats = useMemo(() => {
-    const raceWins = profile.race_wins ?? profile.total_wins;
-    const sprintWins = profile.sprint_wins ?? 0;
-    const racePodiums = profile.race_podiums ?? (profile.total_podiums - (profile.sprint_podiums ?? 0));
-    const sprintPodiums = profile.sprint_podiums ?? 0;
-
-    const winRate = profile.total_gps > 0 ? ((raceWins / profile.total_gps) * 100).toFixed(1) : "0.0";
-    const podiumRate = profile.total_gps > 0 ? ((profile.total_podiums / profile.total_gps) * 100).toFixed(1) : "0.0";
-    const avgPoints = profile.total_gps > 0 ? (profile.total_points / profile.total_gps).toFixed(1) : "0.0";
-
-    const poles = profile.race_poles || 0;
-    const polesToWin = profile.total_poles_to_win || 0;
-    const poleToWinRate =
-      poles > 0
-        ? ((polesToWin / poles) * 100).toFixed(1)
-        : null;
-
-    const q3 = profile.total_q3_appearences || 0;
-    const q3Rate = profile.total_gps > 0 ? ((q3 / profile.total_gps) * 100).toFixed(1) : "0.0";
-    const q2 = profile.total_q2_appearences || 0;
-    const q2Rate = profile.total_gps > 0 ? ((q2 / profile.total_gps) * 100).toFixed(1) : "0.0";
-
-    const dnfs = profile.total_dnfs || 0;
-    const finishRate = profile.total_gps > 0 ? (((profile.total_gps - dnfs) / profile.total_gps) * 100).toFixed(1) : "100.0";
-
-    return {
-      raceWins,
-      sprintWins,
-      racePodiums,
-      sprintPodiums,
-      winRate,
-      podiumRate,
-      avgPoints,
-      poles,
-      polesToWin,
-      poleToWinRate,
-      q3,
-      q3Rate,
-      q2,
-      q2Rate,
-      dnfs,
-      finishRate,
-      fastestLaps: profile.total_fastest_laps || 0
+      // Navega automaticamente a tabela de temporadas para a página onde a temporada está
+      const seasonIndex = sortedSeasons.findIndex((s) => Number(s.year) === y);
+      if (seasonIndex !== -1) {
+        const targetPage = Math.floor(seasonIndex / SEASONS_PER_PAGE) + 1;
+        setSeasonsPage(targetPage);
+      }
     };
-  }, [profile]);
 
-  // Top 3 Pistas Favoritas
-  const topCircuits = useMemo(() => {
-    return [...circuits]
-      .sort((a, b) => {
-        const winsDiff = (b.race_wins || b.total_wins || 0) - (a.race_wins || a.total_wins || 0);
-        if (winsDiff !== 0) return winsDiff;
-        const podiumsDiff = (b.total_podiums || 0) - (a.total_podiums || 0);
-        if (podiumsDiff !== 0) return podiumsDiff;
-        return (b.total_points || 0) - (a.total_points || 0);
-      })
-      .slice(0, 3);
-  }, [circuits]);
+    const [chartPeriod, setChartPeriod] = useState<number>(() => {
+      return getPeriodIndexForYear(selectedSeasonYear);
+    });
 
-  const handleSelectFavoriteCircuit = (circuitName: string) => {
-    setActiveTab("circuits");
-    setCircuitSearch(circuitName);
-    setCircuitsPage(1);
-  };
+    useEffect(() => {
+      setChartPeriod(getPeriodIndexForYear(selectedSeasonYear, PERIOD_SIZE));
+    }, [PERIOD_SIZE]);
 
-  // Label do gráfico
-  const renderCustomBarLabel = (props: any) => {
-    const { x, y, width, index } = props;
-    const item = visibleSeasonData[index];
-    if (!item || !item.position) return <g />;
+    const visibleSeasonData = useMemo(() => {
+      if (seasonPositionData.length <= PERIOD_SIZE) {
+        return seasonPositionData;
+      }
+      const isLast = chartPeriod === totalPeriods - 1;
+      const start = isLast
+        ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+        : chartPeriod * PERIOD_SIZE;
+      const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+      return seasonPositionData.slice(start, end);
+    }, [seasonPositionData, chartPeriod, totalPeriods, PERIOD_SIZE]);
 
-    const isP1 = item.position === 1;
-    const isP2 = item.position === 2;
-    const isP3 = item.position === 3;
-    const textColor = isP1
-      ? "#FACC15"
-      : isP2
-        ? "#E2E8F0"
-        : isP3
-          ? "#F59E0B"
-          : item.position <= 10
-            ? "#60A5FA"
-            : "#94A3B8";
+    // ---------------------------------------------------------------------------
+    // CÁLCULOS DO RAIO-X DE CARREIRA
+    // ---------------------------------------------------------------------------
+    const careerStats = useMemo(() => {
+      const raceWins = profile.race_wins ?? profile.total_wins;
+      const sprintWins = profile.sprint_wins ?? 0;
+      const racePodiums = profile.race_podiums ?? (profile.total_podiums - (profile.sprint_podiums ?? 0));
+      const sprintPodiums = profile.sprint_podiums ?? 0;
 
-    const isMany = seasonPositionData.length > 12;
-    const labelText = isP1 ? (isMany ? "👑" : "👑 #1") : `#${item.position}`;
+      const winRate = profile.total_gps > 0 ? ((raceWins / profile.total_gps) * 100).toFixed(1) : "0.0";
+      const podiumRate = profile.total_gps > 0 ? ((profile.total_podiums / profile.total_gps) * 100).toFixed(1) : "0.0";
+      const avgPoints = profile.total_gps > 0 ? (profile.total_points / profile.total_gps).toFixed(1) : "0.0";
+
+      const poles = profile.race_poles || 0;
+      const polesToWin = profile.total_poles_to_win || 0;
+      const poleToWinRate =
+        poles > 0
+          ? ((polesToWin / poles) * 100).toFixed(1)
+          : null;
+
+      const q3 = profile.total_q3_appearences || 0;
+      const q3Rate = profile.total_gps > 0 ? ((q3 / profile.total_gps) * 100).toFixed(1) : "0.0";
+      const q2 = profile.total_q2_appearences || 0;
+      const q2Rate = profile.total_gps > 0 ? ((q2 / profile.total_gps) * 100).toFixed(1) : "0.0";
+
+      const dnfs = profile.total_dnfs || 0;
+      const finishRate = profile.total_gps > 0 ? (((profile.total_gps - dnfs) / profile.total_gps) * 100).toFixed(1) : "100.0";
+
+      return {
+        raceWins,
+        sprintWins,
+        racePodiums,
+        sprintPodiums,
+        winRate,
+        podiumRate,
+        avgPoints,
+        poles,
+        polesToWin,
+        poleToWinRate,
+        q3,
+        q3Rate,
+        q2,
+        q2Rate,
+        dnfs,
+        finishRate,
+        fastestLaps: profile.total_fastest_laps || 0
+      };
+    }, [profile]);
+
+    // Top 3 Pistas Favoritas
+    const topCircuits = useMemo(() => {
+      return [...circuits]
+        .sort((a, b) => {
+          const winsDiff = (b.race_wins || b.total_wins || 0) - (a.race_wins || a.total_wins || 0);
+          if (winsDiff !== 0) return winsDiff;
+          const podiumsDiff = (b.total_podiums || 0) - (a.total_podiums || 0);
+          if (podiumsDiff !== 0) return podiumsDiff;
+          return (b.total_points || 0) - (a.total_points || 0);
+        })
+        .slice(0, 3);
+    }, [circuits]);
+
+    const handleSelectFavoriteCircuit = (circuitName: string) => {
+      setActiveTab("circuits");
+      setCircuitSearch(circuitName);
+      setCircuitsPage(1);
+    };
+
+    // Label do gráfico
+    const renderCustomBarLabel = (props: any) => {
+      const { x, y, width, index } = props;
+      const item = visibleSeasonData[index];
+      if (!item || !item.position) return <g />;
+
+      const isP1 = item.position === 1;
+      const isP2 = item.position === 2;
+      const isP3 = item.position === 3;
+      const textColor = isP1
+        ? "#FACC15"
+        : isP2
+          ? "#E2E8F0"
+          : isP3
+            ? "#F59E0B"
+            : item.position <= 10
+              ? "#60A5FA"
+              : "#94A3B8";
+
+      const isMany = seasonPositionData.length > 12;
+      const labelText = isP1 ? (isMany ? "👑" : "👑 #1") : `#${item.position}`;
+
+      return (
+        <text
+          x={x + width / 2}
+          y={y - 5}
+          fill={textColor}
+          textAnchor="middle"
+          fontSize={isMany ? 9 : 10}
+          fontWeight="800"
+        >
+          {labelText}
+        </text>
+      );
+    };
+
+    // Tooltip customizado do gráfico
+    const CustomSeasonTooltip = ({ active, payload }: any) => {
+      if (active && payload && payload.length) {
+        const d = payload[0].payload;
+        return (
+          <div className="rounded-xl border border-white/10 bg-[#0B0B10]/95 p-3 shadow-2xl backdrop-blur-md text-xs space-y-1.5 min-w-[200px]">
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+              <span className="font-black text-sm text-white">{d.year}</span>
+              {!d.is_season_completed ? (
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  EM ANDAMENTO
+                </span>
+              ) : (
+                <span className="text-[10px] text-f1-subtle font-medium">Finalizada</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: d.team_color || "#888" }}
+              />
+              <TeamLink
+                teamName={d.team_name}
+                className="text-white font-bold truncate text-[11px] hover:underline decoration-white/30 underline-offset-2"
+                title={`Ver perfil de ${d.team_name}`}
+              >
+                {d.team_name}
+              </TeamLink>
+            </div>
+
+            <div className="flex items-baseline justify-between pt-0.5">
+              <span className="text-f1-subtle text-[11px]">Classificação:</span>
+              <span className={`font-black text-xs ${d.position === 1 ? "text-amber-400" : "text-white"}`}>
+                {d.position === 1 ? "👑 Campeão (#1)" : `P${d.position} Geral`}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 pt-1 border-t border-white/5 text-center text-[10px]">
+              <div className="bg-white/5 p-1 rounded">
+                <div className="text-f1-subtle text-[9px]">GPs</div>
+                <div className="font-bold text-white">{d.total_gps}</div>
+              </div>
+              <div className="bg-white/5 p-1 rounded">
+                <div className="text-f1-subtle text-[9px]">Vitórias</div>
+                <div className="font-bold text-amber-400">{d.total_wins}</div>
+              </div>
+              <div className="bg-white/5 p-1 rounded">
+                <div className="text-f1-subtle text-[9px]">Pódios</div>
+                <div className="font-bold text-blue-300">{d.total_podiums}</div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    };
 
     return (
-      <text
-        x={x + width / 2}
-        y={y - 5}
-        fill={textColor}
-        textAnchor="middle"
-        fontSize={isMany ? 9 : 10}
-        fontWeight="800"
-      >
-        {labelText}
-      </text>
-    );
-  };
-
-  // Tooltip customizado do gráfico
-  const CustomSeasonTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const d = payload[0].payload;
-      return (
-        <div className="rounded-xl border border-white/10 bg-[#0B0B10]/95 p-3 shadow-2xl backdrop-blur-md text-xs space-y-1.5 min-w-[200px]">
-          <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
-            <span className="font-black text-sm text-white">{d.year}</span>
-            {!d.is_season_completed ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                EM ANDAMENTO
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+        {/* ========================================================================= */}
+        {/* COLUNA ESQUERDA (33% no Desktop xl+, Aba "Raio-X" Exclusiva em < xl)      */}
+        {/* ========================================================================= */}
+        <aside className={`order-2 xl:order-1 xl:col-span-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 min-w-0 ${activeTab === "overview" ? "grid" : "hidden xl:grid"}`}>
+          {/* CARD 1: ESTATUTO HISTÓRICO ALL-TIME (COLOCADO NO TOPO CONFORME SOLICITADO) */}
+          <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Award className="h-4 w-4 text-amber-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  Estatuto Histórico
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                All-Time F1
               </span>
-            ) : (
-              <span className="text-[10px] text-f1-subtle font-medium">Finalizada</span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <div
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: d.team_color || "#888" }}
-            />
-            <TeamLink
-              teamName={d.team_name}
-              className="text-white font-bold truncate text-[11px] hover:underline decoration-white/30 underline-offset-2"
-              title={`Ver perfil de ${d.team_name}`}
-            >
-              {d.team_name}
-            </TeamLink>
-          </div>
-
-          <div className="flex items-baseline justify-between pt-0.5">
-            <span className="text-f1-subtle text-[11px]">Classificação:</span>
-            <span className={`font-black text-xs ${d.position === 1 ? "text-amber-400" : "text-white"}`}>
-              {d.position === 1 ? "👑 Campeão (#1)" : `P${d.position} Geral`}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-1 pt-1 border-t border-white/5 text-center text-[10px]">
-            <div className="bg-white/5 p-1 rounded">
-              <div className="text-f1-subtle text-[9px]">GPs</div>
-              <div className="font-bold text-white">{d.total_gps}</div>
             </div>
-            <div className="bg-white/5 p-1 rounded">
-              <div className="text-f1-subtle text-[9px]">Vitórias</div>
-              <div className="font-bold text-amber-400">{d.total_wins}</div>
-            </div>
-            <div className="bg-white/5 p-1 rounded">
-              <div className="text-f1-subtle text-[9px]">Pódios</div>
-              <div className="font-bold text-blue-300">{d.total_podiums}</div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-      {/* ========================================================================= */}
-      {/* COLUNA ESQUERDA (33% no Desktop xl+, Aba "Raio-X" Exclusiva em < xl)      */}
-      {/* ========================================================================= */}
-      <aside className={`order-2 xl:order-1 xl:col-span-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 min-w-0 ${activeTab === "overview" ? "grid" : "hidden xl:grid"}`}>
-        {/* CARD 1: ESTATUTO HISTÓRICO ALL-TIME (COLOCADO NO TOPO CONFORME SOLICITADO) */}
-        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Award className="h-4 w-4 text-amber-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Estatuto Histórico
-              </h3>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-              All-Time F1
-            </span>
-          </div>
+            <div className="space-y-2 text-xs">
+              {/* Títulos */}
+              {profile.total_world_championships > 0 && (
+                <div className="flex items-center justify-between py-1 border-b border-white/5">
+                  <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                    Títulos Mundiais:
+                  </span>
+                  <div className="flex items-center gap-1.5 font-mono">
+                    <span className="font-black text-amber-400 text-xs">
+                      {profile.total_world_championships}x
+                    </span>
+                    {profile.rank_world_championships && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        #{profile.rank_world_championships}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
 
-          <div className="space-y-2 text-xs">
-            {/* Títulos */}
-            {profile.total_world_championships > 0 && (
+              {/* Vitórias */}
               <div className="flex items-center justify-between py-1 border-b border-white/5">
                 <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
-                  <Trophy className="h-3.5 w-3.5 text-amber-400" />
-                  Títulos Mundiais:
+                  <Crown className="h-3.5 w-3.5 text-amber-400" />
+                  Vitórias em GPs:
                 </span>
                 <div className="flex items-center gap-1.5 font-mono">
-                  <span className="font-black text-amber-400 text-xs">
-                    {profile.total_world_championships}x
+                  <span className="font-black text-white text-xs">
+                    {careerStats.raceWins}
                   </span>
-                  {profile.rank_world_championships && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      #{profile.rank_world_championships}
+                  {(profile.rank_race_wins || profile.rank_wins) && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                      #{profile.rank_race_wins || profile.rank_wins}
                     </span>
                   )}
                 </div>
               </div>
-            )}
 
-            {/* Vitórias */}
-            <div className="flex items-center justify-between py-1 border-b border-white/5">
-              <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
-                <Crown className="h-3.5 w-3.5 text-amber-400" />
-                Vitórias em GPs:
-              </span>
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="font-black text-white text-xs">
-                  {careerStats.raceWins}
+              {/* Pódios */}
+              <div className="flex items-center justify-between py-1 border-b border-white/5">
+                <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
+                  <Award className="h-3.5 w-3.5 text-blue-400" />
+                  Pódios Totais:
                 </span>
-                {(profile.rank_race_wins || profile.rank_wins) && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
-                    #{profile.rank_race_wins || profile.rank_wins}
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-black text-white text-xs">
+                    {profile.total_podiums}
                   </span>
-                )}
+                  {profile.rank_podiums && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                      #{profile.rank_podiums}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Pódios */}
-            <div className="flex items-center justify-between py-1 border-b border-white/5">
-              <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
-                <Award className="h-3.5 w-3.5 text-blue-400" />
-                Pódios Totais:
-              </span>
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="font-black text-white text-xs">
-                  {profile.total_podiums}
+              {/* Poles */}
+              <div className="flex items-center justify-between py-1 border-b border-white/5">
+                <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-purple-400" />
+                  Pole Positions:
                 </span>
-                {profile.rank_podiums && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
-                    #{profile.rank_podiums}
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-black text-white text-xs">
+                    {profile.race_poles}
                   </span>
-                )}
+                  {profile.rank_poles && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                      #{profile.rank_poles}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Poles */}
-            <div className="flex items-center justify-between py-1 border-b border-white/5">
-              <span className="text-f1-subtle text-[11px] flex items-center gap-1.5">
-                <Zap className="h-3.5 w-3.5 text-purple-400" />
-                Pole Positions:
-              </span>
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="font-black text-white text-xs">
-                  {profile.race_poles}
-                </span>
-                {profile.rank_poles && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
-                    #{profile.rank_poles}
+              {/* Pontos */}
+              <div className="flex items-center justify-between py-1 border-b border-white/5">
+                <span className="text-f1-subtle text-[11px]">Pontuação Histórica:</span>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-black text-white text-xs">
+                    {Math.round(profile.total_points).toLocaleString("pt-BR")}
                   </span>
-                )}
+                  {profile.rank_points && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                      #{profile.rank_points}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Pontos */}
-            <div className="flex items-center justify-between py-1 border-b border-white/5">
-              <span className="text-f1-subtle text-[11px]">Pontuação Histórica:</span>
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="font-black text-white text-xs">
-                  {Math.round(profile.total_points).toLocaleString("pt-BR")}
-                </span>
-                {profile.rank_points && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
-                    #{profile.rank_points}
+              {/* GPs */}
+              <div className="flex items-center justify-between py-1">
+                <span className="text-f1-subtle text-[11px]">GPs Disputados:</span>
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="font-black text-white text-xs">
+                    {profile.total_gps}
                   </span>
-                )}
-              </div>
-            </div>
-
-            {/* GPs */}
-            <div className="flex items-center justify-between py-1">
-              <span className="text-f1-subtle text-[11px]">GPs Disputados:</span>
-              <div className="flex items-center gap-1.5 font-mono">
-                <span className="font-black text-white text-xs">
-                  {profile.total_gps}
-                </span>
-                {profile.rank_gps && (
-                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
-                    #{profile.rank_gps}
-                  </span>
-                )}
+                  {profile.rank_gps && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white/10 text-zinc-300">
+                      #{profile.rank_gps}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* CARD 2: RAIO-X DE EFICIÊNCIA DE CARREIRA */}
-        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg relative overflow-hidden">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Gauge className="h-4 w-4 text-f1-red" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Raio-X de Eficiência
-              </h3>
+          {/* CARD 2: RAIO-X DE EFICIÊNCIA DE CARREIRA */}
+          <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg relative overflow-hidden">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Gauge className="h-4 w-4 text-f1-red" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  Raio-X de Eficiência
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
+                Carreira Completa
+              </span>
             </div>
-            <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
-              Carreira Completa
-            </span>
-          </div>
 
-          <div className="space-y-3 text-xs">
-            {/* Taxa de Vitórias */}
-            <div>
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="text-f1-subtle text-[11px]">Taxa de Vitórias (GP)</span>
-                <div className="flex items-baseline gap-1 font-mono">
-                  <span className="font-black text-amber-400 text-sm">{careerStats.winRate}%</span>
-                  <span className="text-[10px] text-f1-subtle">
-                    ({careerStats.raceWins}/{profile.total_gps})
-                  </span>
+            <div className="space-y-3 text-xs">
+              {/* Taxa de Vitórias */}
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-f1-subtle text-[11px]">Taxa de Vitórias (GP)</span>
+                  <div className="flex items-baseline gap-1 font-mono">
+                    <span className="font-black text-amber-400 text-sm">{careerStats.winRate}%</span>
+                    <span className="text-[10px] text-f1-subtle">
+                      ({careerStats.raceWins}/{profile.total_gps})
+                    </span>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, Number(careerStats.winRate)))}%` }}
+                  />
                 </div>
               </div>
-              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-amber-400 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(0, Number(careerStats.winRate)))}%` }}
-                />
-              </div>
-            </div>
 
-            {/* Taxa de Pódios */}
-            <div>
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="text-f1-subtle text-[11px]">Taxa de Pódios (GP)</span>
-                <div className="flex items-baseline gap-1 font-mono">
-                  <span className="font-black text-blue-300 text-sm">{careerStats.podiumRate}%</span>
-                  <span className="text-[10px] text-f1-subtle">
-                    ({careerStats.racePodiums}/{profile.total_gps})
-                  </span>
+              {/* Taxa de Pódios */}
+              <div>
+                <div className="flex justify-between items-baseline mb-1">
+                  <span className="text-f1-subtle text-[11px]">Taxa de Pódios (GP)</span>
+                  <div className="flex items-baseline gap-1 font-mono">
+                    <span className="font-black text-blue-300 text-sm">{careerStats.podiumRate}%</span>
+                    <span className="text-[10px] text-f1-subtle">
+                      ({careerStats.racePodiums}/{profile.total_gps})
+                    </span>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-400 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, Math.max(0, Number(careerStats.podiumRate)))}%` }}
+                  />
                 </div>
               </div>
-              <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-400 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, Math.max(0, Number(careerStats.podiumRate)))}%` }}
-                />
-              </div>
-            </div>
 
-            {/* Grid 2x2 de Eficiência Secundária */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-              {/* Pole to Win */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
-                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
-                  Pole ➔ Vitória
-                </span>
-                <span className="font-mono text-sm font-black text-purple-300 block mt-0.5">
-                  {careerStats.poleToWinRate ? `${careerStats.poleToWinRate}%` : "—"}
-                </span>
-                <span className="text-[10px] text-f1-subtle font-mono block">
-                  {careerStats.polesToWin} de {careerStats.poles} poles
-                </span>
-              </div>
-
-              {/* Presença Q3 / Q2 */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5 flex flex-col justify-between">
-                <div className="flex items-center justify-between">
+              {/* Grid 2x2 de Eficiência Secundária */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
+                {/* Pole to Win */}
+                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
                   <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
-                    {careerQualiStage === "q3" ? "Presença Q3" : "Presença Q2"}
+                    Pole ➔ Vitória
                   </span>
-                  {/* Sliding Toggle: Q3 <-> Q2 */}
-                  <button
-                    type="button"
-                    onClick={() => setCareerQualiStage((prev) => (prev === "q3" ? "q2" : "q3"))}
-                    className="relative inline-flex items-center p-0.5 rounded-md bg-black/60 border border-white/10 shrink-0 cursor-pointer select-none group/toggle transition-colors hover:border-white/20 focus:outline-none"
-                    title={`Clique para alternar para ${careerQualiStage === "q3" ? "Q2" : "Q3"}`}
-                    aria-label={`Alternar entre Q3 e Q2 (atualmente ${careerQualiStage.toUpperCase()})`}
-                  >
-                    {/* Sliding Thumb */}
-                    <span
-                      aria-hidden="true"
-                      className={`absolute top-0.5 bottom-0.5 w-6 rounded border transition-all duration-200 ease-out shadow-sm pointer-events-none ${careerQualiStage === "q3"
-                        ? "left-0.5 translate-x-0 bg-purple-500/25 border-purple-500/40"
-                        : "left-0.5 translate-x-6 bg-sky-500/25 border-sky-500/40"
-                        }`}
-                    />
-                    {/* Labels */}
-                    <span
-                      className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${careerQualiStage === "q3" ? "text-purple-200" : "text-white/40 group-hover/toggle:text-white/70"
-                        }`}
-                    >
-                      Q3
-                    </span>
-                    <span
-                      className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${careerQualiStage === "q2" ? "text-sky-200" : "text-white/40 group-hover/toggle:text-white/70"
-                        }`}
-                    >
-                      Q2
-                    </span>
-                  </button>
-                </div>
-                <div
-                  key={careerQualiStage}
-                  className="w-full text-left pt-0.5 animate-in fade-in duration-150"
-                >
-                  <span className={`font-mono tabular-nums text-sm font-black block mt-0.5 transition-colors duration-150 ${careerQualiStage === "q3" ? "text-purple-300" : "text-sky-300"
-                    }`}>
-                    {careerQualiStage === "q3" ? careerStats.q3Rate : careerStats.q2Rate}%
+                  <span className="font-mono text-sm font-black text-purple-300 block mt-0.5">
+                    {careerStats.poleToWinRate ? `${careerStats.poleToWinRate}%` : "—"}
                   </span>
-                  <span className="text-[10px] text-f1-subtle font-mono tabular-nums block transition-colors duration-200">
-                    {careerQualiStage === "q3" ? careerStats.q3 : careerStats.q2} de {profile.total_gps} GPs
+                  <span className="text-[10px] text-f1-subtle font-mono block">
+                    {careerStats.polesToWin} de {careerStats.poles} poles
                   </span>
                 </div>
-              </div>
 
-              {/* Média Pontos / GP */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
-                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
-                  Média pts / GP
-                </span>
-                <span className="font-mono text-sm font-black text-white block mt-0.5">
-                  {careerStats.avgPoints}
-                </span>
-                <span className="text-[10px] text-f1-subtle font-mono block">
-                  {Math.round(profile.total_points).toLocaleString("pt-BR")} pts tot.
-                </span>
-              </div>
-
-              {/* Confiabilidade / DNFs */}
-              <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
-                <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
-                  Conclusão de GPs
-                </span>
-                <span className="font-mono text-sm font-black text-emerald-400 block mt-0.5">
-                  {careerStats.finishRate}%
-                </span>
-                <span className="text-[10px] text-rose-400 font-mono block">
-                  {careerStats.dnfs} {careerStats.dnfs === 1 ? "abandono" : "abandonos"}
-                </span>
-              </div>
-            </div>
-
-            {/* Linha Rápida de Voltas Mais Rápidas */}
-            <div className="flex items-center justify-between pt-1 text-[11px] text-f1-subtle">
-              <span className="flex items-center gap-1.5">
-                <Timer className="h-3.5 w-3.5 text-zinc-400" />
-                Voltas Mais Rápidas:
-              </span>
-              <span className="font-mono font-bold text-white">
-                {careerStats.fastestLaps} voltas
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* CARD 3: PISTAS FAVORITAS (TOP 3 CIRCUITOS) */}
-        <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg">
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Crosshair className="h-4 w-4 text-emerald-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">
-                Pistas Favoritas
-              </h3>
-            </div>
-            <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
-              Top 3 Histórico
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {topCircuits.map((c) => {
-              const flag = getCountryFlag(c.country);
-              const wins = c.race_wins || c.total_wins || 0;
-              const podiums = c.total_podiums || 0;
-              const winPct = c.total_gps > 0 ? ((wins / c.total_gps) * 100).toFixed(0) : "0";
-
-              return (
-                <button
-                  key={c.circuit_id}
-                  type="button"
-                  onClick={() => handleSelectFavoriteCircuit(c.circuit_name)}
-                  className="w-full text-left rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 p-2.5 transition-all group flex items-center justify-between gap-3"
-                  title={`Filtrar desempenho no ${c.circuit_name}`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-base shrink-0">{flag}</span>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-white truncate group-hover:text-white group-hover:underline decoration-white/30 transition-colors">
-                          {c.circuit_name}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-f1-subtle font-mono block">
-                        {c.country ? `${c.country} · ` : ""}{c.total_gps} GPs disputados
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="flex items-center justify-end gap-1.5 text-xs font-mono tabular-nums font-bold">
-                      <span className="text-amber-400" title="Vitórias">
-                        {wins}V
-                      </span>
-                      <span className="text-white/20">•</span>
-                      <span className="text-blue-300" title="Pódios">
-                        {podiums}P
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-emerald-400 font-mono block font-semibold">
-                      {winPct}% vitórias
+                {/* Presença Q3 / Q2 */}
+                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                      {careerQualiStage === "q3" ? "Presença Q3" : "Presença Q2"}
                     </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {circuits.length > 3 && (
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab("circuits");
-                setCircuitSearch("");
-                setCircuitsPage(1);
-              }}
-              className="w-full mt-3 pt-2 border-t border-white/5 text-[11px] font-bold text-f1-subtle hover:text-white transition-colors flex items-center justify-center gap-1"
-            >
-              <span>Ver todos os {circuits.length} circuitos disputados</span>
-              <ExternalLink className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      </aside>
-
-      {/* ========================================================================= */}
-      {/* COLUNA DIREITA (67% no Desktop xl+, Largura Total em < xl): PAINEL PRINCIPAL */}
-      {/* ========================================================================= */}
-      <main className="order-1 xl:order-2 xl:col-span-8 space-y-4 min-w-0">
-        {/* SELETOR DE ABAS COMPACTO (Estilo Segmented Control Cockpit) */}
-        <div className="flex items-center justify-between bg-[#0E0E14] border border-white/10 rounded-2xl p-1 sm:p-1.5 shadow-md overflow-x-auto no-scrollbar">
-          <div className="grid grid-cols-4 sm:flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
-            {/* 1ª Aba Mobile/Tablet (< xl): Raio-X & Recordes da Sidebar */}
-            <button
-              type="button"
-              onClick={() => setActiveTab("overview")}
-              className={`xl:hidden inline-flex items-center justify-center gap-1 px-2.5 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "overview"
-                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                : "text-f1-subtle hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <span>Raio-X</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("seasons")}
-              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "seasons"
-                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                : "text-f1-subtle hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <Trophy className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
-              <span>Temporadas</span>
-              <span
-                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "seasons"
-                  ? "bg-black/30 text-white"
-                  : "bg-white/10 text-zinc-400"
-                  }`}
-              >
-                {seasons.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("circuits")}
-              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "circuits"
-                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                : "text-f1-subtle hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <Flag className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
-              <span>Circuitos</span>
-              <span
-                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "circuits" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
-                  }`}
-              >
-                {circuits.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("races")}
-              className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "races"
-                ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
-                : "text-f1-subtle hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <Timer className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
-              <span className="sm:hidden">Corridas</span>
-              <span className="hidden sm:inline">Corrida a Corrida</span>
-              <span
-                className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "races" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
-                  }`}
-              >
-                {raceLog.length}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* --------------------------------------------------------------------- */}
-        {/* CONTEÚDO DA ABA 1: TEMPORADA A TEMPORADA                              */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === "seasons" && (
-          <div className="space-y-4">
-            {/* Sub-seletor Mobile (< md): Alterna entre Gráfico/Raio-X do Ano (1ª aba) e Tabela sem empilhar */}
-            <div className="grid grid-cols-2 md:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
-              <button
-                type="button"
-                onClick={() => setMobileSeasonSubView("chart")}
-                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "chart"
-                  ? "bg-white/15 text-white shadow"
-                  : "text-f1-subtle hover:text-white"
-                  }`}
-              >
-                Gráfico & Raio-X ({selectedSeasonYear})
-              </button>
-              <button
-                type="button"
-                onClick={() => setMobileSeasonSubView("table")}
-                className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "table"
-                  ? "bg-white/15 text-white shadow"
-                  : "text-f1-subtle hover:text-white"
-                  }`}
-              >
-                Tabela ({seasons.length})
-              </button>
-            </div>
-
-            {/* Bloco Unificado: Gráfico de Posições + Mini Raio-X da Temporada Selecionada */}
-            <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg space-y-4 ${mobileSeasonSubView === "chart" ? "block" : "hidden md:block"}`}>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-amber-400" />
-                    Trajetória no Campeonato Mundial
-                  </h3>
-                  <p className="text-[11px] text-f1-subtle mt-0.5">
-                    Classificação final ano a ano. Clique em uma barra para detalhes.
-                  </p>
-                </div>
-
-                {/* Seletor rápido de temporada */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-f1-subtle font-mono hidden sm:inline">
-                    Temporada:
-                  </span>
-                  <select
-                    value={selectedSeasonYear}
-                    onChange={(e) => {
-                      handleSelectSeasonYear(e.target.value);
-                    }}
-                    className="bg-[#1b1b26] border border-white/15 text-white text-xs font-bold font-mono rounded-lg px-2.5 py-1 focus:outline-none focus:border-f1-red cursor-pointer hover:border-white/30 transition-colors"
-                    title="Selecionar Temporada"
-                  >
-                    {seasonPositionData
-                      .slice()
-                      .reverse()
-                      .map((s) => (
-                        <option key={s.yearNum} value={s.yearNum} className="bg-[#12121A] text-white">
-                          {s.year} {s.position === 1 && s.is_season_completed ? "👑 Campeão" : `(P${s.position})`}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Seletor Rápido de Anos (Pills) */}
-              <div className="flex flex-wrap items-center gap-1 max-h-16 overflow-y-auto scrollbar-thin">
-                {seasonPositionData
-                  .slice()
-                  .reverse()
-                  .map((s) => {
-                    const isSelected = s.yearNum === selectedSeasonYear;
-                    const isChamp = s.position === 1 && s.is_season_completed;
-                    return (
-                      <button
-                        key={s.yearNum}
-                        type="button"
-                        onClick={() => {
-                          handleSelectSeasonYear(s.yearNum);
-                        }}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all shrink-0 ${isSelected
-                          ? "bg-f1-red text-white shadow-sm shadow-f1-red/30 scale-105"
-                          : "bg-white/5 text-f1-subtle hover:bg-white/10 hover:text-white"
-                          }`}
-                      >
-                        {isChamp && <span>👑</span>}
-                        <span>{s.year}</span>
-                      </button>
-                    );
-                  })}
-              </div>
-
-              {/* Barra de Navegação entre Períodos / Eras */}
-              {totalPeriods > 1 && (
-                <div className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-mono">
-                  {/* Botão Período Anterior */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newPeriod = Math.max(0, chartPeriod - 1);
-                      setChartPeriod(newPeriod);
-                      const isLast = newPeriod === totalPeriods - 1;
-                      const start = isLast
-                        ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
-                        : newPeriod * PERIOD_SIZE;
-                      const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
-                      const slice = seasonPositionData.slice(start, end);
-                      if (slice.length > 0) {
-                        handleSelectSeasonYear(slice[slice.length - 1].yearNum);
-                      }
-                    }}
-                    disabled={chartPeriod === 0}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === 0
-                      ? "opacity-30 cursor-not-allowed text-zinc-600"
-                      : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
-                      }`}
-                    title="Ver período anterior (temporadas mais antigas)"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span className="hidden sm:inline">Anterior</span>
-                  </button>
-
-                  {/* Indicador do Período Atual */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-f1-subtle uppercase tracking-wider hidden md:inline">
-                      Período:
-                    </span>
-                    <span className="text-xs font-bold text-white bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md shadow-sm">
-                      {visibleSeasonData[0]?.year} — {visibleSeasonData[visibleSeasonData.length - 1]?.year}
-                    </span>
-                    <span className="text-[10px] text-f1-subtle font-mono">
-                      ({chartPeriod + 1} de {totalPeriods})
-                    </span>
-                  </div>
-
-                  {/* Botão Próximo Período */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newPeriod = Math.min(totalPeriods - 1, chartPeriod + 1);
-                      setChartPeriod(newPeriod);
-                      const isLast = newPeriod === totalPeriods - 1;
-                      const start = isLast
-                        ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
-                        : newPeriod * PERIOD_SIZE;
-                      const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
-                      const slice = seasonPositionData.slice(start, end);
-                      if (slice.length > 0) {
-                        handleSelectSeasonYear(slice[slice.length - 1].yearNum);
-                      }
-                    }}
-                    disabled={chartPeriod === totalPeriods - 1}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === totalPeriods - 1
-                      ? "opacity-30 cursor-not-allowed text-zinc-600"
-                      : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
-                      }`}
-                    title="Ver próximo período (temporadas mais recentes)"
-                  >
-                    <span className="hidden sm:inline">Próximo</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-
-              {/* Gráfico de Colunas de Trajetória */}
-              <div className="h-48 w-full pt-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={visibleSeasonData}
-                    margin={{ top: 20, right: 10, left: 10, bottom: 15 }}
-                    barCategoryGap="12%"
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                    <XAxis
-                      dataKey="year"
-                      stroke="#888888"
-                      fontSize={10}
-                      tickLine={false}
-                      axisLine={{ stroke: "#ffffff15" }}
-                      interval={0}
-                      tickFormatter={(yearStr) => `'${yearStr.slice(-2)}`}
-                    />
-                    <YAxis hide={true} />
-                    <Tooltip
-                      content={<CustomSeasonTooltip />}
-                      cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
-                    />
-                    <Bar
-                      dataKey="heightScore"
-                      radius={[4, 4, 0, 0]}
-                      maxBarSize={30}
-                      label={renderCustomBarLabel}
-                      onClick={(data: any) => {
-                        const y = data?.yearNum ?? data?.payload?.yearNum ?? data?.activePayload?.[0]?.payload?.yearNum;
-                        if (y) {
-                          handleSelectSeasonYear(y);
-                        }
-                      }}
-                    >
-                      {visibleSeasonData.map((entry, index) => {
-                        const isSelected = entry.yearNum === selectedSeasonYear;
-                        let barFill = "#334155";
-                        let barStroke = isSelected ? "#FFFFFF" : "#475569";
-
-                        if (entry.position === 1) {
-                          barFill = "#EAB308";
-                          barStroke = isSelected ? "#FFFFFF" : "#FDE047";
-                        } else if (entry.position === 2) {
-                          barFill = "#94A3B8";
-                          barStroke = isSelected ? "#FFFFFF" : "#CBD5E1";
-                        } else if (entry.position === 3) {
-                          barFill = "#D97706";
-                          barStroke = isSelected ? "#FFFFFF" : "#F59E0B";
-                        } else if (entry.position <= 10) {
-                          barFill = "#2563EB";
-                          barStroke = isSelected ? "#FFFFFF" : "#60A5FA";
-                        }
-
-                        return (
-                          <Cell
-                            key={`cell-${entry.yearNum}-${index}`}
-                            fill={barFill}
-                            stroke={barStroke}
-                            strokeWidth={isSelected ? 2.5 : 1}
-                            className="cursor-pointer transition-all hover:opacity-80"
-                            onClick={() => handleSelectSeasonYear(entry.yearNum)}
-                          />
-                        );
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Mini Raio-X da Temporada Selecionada */}
-              {currentSeason && (
-                <div className="rounded-xl border border-white/5 bg-[#12121A] p-3.5 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-6 rounded-full shrink-0"
-                        style={{ backgroundColor: currentSeason.team_color }}
-                      />
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-black text-white uppercase tracking-tight">
-                            Temporada {currentSeason.year}
-                          </h4>
-                          <span className="text-xs font-bold text-white/80">
-                            • <TeamLink teamName={currentSeason.team_name} className="hover:underline hover:text-white transition-colors">{currentSeason.team_name}</TeamLink>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {currentSeason.position === 1 && currentSeason.is_season_completed ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/30 text-[11px] font-black">
-                          👑 Campeão Mundial
-                        </span>
-                      ) : !currentSeason.is_season_completed ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          Em Andamento (P{currentSeason.position})
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/15 text-[11px] font-bold font-mono">
-                          P{currentSeason.position} Oficial
-                        </span>
-                      )}
-
-                      <Link
-                        href={`/season?year=${currentSeason.year}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-f1-red text-white border border-white/15 hover:border-f1-red text-[11px] font-bold transition-all group"
-                        title={`Acessar central da Temporada ${currentSeason.year}`}
-                      >
-                        <span>Ver Temporada</span>
-                        <ExternalLink className="h-3 w-3 text-f1-subtle group-hover:text-white transition-colors" />
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* KPIs da Temporada em 5 Colunas (Vitórias, Pódios, Poles, Qualificação Q3/Q2 Interativa, Pontos) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-center text-xs">
-                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                      <span className="text-[10px] text-f1-subtle font-bold uppercase block">
-                        Vitórias (GP/Sprint)
-                      </span>
-                      <span className="font-mono tabular-nums text-sm font-black text-amber-400 block mt-0.5">
-                        {currentSeason.total_wins}
-                      </span>
-                      <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
-                        {currentSeason.race_wins} GP · {currentSeason.sprint_wins} Sprint
-                      </span>
-                    </div>
-
-                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                      <span className="text-[10px] text-f1-subtle font-bold uppercase block">
-                        Pódios (GP/Sprint)
-                      </span>
-                      <span className="font-mono tabular-nums text-sm font-black text-blue-300 block mt-0.5">
-                        {currentSeason.total_podiums}
-                      </span>
-                      <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
-                        {currentSeason.race_podiums} GP · {currentSeason.sprint_podiums} Sprint
-                      </span>
-                    </div>
-
-                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                      <span className="text-[10px] text-f1-subtle font-bold uppercase block">
-                        Poles (GP/Sprint)
-                      </span>
-                      <span className="font-mono tabular-nums text-sm font-black text-purple-300 block mt-0.5">
-                        {currentSeason.total_poles}
-                      </span>
-                      <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
-                        {currentSeason.race_poles} GP · {currentSeason.sprint_poles} Sprint
-                      </span>
-                    </div>
-
-                    {/* Card Interativo: Q3 e Q2 dividindo o mesmo espaço com alternância fluida */}
-                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-between relative">
-                      <div className="flex items-center justify-between gap-1 text-[10px] text-f1-subtle font-bold uppercase">
-                        <span className="flex items-center gap-1.5 truncate" title={seasonQualiStage === "q3" ? "Aparições no Q3 da classificação" : "Aparições no Q2 da classificação"}>
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-200 ${seasonQualiStage === "q3" ? "bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" : "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)]"}`} />
-                          <span className="text-white/90 transition-colors duration-200">{seasonQualiStage === "q3" ? "Aparições Q3" : "Aparições Q2"}</span>
-                        </span>
-
-                        {/* Sliding Toggle Pill: Q3 <-> Q2 */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSeasonQualiStage((prev) => (prev === "q3" ? "q2" : "q3"));
-                          }}
-                          className="relative inline-flex items-center p-0.5 rounded-md bg-black/60 border border-white/10 shrink-0 cursor-pointer select-none group/toggle transition-colors hover:border-white/20 focus:outline-none"
-                          title={`Clique para alternar para ${seasonQualiStage === "q3" ? "Q2" : "Q3"}`}
-                          aria-label={`Alternar entre Q3 e Q2 (atualmente ${seasonQualiStage.toUpperCase()})`}
-                        >
-                          {/* Sliding Thumb */}
-                          <span
-                            aria-hidden="true"
-                            className={`absolute top-0.5 bottom-0.5 w-6 rounded border transition-all duration-200 ease-out shadow-sm pointer-events-none ${seasonQualiStage === "q3"
-                              ? "left-0.5 translate-x-0 bg-purple-500/25 border-purple-500/40"
-                              : "left-0.5 translate-x-6 bg-sky-500/25 border-sky-500/40"
-                              }`}
-                          />
-                          {/* Labels */}
-                          <span
-                            className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${seasonQualiStage === "q3" ? "text-purple-200" : "text-white/40 group-hover/toggle:text-white/70"
-                              }`}
-                          >
-                            Q3
-                          </span>
-                          <span
-                            className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${seasonQualiStage === "q2" ? "text-sky-200" : "text-white/40 group-hover/toggle:text-white/70"
-                              }`}
-                          >
-                            Q2
-                          </span>
-                        </button>
-                      </div>
-
-                      <div className="w-full text-center py-0.5">
-                        <div key={seasonQualiStage} className="animate-in fade-in duration-150">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <span className={`font-mono tabular-nums text-sm font-black block mt-0.5 transition-colors duration-150 ${seasonQualiStage === "q3" ? "text-purple-300" : "text-sky-300"
-                              }`}>
-                              {seasonQualiStage === "q3" ? currentSeason.q3_appearences : currentSeason.q2_appearences}
-                            </span>
-                            <span className="text-[10px] text-white/30 font-mono tabular-nums">
-                              / {currentSeason.total_gps}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-f1-subtle font-mono tabular-nums block transition-colors duration-150">
-                            {seasonQualiStage === "q3"
-                              ? `${currentSeason.q3Rate}% das qualis`
-                              : `${currentSeason.q2Rate}% das qualis`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
-                      <span className="text-[10px] text-f1-subtle font-bold uppercase block">
-                        Pontos Totais
-                      </span>
-                      <span className="font-mono tabular-nums text-sm font-black text-white block mt-0.5">
-                        {Math.round(currentSeason.total_points).toLocaleString("pt-BR")}
-                      </span>
-                      <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
-                        {currentSeason.ptsPerGp} pts/GP · {currentSeason.total_dnfs} DNF
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* TABELA COMPLETA DE TEMPORADAS (ALTA DENSIDADE COM PAGINAÇÃO) */}
-            <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg ${mobileSeasonSubView === "table" ? "block" : "hidden md:block"}`}>
-              <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-white/10 bg-white/[0.01]">
-                <div className="flex items-center gap-2">
-                  <Table2 className="h-4 w-4 text-f1-subtle" />
-                  <span className="text-xs font-black uppercase tracking-wider text-white">
-                    Tabela Detalhada ({seasons.length} temporadas)
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  {seasonSortKey && (
+                    {/* Sliding Toggle: Q3 <-> Q2 */}
                     <button
                       type="button"
-                      onClick={() => setSeasonSortKey(null)}
-                      className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold"
+                      onClick={() => setCareerQualiStage((prev) => (prev === "q3" ? "q2" : "q3"))}
+                      className="relative inline-flex items-center p-0.5 rounded-md bg-black/60 border border-white/10 shrink-0 cursor-pointer select-none group/toggle transition-colors hover:border-white/20 focus:outline-none"
+                      title={`Clique para alternar para ${careerQualiStage === "q3" ? "Q2" : "Q3"}`}
+                      aria-label={`Alternar entre Q3 e Q2 (atualmente ${careerQualiStage.toUpperCase()})`}
+                    >
+                      {/* Sliding Thumb */}
+                      <span
+                        aria-hidden="true"
+                        className={`absolute top-0.5 bottom-0.5 w-6 rounded border transition-all duration-200 ease-out shadow-sm pointer-events-none ${careerQualiStage === "q3"
+                          ? "left-0.5 translate-x-0 bg-purple-500/25 border-purple-500/40"
+                          : "left-0.5 translate-x-6 bg-sky-500/25 border-sky-500/40"
+                          }`}
+                      />
+                      {/* Labels */}
+                      <span
+                        className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${careerQualiStage === "q3" ? "text-purple-200" : "text-white/40 group-hover/toggle:text-white/70"
+                          }`}
+                      >
+                        Q3
+                      </span>
+                      <span
+                        className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${careerQualiStage === "q2" ? "text-sky-200" : "text-white/40 group-hover/toggle:text-white/70"
+                          }`}
+                      >
+                        Q2
+                      </span>
+                    </button>
+                  </div>
+                  <div
+                    key={careerQualiStage}
+                    className="w-full text-left pt-0.5 animate-in fade-in duration-150"
+                  >
+                    <span className={`font-mono tabular-nums text-sm font-black block mt-0.5 transition-colors duration-150 ${careerQualiStage === "q3" ? "text-purple-300" : "text-sky-300"
+                      }`}>
+                      {careerQualiStage === "q3" ? careerStats.q3Rate : careerStats.q2Rate}%
+                    </span>
+                    <span className="text-[10px] text-f1-subtle font-mono tabular-nums block transition-colors duration-200">
+                      {careerQualiStage === "q3" ? careerStats.q3 : careerStats.q2} de {profile.total_gps} GPs
+                    </span>
+                  </div>
+                </div>
+
+                {/* Média Pontos / GP */}
+                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                  <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                    Média pts / GP
+                  </span>
+                  <span className="font-mono text-sm font-black text-white block mt-0.5">
+                    {careerStats.avgPoints}
+                  </span>
+                  <span className="text-[10px] text-f1-subtle font-mono block">
+                    {Math.round(profile.total_points).toLocaleString("pt-BR")} pts tot.
+                  </span>
+                </div>
+
+                {/* Confiabilidade / DNFs */}
+                <div className="rounded-xl bg-white/[0.03] border border-white/5 p-2.5">
+                  <span className="block text-[10px] text-f1-subtle uppercase font-bold tracking-wider">
+                    Conclusão de GPs
+                  </span>
+                  <span className="font-mono text-sm font-black text-emerald-400 block mt-0.5">
+                    {careerStats.finishRate}%
+                  </span>
+                  <span className="text-[10px] text-rose-400 font-mono block">
+                    {careerStats.dnfs} {careerStats.dnfs === 1 ? "abandono" : "abandonos"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Linha Rápida de Voltas Mais Rápidas */}
+              <div className="flex items-center justify-between pt-1 text-[11px] text-f1-subtle">
+                <span className="flex items-center gap-1.5">
+                  <Timer className="h-3.5 w-3.5 text-zinc-400" />
+                  Voltas Mais Rápidas:
+                </span>
+                <span className="font-mono font-bold text-white">
+                  {careerStats.fastestLaps} voltas
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: PISTAS FAVORITAS (TOP 3 CIRCUITOS) */}
+          <div className="rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg">
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <Crosshair className="h-4 w-4 text-emerald-400" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                  Pistas Favoritas
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-f1-subtle bg-white/5 px-2 py-0.5 rounded">
+                Top 3 Histórico
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {topCircuits.map((c) => {
+                const flag = getCountryFlag(c.country);
+                const wins = c.race_wins || c.total_wins || 0;
+                const podiums = c.total_podiums || 0;
+                const winPct = c.total_gps > 0 ? ((wins / c.total_gps) * 100).toFixed(0) : "0";
+
+                return (
+                  <button
+                    key={c.circuit_id}
+                    type="button"
+                    onClick={() => handleSelectFavoriteCircuit(c.circuit_name)}
+                    className="w-full text-left rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 p-2.5 transition-all group flex items-center justify-between gap-3"
+                    title={`Filtrar desempenho no ${c.circuit_name}`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-base shrink-0">{flag}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-white truncate group-hover:text-white group-hover:underline decoration-white/30 transition-colors">
+                            {c.circuit_name}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-f1-subtle font-mono block">
+                          {c.country ? `${c.country} · ` : ""}{c.total_gps} GPs disputados
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="flex items-center justify-end gap-1.5 text-xs font-mono tabular-nums font-bold">
+                        <span className="text-amber-400" title="Vitórias">
+                          {wins}V
+                        </span>
+                        <span className="text-white/20">•</span>
+                        <span className="text-blue-300" title="Pódios">
+                          {podiums}P
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-mono block font-semibold">
+                        {winPct}% vitórias
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {circuits.length > 3 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("circuits");
+                  setCircuitSearch("");
+                  setCircuitsPage(1);
+                }}
+                className="w-full mt-3 pt-2 border-t border-white/5 text-[11px] font-bold text-f1-subtle hover:text-white transition-colors flex items-center justify-center gap-1"
+              >
+                <span>Ver todos os {circuits.length} circuitos disputados</span>
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        </aside>
+
+        {/* ========================================================================= */}
+        {/* COLUNA DIREITA (67% no Desktop xl+, Largura Total em < xl): PAINEL PRINCIPAL */}
+        {/* ========================================================================= */}
+        <main className="order-1 xl:order-2 xl:col-span-8 space-y-4 min-w-0">
+          {/* SELETOR DE ABAS COMPACTO (Estilo Segmented Control Cockpit) */}
+          <div className="flex items-center justify-between bg-[#0E0E14] border border-white/10 rounded-2xl p-1 sm:p-1.5 shadow-md overflow-x-auto no-scrollbar">
+            <div className="grid grid-cols-4 sm:flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
+              {/* 1ª Aba Mobile/Tablet (< xl): Raio-X & Recordes da Sidebar */}
+              <button
+                type="button"
+                onClick={() => setActiveTab("overview")}
+                className={`xl:hidden inline-flex items-center justify-center gap-1 px-2.5 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "overview"
+                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <span>Raio-X</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("seasons")}
+                className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "seasons"
+                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <Trophy className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
+                <span>Temporadas</span>
+                <span
+                  className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "seasons"
+                    ? "bg-black/30 text-white"
+                    : "bg-white/10 text-zinc-400"
+                    }`}
+                >
+                  {seasons.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("circuits")}
+                className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "circuits"
+                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <Flag className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
+                <span>Circuitos</span>
+                <span
+                  className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "circuits" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
+                    }`}
+                >
+                  {circuits.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("races")}
+                className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 ${activeTab === "races"
+                  ? "bg-f1-red text-white shadow-md shadow-f1-red/25"
+                  : "text-f1-subtle hover:text-white hover:bg-white/5"
+                  }`}
+              >
+                <Timer className="h-3.5 w-3.5 shrink-0 hidden sm:inline" />
+                <span className="sm:hidden">Corridas</span>
+                <span className="hidden sm:inline">Corrida a Corrida</span>
+                <span
+                  className={`hidden sm:inline text-[10px] font-mono px-1.5 py-0.2 rounded ${activeTab === "races" ? "bg-black/30 text-white" : "bg-white/10 text-zinc-400"
+                    }`}
+                >
+                  {raceLog.length}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* --------------------------------------------------------------------- */}
+          {/* CONTEÚDO DA ABA 1: TEMPORADA A TEMPORADA                              */}
+          {/* --------------------------------------------------------------------- */}
+          {activeTab === "seasons" && (
+            <div className="space-y-4">
+              {/* Sub-seletor Mobile (< md): Alterna entre Gráfico/Raio-X do Ano (1ª aba) e Tabela sem empilhar */}
+              <div className="grid grid-cols-2 md:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => setMobileSeasonSubView("chart")}
+                  className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "chart"
+                    ? "bg-white/15 text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  Gráfico & Raio-X ({selectedSeasonYear})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobileSeasonSubView("table")}
+                  className={`py-2 px-3 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all ${mobileSeasonSubView === "table"
+                    ? "bg-white/15 text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  Tabela ({seasons.length})
+                </button>
+              </div>
+
+              {/* Bloco Unificado: Gráfico de Posições + Mini Raio-X da Temporada Selecionada */}
+              <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] p-4 sm:p-5 shadow-lg space-y-4 ${mobileSeasonSubView === "chart" ? "block" : "hidden md:block"}`}>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-amber-400" />
+                      Trajetória no Campeonato Mundial
+                    </h3>
+                    <p className="text-[11px] text-f1-subtle mt-0.5">
+                      Classificação final ano a ano. Clique em uma barra para detalhes.
+                    </p>
+                  </div>
+
+                  {/* Seletor rápido de temporada */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-f1-subtle font-mono hidden sm:inline">
+                      Temporada:
+                    </span>
+                    <select
+                      value={selectedSeasonYear}
+                      onChange={(e) => {
+                        handleSelectSeasonYear(e.target.value);
+                      }}
+                      className="bg-[#1b1b26] border border-white/15 text-white text-xs font-bold font-mono rounded-lg px-2.5 py-1 focus:outline-none focus:border-f1-red cursor-pointer hover:border-white/30 transition-colors"
+                      title="Selecionar Temporada"
+                    >
+                      {seasonPositionData
+                        .slice()
+                        .reverse()
+                        .map((s) => (
+                          <option key={s.yearNum} value={s.yearNum} className="bg-[#12121A] text-white">
+                            {s.year} {s.position === 1 && s.is_season_completed ? "👑 Campeão" : `(P${s.position})`}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Seletor Rápido de Anos (Pills) */}
+                <div className="flex flex-wrap items-center gap-1 max-h-16 overflow-y-auto scrollbar-thin">
+                  {seasonPositionData
+                    .slice()
+                    .reverse()
+                    .map((s) => {
+                      const isSelected = s.yearNum === selectedSeasonYear;
+                      const isChamp = s.position === 1 && s.is_season_completed;
+                      return (
+                        <button
+                          key={s.yearNum}
+                          type="button"
+                          onClick={() => {
+                            handleSelectSeasonYear(s.yearNum);
+                          }}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-all shrink-0 ${isSelected
+                            ? "bg-f1-red text-white shadow-sm shadow-f1-red/30 scale-105"
+                            : "bg-white/5 text-f1-subtle hover:bg-white/10 hover:text-white"
+                            }`}
+                        >
+                          {isChamp && <span>👑</span>}
+                          <span>{s.year}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                {/* Barra de Navegação entre Períodos / Eras */}
+                {totalPeriods > 1 && (
+                  <div className="flex items-center justify-between bg-white/[0.03] border border-white/10 rounded-xl px-3 py-1.5 text-xs font-mono">
+                    {/* Botão Período Anterior */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newPeriod = Math.max(0, chartPeriod - 1);
+                        setChartPeriod(newPeriod);
+                        const isLast = newPeriod === totalPeriods - 1;
+                        const start = isLast
+                          ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+                          : newPeriod * PERIOD_SIZE;
+                        const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+                        const slice = seasonPositionData.slice(start, end);
+                        if (slice.length > 0) {
+                          handleSelectSeasonYear(slice[slice.length - 1].yearNum);
+                          const targetYear = slice.some((s) => s.yearNum === selectedSeasonYear)
+                            ? selectedSeasonYear
+                            : slice[slice.length - 1].yearNum;
+                          handleSelectSeasonYear(targetYear, newPeriod);
+                        } else {
+                          setChartPeriod(newPeriod);
+                        }
+                      }}
+                      disabled={chartPeriod === 0}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === 0
+                        ? "opacity-30 cursor-not-allowed text-zinc-600"
+                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                        }`}
+                      title="Ver período anterior (temporadas mais antigas)"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Anterior</span>
+                    </button>
+
+                    {/* Indicador do Período Atual */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-f1-subtle uppercase tracking-wider hidden md:inline">
+                        Período:
+                      </span>
+                      <span className="text-xs font-bold text-white bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-md shadow-sm">
+                        {visibleSeasonData[0]?.year} — {visibleSeasonData[visibleSeasonData.length - 1]?.year}
+                      </span>
+                      <span className="text-[10px] text-f1-subtle font-mono">
+                        ({chartPeriod + 1} de {totalPeriods})
+                      </span>
+                    </div>
+
+                    {/* Botão Próximo Período */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newPeriod = Math.min(totalPeriods - 1, chartPeriod + 1);
+                        setChartPeriod(newPeriod);
+                        const isLast = newPeriod === totalPeriods - 1;
+                        const start = isLast
+                          ? Math.max(0, seasonPositionData.length - PERIOD_SIZE)
+                          : newPeriod * PERIOD_SIZE;
+                        const end = isLast ? seasonPositionData.length : start + PERIOD_SIZE;
+                        const slice = seasonPositionData.slice(start, end);
+                        if (slice.length > 0) {
+                          handleSelectSeasonYear(slice[slice.length - 1].yearNum);
+                          const targetYear = slice.some((s) => s.yearNum === selectedSeasonYear)
+                            ? selectedSeasonYear
+                            : slice[0].yearNum;
+                          handleSelectSeasonYear(targetYear, newPeriod);
+                        } else {
+                          setChartPeriod(newPeriod);
+                        }
+                      }}
+                      disabled={chartPeriod === totalPeriods - 1}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold transition-all ${chartPeriod === totalPeriods - 1
+                        ? "opacity-30 cursor-not-allowed text-zinc-600"
+                        : "text-zinc-300 hover:text-white hover:bg-white/10 active:scale-95 border border-white/5 hover:border-white/15"
+                        }`}
+                      title="Ver próximo período (temporadas mais recentes)"
+                    >
+                      <span className="hidden sm:inline">Próximo</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Gráfico de Colunas de Trajetória */}
+                <div className="h-48 w-full pt-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={visibleSeasonData}
+                      margin={{ top: 20, right: 10, left: 10, bottom: 15 }}
+                      barCategoryGap="12%"
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+                      <XAxis
+                        dataKey="year"
+                        stroke="#888888"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={{ stroke: "#ffffff15" }}
+                        interval={0}
+                        tickFormatter={(yearStr) => `'${yearStr.slice(-2)}`}
+                      />
+                      <YAxis hide={true} />
+                      <Tooltip
+                        content={<CustomSeasonTooltip />}
+                        cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                      />
+                      <Bar
+                        dataKey="heightScore"
+                        radius={[4, 4, 0, 0]}
+                        maxBarSize={30}
+                        label={renderCustomBarLabel}
+                        onClick={(data: any) => {
+                          const y = data?.yearNum ?? data?.payload?.yearNum ?? data?.activePayload?.[0]?.payload?.yearNum;
+                          if (y) {
+                            handleSelectSeasonYear(y);
+                          }
+                        }}
+                      >
+                        {visibleSeasonData.map((entry, index) => {
+                          const isSelected = entry.yearNum === selectedSeasonYear;
+                          let barFill = "#334155";
+                          let barStroke = isSelected ? "#FFFFFF" : "#475569";
+
+                          if (entry.position === 1) {
+                            barFill = "#EAB308";
+                            barStroke = isSelected ? "#FFFFFF" : "#FDE047";
+                          } else if (entry.position === 2) {
+                            barFill = "#94A3B8";
+                            barStroke = isSelected ? "#FFFFFF" : "#CBD5E1";
+                          } else if (entry.position === 3) {
+                            barFill = "#D97706";
+                            barStroke = isSelected ? "#FFFFFF" : "#F59E0B";
+                          } else if (entry.position <= 10) {
+                            barFill = "#2563EB";
+                            barStroke = isSelected ? "#FFFFFF" : "#60A5FA";
+                          }
+
+                          return (
+                            <Cell
+                              key={`cell-${entry.yearNum}-${index}`}
+                              fill={barFill}
+                              stroke={barStroke}
+                              strokeWidth={isSelected ? 2.5 : 1}
+                              className="cursor-pointer transition-all hover:opacity-80"
+                              onClick={() => handleSelectSeasonYear(entry.yearNum)}
+                            />
+                          );
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Mini Raio-X da Temporada Selecionada */}
+                {currentSeason && (
+                  <div className="rounded-xl border border-white/5 bg-[#12121A] p-3.5 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-6 rounded-full shrink-0"
+                          style={{ backgroundColor: currentSeason.team_color }}
+                        />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-black text-white uppercase tracking-tight">
+                              Temporada {currentSeason.year}
+                            </h4>
+                            <span className="text-xs font-bold text-white/80">
+                              • <TeamLink teamName={currentSeason.team_name} className="hover:underline hover:text-white transition-colors">{currentSeason.team_name}</TeamLink>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {currentSeason.position === 1 && currentSeason.is_season_completed ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-400 border border-amber-400/30 text-[11px] font-black">
+                            👑 Campeão Mundial
+                          </span>
+                        ) : !currentSeason.is_season_completed ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Em Andamento (P{currentSeason.position})
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-white/10 text-white border border-white/15 text-[11px] font-bold font-mono">
+                            P{currentSeason.position} Oficial
+                          </span>
+                        )}
+
+                        <Link
+                          href={`/season?year=${currentSeason.year}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/5 hover:bg-f1-red text-white border border-white/15 hover:border-f1-red text-[11px] font-bold transition-all group"
+                          title={`Acessar central da Temporada ${currentSeason.year}`}
+                        >
+                          <span>Ver Temporada</span>
+                          <ExternalLink className="h-3 w-3 text-f1-subtle group-hover:text-white transition-colors" />
+                        </Link>
+                      </div>
+                    </div>
+
+                    {/* KPIs da Temporada em 5 Colunas (Vitórias, Pódios, Poles, Qualificação Q3/Q2 Interativa, Pontos) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-center text-xs">
+                      <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-f1-subtle font-bold uppercase block">
+                          Vitórias (GP/Sprint)
+                        </span>
+                        <span className="font-mono tabular-nums text-sm font-black text-amber-400 block mt-0.5">
+                          {currentSeason.total_wins}
+                        </span>
+                        <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
+                          {currentSeason.race_wins} GP · {currentSeason.sprint_wins} Sprint
+                        </span>
+                      </div>
+
+                      <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-f1-subtle font-bold uppercase block">
+                          Pódios (GP/Sprint)
+                        </span>
+                        <span className="font-mono tabular-nums text-sm font-black text-blue-300 block mt-0.5">
+                          {currentSeason.total_podiums}
+                        </span>
+                        <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
+                          {currentSeason.race_podiums} GP · {currentSeason.sprint_podiums} Sprint
+                        </span>
+                      </div>
+
+                      <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-f1-subtle font-bold uppercase block">
+                          Poles (GP/Sprint)
+                        </span>
+                        <span className="font-mono tabular-nums text-sm font-black text-purple-300 block mt-0.5">
+                          {currentSeason.total_poles}
+                        </span>
+                        <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
+                          {currentSeason.race_poles} GP · {currentSeason.sprint_poles} Sprint
+                        </span>
+                      </div>
+
+                      {/* Card Interativo: Q3 e Q2 dividindo o mesmo espaço com alternância fluida */}
+                      <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5 flex flex-col justify-between relative">
+                        <div className="flex items-center justify-between gap-1 text-[10px] text-f1-subtle font-bold uppercase">
+                          <span className="flex items-center gap-1.5 truncate" title={seasonQualiStage === "q3" ? "Aparições no Q3 da classificação" : "Aparições no Q2 da classificação"}>
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 transition-colors duration-200 ${seasonQualiStage === "q3" ? "bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]" : "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)]"}`} />
+                            <span className="text-white/90 transition-colors duration-200">{seasonQualiStage === "q3" ? "Aparições Q3" : "Aparições Q2"}</span>
+                          </span>
+
+                          {/* Sliding Toggle Pill: Q3 <-> Q2 */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSeasonQualiStage((prev) => (prev === "q3" ? "q2" : "q3"));
+                            }}
+                            className="relative inline-flex items-center p-0.5 rounded-md bg-black/60 border border-white/10 shrink-0 cursor-pointer select-none group/toggle transition-colors hover:border-white/20 focus:outline-none"
+                            title={`Clique para alternar para ${seasonQualiStage === "q3" ? "Q2" : "Q3"}`}
+                            aria-label={`Alternar entre Q3 e Q2 (atualmente ${seasonQualiStage.toUpperCase()})`}
+                          >
+                            {/* Sliding Thumb */}
+                            <span
+                              aria-hidden="true"
+                              className={`absolute top-0.5 bottom-0.5 w-6 rounded border transition-all duration-200 ease-out shadow-sm pointer-events-none ${seasonQualiStage === "q3"
+                                ? "left-0.5 translate-x-0 bg-purple-500/25 border-purple-500/40"
+                                : "left-0.5 translate-x-6 bg-sky-500/25 border-sky-500/40"
+                                }`}
+                            />
+                            {/* Labels */}
+                            <span
+                              className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${seasonQualiStage === "q3" ? "text-purple-200" : "text-white/40 group-hover/toggle:text-white/70"
+                                }`}
+                            >
+                              Q3
+                            </span>
+                            <span
+                              className={`relative z-10 w-6 text-center py-0.5 text-[9px] font-mono font-bold transition-colors duration-200 pointer-events-none ${seasonQualiStage === "q2" ? "text-sky-200" : "text-white/40 group-hover/toggle:text-white/70"
+                                }`}
+                            >
+                              Q2
+                            </span>
+                          </button>
+                        </div>
+
+                        <div className="w-full text-center py-0.5">
+                          <div key={seasonQualiStage} className="animate-in fade-in duration-150">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <span className={`font-mono tabular-nums text-sm font-black block mt-0.5 transition-colors duration-150 ${seasonQualiStage === "q3" ? "text-purple-300" : "text-sky-300"
+                                }`}>
+                                {seasonQualiStage === "q3" ? currentSeason.q3_appearences : currentSeason.q2_appearences}
+                              </span>
+                              <span className="text-[10px] text-white/30 font-mono tabular-nums">
+                                / {currentSeason.total_gps}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-f1-subtle font-mono tabular-nums block transition-colors duration-150">
+                              {seasonQualiStage === "q3"
+                                ? `${currentSeason.q3Rate}% das qualis`
+                                : `${currentSeason.q2Rate}% das qualis`}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                        <span className="text-[10px] text-f1-subtle font-bold uppercase block">
+                          Pontos Totais
+                        </span>
+                        <span className="font-mono tabular-nums text-sm font-black text-white block mt-0.5">
+                          {Math.round(currentSeason.total_points).toLocaleString("pt-BR")}
+                        </span>
+                        <span className="text-[10px] text-f1-subtle font-mono tabular-nums block">
+                          {currentSeason.ptsPerGp} pts/GP · {currentSeason.total_dnfs} DNF
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* TABELA COMPLETA DE TEMPORADAS (ALTA DENSIDADE COM PAGINAÇÃO) */}
+              <div className={`rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg ${mobileSeasonSubView === "table" ? "block" : "hidden md:block"}`}>
+                <div className="p-3.5 sm:p-4 flex items-center justify-between border-b border-white/10 bg-white/[0.01]">
+                  <div className="flex items-center gap-2">
+                    <Table2 className="h-4 w-4 text-f1-subtle" />
+                    <span className="text-xs font-black uppercase tracking-wider text-white">
+                      Tabela Detalhada ({seasons.length} temporadas)
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {seasonSortKey && (
+                      <button
+                        type="button"
+                        onClick={() => setSeasonSortKey(null)}
+                        className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold"
+                      >
+                        <RotateCcw className="h-3 w-3" /> Restaurar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowFullTable(!showFullTable)}
+                      className="hidden md:flex items-center gap-1.5 text-xs font-bold text-f1-subtle hover:text-white"
+                    >
+                      <span>{showFullTable ? "Ocultar" : "Expandir"}</span>
+                      {showFullTable ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {showFullTable && (
+                  <>
+                    <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                      <span className="flex items-center gap-1.5">
+                        <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                        <span>Toque em qualquer linha para expandir estatísticas e perfil</span>
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="bg-black/50 text-[10px] font-black uppercase tracking-wider">
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="Ano"
+                              columnKey="year"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              className="border-b border-white/10"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="Equipe"
+                              columnKey="team_name"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              className="border-b border-white/10"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="Pos."
+                              columnKey="championship_position"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-white/10"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="GPs"
+                              columnKey="total_gps"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-white/10 hidden md:table-cell"
+                            />
+                            <TableSortHeader
+                              colSpan={2}
+                              label="Vit."
+                              columnKey="total_wins"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-l border-white/10"
+                            />
+                            <TableSortHeader
+                              colSpan={2}
+                              label="Pódios"
+                              columnKey="total_podiums"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-l border-white/10 hidden md:table-cell"
+                            />
+                            <TableSortHeader
+                              colSpan={2}
+                              label="Poles"
+                              columnKey="race_poles"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-l border-white/10 hidden md:table-cell"
+                            />
+                            <TableSortHeader
+                              colSpan={2}
+                              label="Quali"
+                              columnKey="q3_appearences"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-l border-white/10 hidden md:table-cell"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="V. Ráp."
+                              columnKey="fastest_laps"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-l border-white/10 hidden md:table-cell"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="Pts"
+                              columnKey="total_points"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="right"
+                              className="border-b border-white/10"
+                            />
+                            <TableSortHeader
+                              rowSpan={2}
+                              label="DNFs"
+                              columnKey="total_dnfs"
+                              currentSortKey={seasonSortKey}
+                              currentSortDir={seasonSortDir}
+                              onSort={handleSeasonSort}
+                              align="center"
+                              className="border-b border-white/10 hidden md:table-cell"
+                            />
+                          </tr>
+                          <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                            <th
+                              onClick={() => handleSeasonSort("race_wins")}
+                              className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                              title="Vitórias GP"
+                            >
+                              GP
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("sprint_wins")}
+                              className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                              title="Vitórias Sprint"
+                            >
+                              Spr
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("race_podiums")}
+                              className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                              title="Pódios GP"
+                            >
+                              GP
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("sprint_podiums")}
+                              className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                              title="Pódios Sprint"
+                            >
+                              Spr
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("race_poles")}
+                              className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                              title="Poles GP"
+                            >
+                              GP
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("sprint_poles")}
+                              className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                              title="Poles Sprint"
+                            >
+                              Spr
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("q3_appearences")}
+                              className="pt-1 pb-1.5 text-center text-purple-300 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-purple-200 select-none"
+                              title="Aparições no Q3 (Top 10)"
+                            >
+                              Q3
+                            </th>
+                            <th
+                              onClick={() => handleSeasonSort("q2_appearences")}
+                              className="pt-1 pb-1.5 text-center text-sky-300 w-10 min-w-[36px] cursor-pointer hover:text-sky-200 select-none"
+                              title="Aparições no Q2 (Top 15)"
+                            >
+                              Q2
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {paginatedSeasons.map((s) => {
+                            const isInProgress = !s.is_season_completed;
+                            const isChampion = s.championship_position === 1 && s.is_season_completed;
+                            const seasonTeamColor = s.team_color || teamColor;
+                            const isSelected = s.year === selectedSeasonYear;
+                            const isExpanded = expandedSeasonRowYear === s.year;
+
+                            return (
+                              <React.Fragment key={s.year}>
+                                <tr
+                                  onClick={() => {
+                                    handleSelectSeasonYear(s.year);
+                                    setExpandedSeasonRowYear(isExpanded ? null : s.year);
+                                  }}
+                                  className={`group cursor-pointer transition-colors ${isSelected
+                                    ? "bg-white/[0.08] border-l-4 border-l-f1-red"
+                                    : isExpanded
+                                      ? "bg-white/[0.06] md:bg-transparent"
+                                      : isInProgress
+                                        ? "bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08]"
+                                        : "hover:bg-white/5"
+                                    }`}
+                                >
+                                  <td className="py-2.5 px-2.5 sm:px-3 font-black text-white font-mono text-xs whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5">
+                                      <Link
+                                        href={`/season?year=${s.year}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="hover:text-white hover:underline decoration-white/30 transition-colors inline-flex items-center gap-1 group/yr pointer-events-none md:pointer-events-auto"
+                                        title={`Abrir Temporada de ${s.year}`}
+                                      >
+                                        <span>{s.year}</span>
+                                        <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/yr:opacity-100 transition-opacity text-white/60 hidden sm:inline" />
+                                      </Link>
+                                      {isInProgress && (
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] font-bold text-emerald-400 font-sans">
+                                          <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                                          <span className="hidden sm:inline">Atual</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-2 sm:px-3 max-w-[140px] sm:max-w-none">
+                                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <span
+                                          className="h-2 w-2 rounded-full shrink-0"
+                                          style={{ backgroundColor: seasonTeamColor }}
+                                        />
+                                        <TeamLink
+                                          teamName={s.team_name}
+                                          className="font-bold text-white/90 truncate max-w-[100px] sm:max-w-[140px] hover:text-white hover:underline decoration-white/30 underline-offset-2 transition-colors pointer-events-none md:pointer-events-auto"
+                                          title={`Ver perfil de ${s.team_name}`}
+                                        >
+                                          {s.team_name}
+                                        </TeamLink>
+                                      </div>
+                                      <span
+                                        className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
+                                          ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                          : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                          }`}
+                                        aria-hidden="true"
+                                      >
+                                        <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 px-1.5 sm:px-2 text-center whitespace-nowrap">
+                                    {isChampion ? (
+                                      <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 sm:px-2 py-0.2 text-[9px] font-black text-amber-400">
+                                        👑 P1
+                                      </span>
+                                    ) : isInProgress ? (
+                                      <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 sm:px-2 py-0.2 text-[10px] font-mono font-bold text-emerald-300">
+                                        P{s.championship_position}
+                                      </span>
+                                    ) : (
+                                      <span className="font-mono font-bold text-white/80">
+                                        P{s.championship_position}
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-white/80 hidden md:table-cell">
+                                    {s.total_gps}
+                                  </td>
+                                  <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
+                                    {s.race_wins > 0 ? (
+                                      <span className="text-amber-400">{s.race_wins}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                                    {s.race_wins > 0 ? (
+                                      <span className="text-amber-400">{s.race_wins}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                    {s.sprint_wins > 0 ? (
+                                      <span className="text-purple-300">{s.sprint_wins}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                                    {s.race_podiums > 0 ? (
+                                      <span className="text-blue-300">{s.race_podiums}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                    {s.sprint_podiums > 0 ? (
+                                      <span className="text-purple-300">{s.sprint_podiums}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold text-white/80 border-l border-white/5 hidden md:table-cell">
+                                    {s.race_poles > 0 ? (
+                                      <span className="text-purple-300">{s.race_poles}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                    {s.sprint_poles > 0 ? (
+                                      <span className="text-purple-300">{s.sprint_poles}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono tabular-nums font-bold border-l border-white/5 hidden md:table-cell">
+                                    {s.q3_appearences != null && s.q3_appearences > 0 ? (
+                                      <span className="text-purple-300">{s.q3_appearences}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-1.5 text-center font-mono tabular-nums font-bold hidden md:table-cell">
+                                    {s.q2_appearences != null && s.q2_appearences > 0 ? (
+                                      <span className="text-sky-300">{s.q2_appearences}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-white/80 border-l border-white/5 hidden md:table-cell">
+                                    {s.fastest_laps > 0 ? (
+                                      <span className="text-white/90">{s.fastest_laps}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                  <td className="py-2.5 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
+                                    {s.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                                  </td>
+                                  <td className="py-2.5 px-2 text-center font-mono text-f1-subtle hidden md:table-cell">
+                                    {s.total_dnfs > 0 ? (
+                                      <span className="text-rose-400/90 font-bold">{s.total_dnfs}</span>
+                                    ) : (
+                                      <span className="text-white/20">0</span>
+                                    )}
+                                  </td>
+                                </tr>
+
+                                {isExpanded && (
+                                  <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                                    <td colSpan={15} className="p-3">
+                                      <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                        <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                          <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                            <span className="block text-[9px] text-f1-subtle uppercase font-sans">GPs / DNFs</span>
+                                            <span className="text-xs font-black text-white">
+                                              {s.total_gps} / <span className="text-rose-400">{s.total_dnfs}</span>
+                                            </span>
+                                          </div>
+                                          <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                            <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
+                                            <span className="text-xs font-black text-white">
+                                              {s.race_podiums} / <span className="text-purple-300">{s.sprint_podiums}</span>
+                                            </span>
+                                          </div>
+                                          <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                            <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
+                                            <span className="text-xs font-black text-white">
+                                              {s.race_poles} / <span className="text-purple-300">{s.sprint_poles}</span>
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                          <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                            <span className="block text-[9px] text-f1-subtle uppercase font-sans">Quali Q3 / Q2</span>
+                                            <span className="text-xs font-black text-purple-300">
+                                              {s.q3_appearences ?? 0} <span className="text-white/40">/</span> <span className="text-sky-300">{s.q2_appearences ?? 0}</span>
+                                            </span>
+                                          </div>
+                                          <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                            <span className="block text-[9px] text-f1-subtle uppercase font-sans">Voltas Rápidas</span>
+                                            <span className="text-xs font-black text-white">{s.fastest_laps ?? 0}</span>
+                                          </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                          <TeamLink
+                                            teamName={s.team_name}
+                                            className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                          >
+                                            <span className="truncate">Equipe {s.team_name}</span>
+                                            <ExternalLink className="h-3.5 w-3.5 text-f1-subtle shrink-0" />
+                                          </TeamLink>
+                                          <Link
+                                            href={`/season?year=${s.year}`}
+                                            className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
+                                          >
+                                            <span>Temporada {s.year}</span>
+                                            <ChevronRight className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                                          </Link>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <TablePagination
+                      currentPage={seasonsPage}
+                      totalPages={totalSeasonPages}
+                      totalItems={sortedSeasons.length}
+                      pageSize={SEASONS_PER_PAGE}
+                      onPageChange={setSeasonsPage}
+                      itemName="temporadas"
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* --------------------------------------------------------------------- */}
+          {/* CONTEÚDO DA ABA 2: DESEMPENHO POR CIRCUITO                            */}
+          {/* --------------------------------------------------------------------- */}
+          {activeTab === "circuits" && (
+            <div className="space-y-4">
+              {/* Barra de Filtro de Circuito */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3.5 shadow-lg">
+                <div className="relative min-w-[260px] flex-1 sm:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
+                  <input
+                    type="text"
+                    value={circuitSearch}
+                    onChange={(e) => {
+                      setCircuitSearch(e.target.value);
+                      setCircuitsPage(1);
+                    }}
+                    placeholder="Buscar circuito, cidade ou país..."
+                    className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white placeholder-f1-subtle/60 outline-none transition-colors hover:border-white/30 focus:border-f1-red"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium text-f1-subtle">
+                    Exibindo {sortedCircuits.length} de {circuits.length} pistas
+                  </span>
+                  {circuitSortKey && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCircuitSortKey(null);
+                        setCircuitsPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold ml-1"
                     >
                       <RotateCcw className="h-3 w-3" /> Restaurar
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setShowFullTable(!showFullTable)}
-                    className="hidden md:flex items-center gap-1.5 text-xs font-bold text-f1-subtle hover:text-white"
-                  >
-                    <span>{showFullTable ? "Ocultar" : "Expandir"}</span>
-                    {showFullTable ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
                 </div>
               </div>
 
-              {showFullTable && (
-                <>
-                  <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
-                    <span className="flex items-center gap-1.5">
-                      <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                      <span>Toque em qualquer linha para expandir estatísticas e perfil</span>
-                    </span>
+              {/* Tabela de Circuitos */}
+              <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg">
+                <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                  <span className="flex items-center gap-1.5">
+                    <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                    <span>Toque em qualquer linha para expandir estatísticas e perfil do circuito</span>
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-black/50 text-[10px] font-black uppercase tracking-wider">
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="Circuito / GP"
+                          columnKey="circuit_name"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          className="border-b border-white/10"
+                        />
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="País"
+                          columnKey="country"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          className="border-b border-white/10 hidden md:table-cell"
+                        />
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="GPs"
+                          columnKey="total_gps"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-white/10"
+                        />
+                        <TableSortHeader
+                          colSpan={2}
+                          label="Vit."
+                          columnKey="total_wins"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-l border-white/10"
+                        />
+                        <TableSortHeader
+                          colSpan={2}
+                          label="Pódios"
+                          columnKey="total_podiums"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-l border-white/10 hidden md:table-cell"
+                        />
+                        <TableSortHeader
+                          colSpan={2}
+                          label="Poles"
+                          columnKey="race_poles"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-l border-white/10 hidden md:table-cell"
+                        />
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="Melhor"
+                          columnKey="best_finish_position"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-l border-white/10 hidden md:table-cell"
+                        />
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="Pts"
+                          columnKey="total_points"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="right"
+                          className="border-b border-white/10"
+                        />
+                        <TableSortHeader
+                          rowSpan={2}
+                          label="DNFs"
+                          columnKey="total_dnfs"
+                          currentSortKey={circuitSortKey}
+                          currentSortDir={circuitSortDir}
+                          onSort={handleCircuitSort}
+                          align="center"
+                          className="border-b border-white/10 hidden md:table-cell"
+                        />
+                      </tr>
+                      <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
+                        <th
+                          onClick={() => handleCircuitSort("race_wins")}
+                          className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                        >
+                          GP
+                        </th>
+                        <th
+                          onClick={() => handleCircuitSort("sprint_wins")}
+                          className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                        >
+                          Spr
+                        </th>
+                        <th
+                          onClick={() => handleCircuitSort("race_podiums")}
+                          className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                        >
+                          GP
+                        </th>
+                        <th
+                          onClick={() => handleCircuitSort("sprint_podiums")}
+                          className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                        >
+                          Spr
+                        </th>
+                        <th
+                          onClick={() => handleCircuitSort("race_poles")}
+                          className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
+                        >
+                          GP
+                        </th>
+                        <th
+                          onClick={() => handleCircuitSort("sprint_poles")}
+                          className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
+                        >
+                          Spr
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {paginatedCircuits.map((c) => {
+                        const flag = getCountryFlag(c.country);
+                        const circuitKey = c.circuit_id || c.circuit_name;
+                        const isExpanded = expandedCircuitRowId === circuitKey;
+                        return (
+                          <React.Fragment key={circuitKey}>
+                            <tr
+                              onClick={() => setExpandedCircuitRowId(isExpanded ? null : circuitKey)}
+                              className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/5"
+                                }`}
+                            >
+                              <td className="py-2.5 px-2.5 sm:px-3 font-bold text-white max-w-[175px] sm:max-w-none">
+                                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                  <CircuitLink
+                                    circuitId={c.circuit_id}
+                                    circuitName={c.circuit_name}
+                                    className="hover:text-white hover:underline decoration-white/30 transition-colors block truncate pointer-events-none md:pointer-events-auto"
+                                    title={`Ver perfil do circuito ${c.circuit_name}`}
+                                  >
+                                    {c.circuit_name}
+                                  </CircuitLink>
+                                  <span
+                                    className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
+                                      ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                      : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                      }`}
+                                    aria-hidden="true"
+                                  >
+                                    <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                  </span>
+                                </div>
+                                <span className="md:hidden text-[10px] font-normal text-f1-subtle flex items-center gap-1 truncate">
+                                  <span>{flag}</span>
+                                  <span className="truncate">{c.country}</span>
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-3 text-f1-subtle hidden md:table-cell">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span>{flag}</span>
+                                  <span>{c.country}</span>
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 sm:px-3 text-center font-mono font-bold text-white">
+                                {c.total_gps}
+                              </td>
+                              <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
+                                {c.race_wins > 0 ? (
+                                  <span className="text-amber-400">{c.race_wins}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                                {c.race_wins > 0 ? (
+                                  <span className="text-amber-400">{c.race_wins}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                {c.sprint_wins > 0 ? (
+                                  <span className="text-purple-300">{c.sprint_wins}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                                {c.race_podiums > 0 ? (
+                                  <span className="text-blue-300">{c.race_podiums}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                {c.sprint_podiums > 0 ? (
+                                  <span className="text-purple-300">{c.sprint_podiums}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold text-white/80 border-l border-white/5 hidden md:table-cell">
+                                {c.race_poles > 0 ? (
+                                  <span className="text-purple-300">{c.race_poles}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
+                                {c.sprint_poles > 0 ? (
+                                  <span className="text-purple-300">{c.sprint_poles}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
+                                {c.best_finish_position ? (
+                                  <span className={c.best_finish_position === 1 ? "text-amber-400" : "text-white"}>
+                                    P{c.best_finish_position}
+                                  </span>
+                                ) : (
+                                  <span className="text-white/20">—</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
+                                {c.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
+                              </td>
+                              <td className="py-2.5 px-2 text-center font-mono text-f1-subtle hidden md:table-cell">
+                                {c.total_dnfs > 0 ? (
+                                  <span className="text-rose-400/90 font-bold">{c.total_dnfs}</span>
+                                ) : (
+                                  <span className="text-white/20">0</span>
+                                )}
+                              </td>
+                            </tr>
+
+                            {isExpanded && (
+                              <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                                <td colSpan={12} className="p-3">
+                                  <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                                    <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
+                                        <span className="text-xs font-black text-white">
+                                          {c.race_podiums} / <span className="text-purple-300">{c.sprint_podiums}</span>
+                                        </span>
+                                      </div>
+                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
+                                        <span className="text-xs font-black text-white">
+                                          {c.race_poles} / <span className="text-purple-300">{c.sprint_poles}</span>
+                                        </span>
+                                      </div>
+                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Melhor / DNFs</span>
+                                        <span className="text-xs font-black text-amber-400">
+                                          {c.best_finish_position ? `P${c.best_finish_position}` : "—"} <span className="text-white/40">/</span> <span className="text-rose-400">{c.total_dnfs}</span>
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <CircuitLink
+                                      circuitId={c.circuit_id}
+                                      circuitName={c.circuit_name}
+                                      className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                                    >
+                                      <span>Ver Perfil Completo do Circuito</span>
+                                      <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                                    </CircuitLink>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <TablePagination
+                  currentPage={circuitsPage}
+                  totalPages={totalCircuitPages}
+                  totalItems={sortedCircuits.length}
+                  pageSize={CIRCUITS_PER_PAGE}
+                  onPageChange={setCircuitsPage}
+                  itemName="pistas"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* --------------------------------------------------------------------- */}
+          {/* CONTEÚDO DA ABA 3: HISTÓRICO CORRIDA A CORRIDA (RACE LOG)             */}
+          {/* --------------------------------------------------------------------- */}
+          {activeTab === "races" && (
+            <div className="space-y-4">
+              {/* Barra de Filtro de Temporada, Pesquisa Geral e Contadores */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3 sm:p-3.5 shadow-lg w-full min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
+                  {/* Campo de Pesquisa Geral */}
+                  <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
+                    <input
+                      type="text"
+                      value={raceLogSearch}
+                      onChange={(e) => {
+                        setRaceLogSearch(e.target.value);
+                        setRaceLogPage(1);
+                      }}
+                      placeholder="Buscar circuito, país, equipe..."
+                      className="w-full pl-9 pr-7 py-1.5 rounded-xl border border-white/15 bg-black/40 text-xs font-medium text-white placeholder-f1-subtle outline-none hover:border-white/30 focus:border-f1-red transition-all"
+                    />
+                    {raceLogSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRaceLogSearch("");
+                          setRaceLogPage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-f1-subtle hover:text-white text-xs font-bold"
+                      >
+                        ×
+                      </button>
+                    )}
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="bg-black/50 text-[10px] font-black uppercase tracking-wider">
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="Ano"
-                            columnKey="year"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            className="border-b border-white/10"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="Equipe"
-                            columnKey="team_name"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            className="border-b border-white/10"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="Pos."
-                            columnKey="championship_position"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-white/10"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="GPs"
-                            columnKey="total_gps"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-white/10 hidden md:table-cell"
-                          />
-                          <TableSortHeader
-                            colSpan={2}
-                            label="Vit."
-                            columnKey="total_wins"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-l border-white/10"
-                          />
-                          <TableSortHeader
-                            colSpan={2}
-                            label="Pódios"
-                            columnKey="total_podiums"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-l border-white/10 hidden md:table-cell"
-                          />
-                          <TableSortHeader
-                            colSpan={2}
-                            label="Poles"
-                            columnKey="race_poles"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-l border-white/10 hidden md:table-cell"
-                          />
-                          <TableSortHeader
-                            colSpan={2}
-                            label="Quali"
-                            columnKey="q3_appearences"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-l border-white/10 hidden md:table-cell"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="V. Ráp."
-                            columnKey="fastest_laps"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-l border-white/10 hidden md:table-cell"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="Pts"
-                            columnKey="total_points"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="right"
-                            className="border-b border-white/10"
-                          />
-                          <TableSortHeader
-                            rowSpan={2}
-                            label="DNFs"
-                            columnKey="total_dnfs"
-                            currentSortKey={seasonSortKey}
-                            currentSortDir={seasonSortDir}
-                            onSort={handleSeasonSort}
-                            align="center"
-                            className="border-b border-white/10 hidden md:table-cell"
-                          />
+
+                  {/* Filtro de Temporada */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-bold text-f1-subtle shrink-0 hidden sm:inline">Ano:</span>
+                    <select
+                      value={selectedSeason}
+                      onChange={(e) => {
+                        setSelectedSeason(e.target.value);
+                        setRaceLogPage(1);
+                      }}
+                      className="w-full sm:w-auto min-w-[130px] rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-bold font-mono text-white outline-none hover:border-white/30 focus:border-f1-red cursor-pointer truncate"
+                    >
+                      <option value="all">Todas ({availableYears.length} anos)</option>
+                      {availableYears.map((y) => (
+                        <option key={y} value={y.toString()}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 shrink-0 whitespace-nowrap ml-auto">
+                  <span className="text-[11px] font-medium text-f1-subtle">
+                    Exibindo {sortedRaceLog.length} corridas
+                  </span>
+                  {(raceLogSortKey || selectedSeason !== "all" || raceLogSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRaceLogSortKey(null);
+                        setSelectedSeason("all");
+                        setRaceLogSearch("");
+                        setRaceLogPage(1);
+                      }}
+                      className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold ml-1 active:scale-95"
+                    >
+                      <RotateCcw className="h-3 w-3" /> Limpar
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tabela do Race Log */}
+              <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg">
+                <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
+                  <span className="flex items-center gap-1.5">
+                    <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                    <span>Toque em qualquer linha para expandir detalhes e abrir o GP</span>
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-black/50 text-[10px] font-black uppercase tracking-wider">
+                        <TableSortHeader label="Ano" columnKey="year" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} />
+                        <TableSortHeader label="Rnd" columnKey="round_number" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
+                        <TableSortHeader label="Grande Prêmio" columnKey="official_event_name" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} />
+                        <TableSortHeader label="Equipe" columnKey="team_name" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} className="hidden md:table-cell" />
+                        <TableSortHeader label="Grid" columnKey="grid_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" />
+                        <TableSortHeader label="Fim" columnKey="finishing_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" />
+                        <TableSortHeader label="Delta" columnKey="delta_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
+                        <TableSortHeader label="Pts" columnKey="points" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="right" />
+                        <TableSortHeader label="Melhor Volta" columnKey="best_lap" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} className="hidden md:table-cell" />
+                        <TableSortHeader label="Status" columnKey="status" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
+                        <th className="py-2.5 px-3 text-center text-f1-subtle hidden md:table-cell">Atalho</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {paginatedRaceLog.length === 0 ? (
+                        <tr>
+                          <td colSpan={11} className="py-10 text-center text-xs text-f1-subtle">
+                            Nenhuma corrida encontrada para os filtros selecionados.
+                          </td>
                         </tr>
-                        <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
-                          <th
-                            onClick={() => handleSeasonSort("race_wins")}
-                            className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                            title="Vitórias GP"
-                          >
-                            GP
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("sprint_wins")}
-                            className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                            title="Vitórias Sprint"
-                          >
-                            Spr
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("race_podiums")}
-                            className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                            title="Pódios GP"
-                          >
-                            GP
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("sprint_podiums")}
-                            className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                            title="Pódios Sprint"
-                          >
-                            Spr
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("race_poles")}
-                            className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                            title="Poles GP"
-                          >
-                            GP
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("sprint_poles")}
-                            className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                            title="Poles Sprint"
-                          >
-                            Spr
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("q3_appearences")}
-                            className="pt-1 pb-1.5 text-center text-purple-300 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-purple-200 select-none"
-                            title="Aparições no Q3 (Top 10)"
-                          >
-                            Q3
-                          </th>
-                          <th
-                            onClick={() => handleSeasonSort("q2_appearences")}
-                            className="pt-1 pb-1.5 text-center text-sky-300 w-10 min-w-[36px] cursor-pointer hover:text-sky-200 select-none"
-                            title="Aparições no Q2 (Top 15)"
-                          >
-                            Q2
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {paginatedSeasons.map((s) => {
-                          const isInProgress = !s.is_season_completed;
-                          const isChampion = s.championship_position === 1 && s.is_season_completed;
-                          const seasonTeamColor = s.team_color || teamColor;
-                          const isSelected = s.year === selectedSeasonYear;
-                          const isExpanded = expandedSeasonRowYear === s.year;
+                      ) : (
+                        paginatedRaceLog.map((r, idx) => {
+                          const isWin = r.finishing_position === 1;
+                          const isPodium = r.finishing_position && r.finishing_position <= 3;
+                          const delta = r.delta_position ?? 0;
+                          const rowKey = `${r.year}-${r.round_number}-${idx}`;
+                          const isExpanded = expandedRaceLogKey === rowKey;
 
                           return (
-                            <React.Fragment key={s.year}>
+                            <React.Fragment key={rowKey}>
                               <tr
-                                onClick={() => {
-                                  handleSelectSeasonYear(s.year);
-                                  setExpandedSeasonRowYear(isExpanded ? null : s.year);
-                                }}
-                                className={`group cursor-pointer transition-colors ${isSelected
-                                  ? "bg-white/[0.08] border-l-4 border-l-f1-red"
-                                  : isExpanded
-                                    ? "bg-white/[0.06] md:bg-transparent"
-                                    : isInProgress
-                                      ? "bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08]"
-                                      : "hover:bg-white/5"
+                                onClick={() => setExpandedRaceLogKey(isExpanded ? null : rowKey)}
+                                className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/5"
                                   }`}
                               >
-                                <td className="py-2.5 px-2.5 sm:px-3 font-black text-white font-mono text-xs whitespace-nowrap">
+                                <td className="py-2 px-2.5 sm:px-3 font-mono font-bold text-f1-subtle whitespace-nowrap">
+                                  <Link
+                                    href={`/season?year=${r.year}`}
+                                    className="hover:text-white hover:underline decoration-white/30 transition-colors pointer-events-none md:pointer-events-auto"
+                                    title={`Ver temporada ${r.year}`}
+                                  >
+                                    {r.year}
+                                  </Link>
+                                  <span className="md:hidden text-[10px] text-white/40 block">R{r.round_number}</span>
+                                </td>
+                                <td className="py-2 px-3 font-mono font-bold text-white/60 text-center hidden md:table-cell">
+                                  <Link
+                                    href={`/season/round/${r.round_number}?year=${r.year}`}
+                                    className="hover:text-white transition-colors"
+                                    title={`Ver GP da etapa ${r.round_number}`}
+                                  >
+                                    R{r.round_number}
+                                  </Link>
+                                </td>
+                                <td className="py-2 px-2 sm:px-3 font-bold text-white max-w-[160px] sm:max-w-none">
+                                  {(() => {
+                                    const circuitDisplayName = r.circuit_name || r.official_event_name || `Round ${r.round_number}`;
+                                    const countryName = r.country;
+                                    const countryFlag = getCountryFlag(countryName);
+
+                                    return (
+                                      <>
+                                        <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                          <Link
+                                            href={`/season/round/${r.round_number}?year=${r.year}`}
+                                            className="hover:text-white hover:underline decoration-white/30 transition-colors flex items-center gap-1 group/gp min-w-0 pointer-events-none md:pointer-events-auto"
+                                            title={`Abrir telemetria e análise completa do GP (${r.official_event_name})`}
+                                          >
+                                            <span className="truncate max-w-[135px] sm:max-w-[220px]">
+                                              {circuitDisplayName}
+                                            </span>
+                                            <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/gp:opacity-100 transition-opacity text-white/60 shrink-0 hidden sm:inline" />
+                                          </Link>
+                                          <span
+                                            className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
+                                              ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
+                                              : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
+                                              }`}
+                                            aria-hidden="true"
+                                          >
+                                            <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                                          </span>
+                                        </div>
+
+                                        {/* Linha 2: País com bandeira e equipe (no mobile) */}
+                                        <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-normal truncate mt-0.5">
+                                          {countryName ? (
+                                            <span className="inline-flex items-center gap-1 shrink-0 text-zinc-300 font-medium">
+                                              <span className="text-xs" aria-hidden="true">{countryFlag}</span>
+                                              <span>{countryName}</span>
+                                            </span>
+                                          ) : null}
+                                          <span className="md:hidden text-white/30">·</span>
+                                          <div className="flex md:hidden items-center gap-1 min-w-0 truncate">
+                                            <span
+                                              className="h-1.5 w-1.5 rounded-full shrink-0"
+                                              style={{ backgroundColor: r.team_color || teamColor }}
+                                            />
+                                            <span className="truncate text-f1-subtle">{r.team_name}</span>
+                                          </div>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
+                                </td>
+                                <td className="py-2 px-3 hidden md:table-cell">
                                   <div className="flex items-center gap-1.5">
-                                    <Link
-                                      href={`/season?year=${s.year}`}
-                                      onClick={(e) => e.stopPropagation()}
-                                      className="hover:text-white hover:underline decoration-white/30 transition-colors inline-flex items-center gap-1 group/yr pointer-events-none md:pointer-events-auto"
-                                      title={`Abrir Temporada de ${s.year}`}
-                                    >
-                                      <span>{s.year}</span>
-                                      <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/yr:opacity-100 transition-opacity text-white/60 hidden sm:inline" />
-                                    </Link>
-                                    {isInProgress && (
-                                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] font-bold text-emerald-400 font-sans">
-                                        <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                                        <span className="hidden sm:inline">Atual</span>
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="py-2.5 px-2 sm:px-3 max-w-[140px] sm:max-w-none">
-                                  <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <span
-                                        className="h-2 w-2 rounded-full shrink-0"
-                                        style={{ backgroundColor: seasonTeamColor }}
-                                      />
-                                      <TeamLink
-                                        teamName={s.team_name}
-                                        className="font-bold text-white/90 truncate max-w-[100px] sm:max-w-[140px] hover:text-white hover:underline decoration-white/30 underline-offset-2 transition-colors pointer-events-none md:pointer-events-auto"
-                                        title={`Ver perfil de ${s.team_name}`}
-                                      >
-                                        {s.team_name}
-                                      </TeamLink>
-                                    </div>
                                     <span
-                                      className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
-                                          ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
-                                          : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                        }`}
-                                      aria-hidden="true"
+                                      className="h-2 w-2 rounded-full shrink-0"
+                                      style={{ backgroundColor: r.team_color || teamColor }}
+                                    />
+                                    <TeamLink
+                                      teamName={r.team_name}
+                                      teamId={r.team_id}
+                                      className="text-white/80 truncate max-w-[120px] hover:text-white hover:underline decoration-white/30 underline-offset-2 transition-colors"
+                                      title={`Ver perfil de ${r.team_name}`}
                                     >
-                                      <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                                    </span>
+                                      {r.team_name}
+                                    </TeamLink>
                                   </div>
                                 </td>
-                                <td className="py-2.5 px-1.5 sm:px-2 text-center whitespace-nowrap">
-                                  {isChampion ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 sm:px-2 py-0.2 text-[9px] font-black text-amber-400">
-                                      👑 P1
+                                <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-f1-subtle whitespace-nowrap">
+                                  {r.grid_position ? `P${r.grid_position}` : "-"}
+                                </td>
+                                <td className="py-2 px-1.5 sm:px-2 text-center font-mono font-black whitespace-nowrap">
+                                  {isWin ? (
+                                    <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 text-amber-400 px-1.5 py-0.2 border border-amber-500/30 text-[11px]">
+                                      🏆 P1
                                     </span>
-                                  ) : isInProgress ? (
-                                    <span className="inline-flex items-center gap-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 sm:px-2 py-0.2 text-[10px] font-mono font-bold text-emerald-300">
-                                      P{s.championship_position}
+                                  ) : isPodium ? (
+                                    <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 border border-emerald-500/30 text-[11px]">
+                                      P{r.finishing_position}
+                                    </span>
+                                  ) : r.finishing_position ? (
+                                    <span className="text-white">P{r.finishing_position}</span>
+                                  ) : (
+                                    <span className="text-f1-subtle">-</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 text-center font-mono font-bold hidden md:table-cell">
+                                  {delta > 0 ? (
+                                    <span className="inline-flex items-center text-emerald-400 gap-0.5">
+                                      <ArrowUp className="h-2.5 w-2.5" /> +{delta}
+                                    </span>
+                                  ) : delta < 0 ? (
+                                    <span className="inline-flex items-center text-rose-400 gap-0.5">
+                                      <ArrowDown className="h-2.5 w-2.5" /> {delta}
                                     </span>
                                   ) : (
-                                    <span className="font-mono font-bold text-white/80">
-                                      P{s.championship_position}
+                                    <span className="text-white/30 font-normal">
+                                      <Minus className="h-2.5 w-2.5 inline" /> 0
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-2 text-center font-mono text-white/80 hidden md:table-cell">
-                                  {s.total_gps}
-                                </td>
-                                <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
-                                  {s.race_wins > 0 ? (
-                                    <span className="text-amber-400">{s.race_wins}</span>
+                                <td className="py-2 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
+                                  {r.points > 0 ? (
+                                    <span className="text-white">+{r.points}</span>
                                   ) : (
-                                    <span className="text-white/20">0</span>
+                                    <span className="text-white/30">0</span>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
-                                  {s.race_wins > 0 ? (
-                                    <span className="text-amber-400">{s.race_wins}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
+                                <td className="py-2 px-3 font-mono text-f1-subtle text-[11px] hidden md:table-cell">
+                                  {r.best_lap || "-"}
                                 </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                                  {s.sprint_wins > 0 ? (
-                                    <span className="text-purple-300">{s.sprint_wins}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
+                                <td className="py-2 px-2 text-center hidden md:table-cell">
+                                  <span
+                                    className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${r.status === "Finished" || r.status?.startsWith("+")
+                                      ? "bg-white/5 text-white/80"
+                                      : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                                      }`}
+                                  >
+                                    {r.status}
+                                  </span>
                                 </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
-                                  {s.race_podiums > 0 ? (
-                                    <span className="text-blue-300">{s.race_podiums}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                                  {s.sprint_podiums > 0 ? (
-                                    <span className="text-purple-300">{s.sprint_podiums}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold text-white/80 border-l border-white/5 hidden md:table-cell">
-                                  {s.race_poles > 0 ? (
-                                    <span className="text-purple-300">{s.race_poles}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                                  {s.sprint_poles > 0 ? (
-                                    <span className="text-purple-300">{s.sprint_poles}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono tabular-nums font-bold border-l border-white/5 hidden md:table-cell">
-                                  {s.q3_appearences != null && s.q3_appearences > 0 ? (
-                                    <span className="text-purple-300">{s.q3_appearences}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-1.5 text-center font-mono tabular-nums font-bold hidden md:table-cell">
-                                  {s.q2_appearences != null && s.q2_appearences > 0 ? (
-                                    <span className="text-sky-300">{s.q2_appearences}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-mono text-white/80 border-l border-white/5 hidden md:table-cell">
-                                  {s.fastest_laps > 0 ? (
-                                    <span className="text-white/90">{s.fastest_laps}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
-                                </td>
-                                <td className="py-2.5 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
-                                  {s.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-                                </td>
-                                <td className="py-2.5 px-2 text-center font-mono text-f1-subtle hidden md:table-cell">
-                                  {s.total_dnfs > 0 ? (
-                                    <span className="text-rose-400/90 font-bold">{s.total_dnfs}</span>
-                                  ) : (
-                                    <span className="text-white/20">0</span>
-                                  )}
+                                <td className="py-2 px-2 text-center hidden md:table-cell">
+                                  <Link
+                                    href={`/season/round/${r.round_number}?year=${r.year}`}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-f1-red text-white text-[10px] font-bold border border-white/10 hover:border-f1-red transition-all group"
+                                    title={`Abrir telemetria e análise completa do GP`}
+                                  >
+                                    <span>Ver</span>
+                                    <ExternalLink className="h-2.5 w-2.5 text-f1-subtle group-hover:text-white transition-colors" />
+                                  </Link>
                                 </td>
                               </tr>
 
                               {isExpanded && (
                                 <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                                  <td colSpan={15} className="p-3">
+                                  <td colSpan={11} className="p-3">
                                     <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
                                       <div className="grid grid-cols-3 gap-2 text-center font-mono">
                                         <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">GPs / DNFs</span>
-                                          <span className="text-xs font-black text-white">
-                                            {s.total_gps} / <span className="text-rose-400">{s.total_dnfs}</span>
+                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Variação (Delta)</span>
+                                          <span className={`text-xs font-black ${delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-white/60"}`}>
+                                            {delta > 0 ? `+${delta}` : delta}
                                           </span>
                                         </div>
                                         <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
-                                          <span className="text-xs font-black text-white">
-                                            {s.race_podiums} / <span className="text-purple-300">{s.sprint_podiums}</span>
-                                          </span>
+                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Melhor Volta</span>
+                                          <span className="text-xs font-black text-white">{r.best_lap || "—"}</span>
                                         </div>
                                         <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
-                                          <span className="text-xs font-black text-white">
-                                            {s.race_poles} / <span className="text-purple-300">{s.sprint_poles}</span>
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                        <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Quali Q3 / Q2</span>
-                                          <span className="text-xs font-black text-purple-300">
-                                            {s.q3_appearences ?? 0} <span className="text-white/40">/</span> <span className="text-sky-300">{s.q2_appearences ?? 0}</span>
-                                          </span>
-                                        </div>
-                                        <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Voltas Rápidas</span>
-                                          <span className="text-xs font-black text-white">{s.fastest_laps ?? 0}</span>
+                                          <span className="block text-[9px] text-f1-subtle uppercase font-sans">Status</span>
+                                          <span className="text-xs font-black text-white truncate block">{r.status || "Finished"}</span>
                                         </div>
                                       </div>
 
                                       <div className="grid grid-cols-2 gap-2">
                                         <TeamLink
-                                          teamName={s.team_name}
+                                          teamName={r.team_name}
+                                          teamId={r.team_id}
                                           className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
                                         >
-                                          <span className="truncate">Equipe {s.team_name}</span>
+                                          <span className="truncate">Equipe {r.team_name}</span>
                                           <ExternalLink className="h-3.5 w-3.5 text-f1-subtle shrink-0" />
                                         </TeamLink>
                                         <Link
-                                          href={`/season?year=${s.year}`}
+                                          href={`/season/round/${r.round_number}?year=${r.year}`}
                                           className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
                                         >
-                                          <span>Temporada {s.year}</span>
+                                          <span>Análise do GP</span>
                                           <ChevronRight className="h-3.5 w-3.5 text-f1-red shrink-0" />
                                         </Link>
                                       </div>
@@ -2018,712 +2737,23 @@ export default function DriverProfileTabs({ profile, seasons, circuits, raceLog 
                               )}
                             </React.Fragment>
                           );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                        }))}
+                    </tbody>
+                  </table>
+                </div>
 
-                  <TablePagination
-                    currentPage={seasonsPage}
-                    totalPages={totalSeasonPages}
-                    totalItems={sortedSeasons.length}
-                    pageSize={SEASONS_PER_PAGE}
-                    onPageChange={setSeasonsPage}
-                    itemName="temporadas"
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* CONTEÚDO DA ABA 2: DESEMPENHO POR CIRCUITO                            */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === "circuits" && (
-          <div className="space-y-4">
-            {/* Barra de Filtro de Circuito */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3.5 shadow-lg">
-              <div className="relative min-w-[260px] flex-1 sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
-                <input
-                  type="text"
-                  value={circuitSearch}
-                  onChange={(e) => {
-                    setCircuitSearch(e.target.value);
-                    setCircuitsPage(1);
-                  }}
-                  placeholder="Buscar circuito, cidade ou país..."
-                  className="w-full rounded-xl border border-white/15 bg-black/40 pl-9 pr-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white placeholder-f1-subtle/60 outline-none transition-colors hover:border-white/30 focus:border-f1-red"
+                <TablePagination
+                  currentPage={raceLogPage}
+                  totalPages={totalRaceLogPages}
+                  totalItems={sortedRaceLog.length}
+                  pageSize={RACES_PER_PAGE}
+                  onPageChange={setRaceLogPage}
+                  itemName="corridas"
                 />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-medium text-f1-subtle">
-                  Exibindo {sortedCircuits.length} de {circuits.length} pistas
-                </span>
-                {circuitSortKey && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCircuitSortKey(null);
-                      setCircuitsPage(1);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold ml-1"
-                  >
-                    <RotateCcw className="h-3 w-3" /> Restaurar
-                  </button>
-                )}
-              </div>
             </div>
-
-            {/* Tabela de Circuitos */}
-            <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg">
-              <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
-                <span className="flex items-center gap-1.5">
-                  <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                  <span>Toque em qualquer linha para expandir estatísticas e perfil do circuito</span>
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-black/50 text-[10px] font-black uppercase tracking-wider">
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="Circuito / GP"
-                        columnKey="circuit_name"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        className="border-b border-white/10"
-                      />
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="País"
-                        columnKey="country"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        className="border-b border-white/10 hidden md:table-cell"
-                      />
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="GPs"
-                        columnKey="total_gps"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-white/10"
-                      />
-                      <TableSortHeader
-                        colSpan={2}
-                        label="Vit."
-                        columnKey="total_wins"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-l border-white/10"
-                      />
-                      <TableSortHeader
-                        colSpan={2}
-                        label="Pódios"
-                        columnKey="total_podiums"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-l border-white/10 hidden md:table-cell"
-                      />
-                      <TableSortHeader
-                        colSpan={2}
-                        label="Poles"
-                        columnKey="race_poles"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-l border-white/10 hidden md:table-cell"
-                      />
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="Melhor"
-                        columnKey="best_finish_position"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-l border-white/10 hidden md:table-cell"
-                      />
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="Pts"
-                        columnKey="total_points"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="right"
-                        className="border-b border-white/10"
-                      />
-                      <TableSortHeader
-                        rowSpan={2}
-                        label="DNFs"
-                        columnKey="total_dnfs"
-                        currentSortKey={circuitSortKey}
-                        currentSortDir={circuitSortDir}
-                        onSort={handleCircuitSort}
-                        align="center"
-                        className="border-b border-white/10 hidden md:table-cell"
-                      />
-                    </tr>
-                    <tr className="hidden md:table-row border-b border-white/10 bg-black/30 text-[9px] font-bold tracking-wider uppercase">
-                      <th
-                        onClick={() => handleCircuitSort("race_wins")}
-                        className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                      >
-                        GP
-                      </th>
-                      <th
-                        onClick={() => handleCircuitSort("sprint_wins")}
-                        className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                      >
-                        Spr
-                      </th>
-                      <th
-                        onClick={() => handleCircuitSort("race_podiums")}
-                        className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                      >
-                        GP
-                      </th>
-                      <th
-                        onClick={() => handleCircuitSort("sprint_podiums")}
-                        className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                      >
-                        Spr
-                      </th>
-                      <th
-                        onClick={() => handleCircuitSort("race_poles")}
-                        className="pt-1 pb-1.5 text-center text-white/70 w-10 min-w-[36px] border-l border-white/10 cursor-pointer hover:text-white select-none"
-                      >
-                        GP
-                      </th>
-                      <th
-                        onClick={() => handleCircuitSort("sprint_poles")}
-                        className="pt-1 pb-1.5 text-center text-purple-400 w-10 min-w-[36px] cursor-pointer hover:text-purple-300 select-none"
-                      >
-                        Spr
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {paginatedCircuits.map((c) => {
-                      const flag = getCountryFlag(c.country);
-                      const circuitKey = c.circuit_id || c.circuit_name;
-                      const isExpanded = expandedCircuitRowId === circuitKey;
-                      return (
-                        <React.Fragment key={circuitKey}>
-                          <tr
-                            onClick={() => setExpandedCircuitRowId(isExpanded ? null : circuitKey)}
-                            className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/5"
-                              }`}
-                          >
-                            <td className="py-2.5 px-2.5 sm:px-3 font-bold text-white max-w-[175px] sm:max-w-none">
-                              <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                <CircuitLink
-                                  circuitId={c.circuit_id}
-                                  circuitName={c.circuit_name}
-                                  className="hover:text-white hover:underline decoration-white/30 transition-colors block truncate pointer-events-none md:pointer-events-auto"
-                                  title={`Ver perfil do circuito ${c.circuit_name}`}
-                                >
-                                  {c.circuit_name}
-                                </CircuitLink>
-                                <span
-                                  className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
-                                      ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
-                                      : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                    }`}
-                                  aria-hidden="true"
-                                >
-                                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                                </span>
-                              </div>
-                              <span className="md:hidden text-[10px] font-normal text-f1-subtle flex items-center gap-1 truncate">
-                                <span>{flag}</span>
-                                <span className="truncate">{c.country}</span>
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-f1-subtle hidden md:table-cell">
-                              <span className="inline-flex items-center gap-1.5">
-                                <span>{flag}</span>
-                                <span>{c.country}</span>
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-2 sm:px-3 text-center font-mono font-bold text-white">
-                              {c.total_gps}
-                            </td>
-                            <td colSpan={2} className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 md:hidden">
-                              {c.race_wins > 0 ? (
-                                <span className="text-amber-400">{c.race_wins}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
-                              {c.race_wins > 0 ? (
-                                <span className="text-amber-400">{c.race_wins}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                              {c.sprint_wins > 0 ? (
-                                <span className="text-purple-300">{c.sprint_wins}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
-                              {c.race_podiums > 0 ? (
-                                <span className="text-blue-300">{c.race_podiums}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                              {c.sprint_podiums > 0 ? (
-                                <span className="text-purple-300">{c.sprint_podiums}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold text-white/80 border-l border-white/5 hidden md:table-cell">
-                              {c.race_poles > 0 ? (
-                                <span className="text-purple-300">{c.race_poles}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-1.5 text-center font-mono font-bold hidden md:table-cell">
-                              {c.sprint_poles > 0 ? (
-                                <span className="text-purple-300">{c.sprint_poles}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-mono font-bold border-l border-white/5 hidden md:table-cell">
-                              {c.best_finish_position ? (
-                                <span className={c.best_finish_position === 1 ? "text-amber-400" : "text-white"}>
-                                  P{c.best_finish_position}
-                                </span>
-                              ) : (
-                                <span className="text-white/20">—</span>
-                              )}
-                            </td>
-                            <td className="py-2.5 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
-                              {c.total_points.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-mono text-f1-subtle hidden md:table-cell">
-                              {c.total_dnfs > 0 ? (
-                                <span className="text-rose-400/90 font-bold">{c.total_dnfs}</span>
-                              ) : (
-                                <span className="text-white/20">0</span>
-                              )}
-                            </td>
-                          </tr>
-
-                          {isExpanded && (
-                            <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                              <td colSpan={12} className="p-3">
-                                <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Pódios GP/Spr</span>
-                                      <span className="text-xs font-black text-white">
-                                        {c.race_podiums} / <span className="text-purple-300">{c.sprint_podiums}</span>
-                                      </span>
-                                    </div>
-                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Poles GP/Spr</span>
-                                      <span className="text-xs font-black text-white">
-                                        {c.race_poles} / <span className="text-purple-300">{c.sprint_poles}</span>
-                                      </span>
-                                    </div>
-                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">Melhor / DNFs</span>
-                                      <span className="text-xs font-black text-amber-400">
-                                        {c.best_finish_position ? `P${c.best_finish_position}` : "—"} <span className="text-white/40">/</span> <span className="text-rose-400">{c.total_dnfs}</span>
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  <CircuitLink
-                                    circuitId={c.circuit_id}
-                                    circuitName={c.circuit_name}
-                                    className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
-                                  >
-                                    <span>Ver Perfil Completo do Circuito</span>
-                                    <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
-                                  </CircuitLink>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              <TablePagination
-                currentPage={circuitsPage}
-                totalPages={totalCircuitPages}
-                totalItems={sortedCircuits.length}
-                pageSize={CIRCUITS_PER_PAGE}
-                onPageChange={setCircuitsPage}
-                itemName="pistas"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* --------------------------------------------------------------------- */}
-        {/* CONTEÚDO DA ABA 3: HISTÓRICO CORRIDA A CORRIDA (RACE LOG)             */}
-        {/* --------------------------------------------------------------------- */}
-        {activeTab === "races" && (
-          <div className="space-y-4">
-            {/* Barra de Filtro de Temporada, Pesquisa Geral e Contadores */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0E0E14] p-3 sm:p-3.5 shadow-lg w-full min-w-0">
-              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
-                {/* Campo de Pesquisa Geral */}
-                <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-f1-subtle" />
-                  <input
-                    type="text"
-                    value={raceLogSearch}
-                    onChange={(e) => {
-                      setRaceLogSearch(e.target.value);
-                      setRaceLogPage(1);
-                    }}
-                    placeholder="Buscar circuito, país, equipe..."
-                    className="w-full pl-9 pr-7 py-1.5 rounded-xl border border-white/15 bg-black/40 text-xs font-medium text-white placeholder-f1-subtle outline-none hover:border-white/30 focus:border-f1-red transition-all"
-                  />
-                  {raceLogSearch && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRaceLogSearch("");
-                        setRaceLogPage(1);
-                      }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-f1-subtle hover:text-white text-xs font-bold"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-
-                {/* Filtro de Temporada */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-bold text-f1-subtle shrink-0 hidden sm:inline">Ano:</span>
-                  <select
-                    value={selectedSeason}
-                    onChange={(e) => {
-                      setSelectedSeason(e.target.value);
-                      setRaceLogPage(1);
-                    }}
-                    className="w-full sm:w-auto min-w-[130px] rounded-xl border border-white/15 bg-black/40 px-3 py-1.5 text-xs font-bold font-mono text-white outline-none hover:border-white/30 focus:border-f1-red cursor-pointer truncate"
-                  >
-                    <option value="all">Todas ({availableYears.length} anos)</option>
-                    {availableYears.map((y) => (
-                      <option key={y} value={y.toString()}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 shrink-0 whitespace-nowrap ml-auto">
-                <span className="text-[11px] font-medium text-f1-subtle">
-                  Exibindo {sortedRaceLog.length} corridas
-                </span>
-                {(raceLogSortKey || selectedSeason !== "all" || raceLogSearch) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRaceLogSortKey(null);
-                      setSelectedSeason("all");
-                      setRaceLogSearch("");
-                      setRaceLogPage(1);
-                    }}
-                    className="inline-flex items-center gap-1 text-[11px] text-f1-red hover:underline font-bold ml-1 active:scale-95"
-                  >
-                    <RotateCcw className="h-3 w-3" /> Limpar
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Tabela do Race Log */}
-            <div className="rounded-2xl border border-white/10 bg-[#0E0E14] overflow-hidden shadow-lg">
-              <div className="md:hidden flex items-center justify-between gap-2 px-4 py-2 bg-white/[0.02] border-b border-white/10 text-[11px] text-f1-subtle">
-                <span className="flex items-center gap-1.5">
-                  <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                  <span>Toque em qualquer linha para expandir detalhes e abrir o GP</span>
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-white/10 bg-black/50 text-[10px] font-black uppercase tracking-wider">
-                      <TableSortHeader label="Ano" columnKey="year" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} />
-                      <TableSortHeader label="Rnd" columnKey="round_number" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
-                      <TableSortHeader label="Grande Prêmio" columnKey="official_event_name" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} />
-                      <TableSortHeader label="Equipe" columnKey="team_name" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} className="hidden md:table-cell" />
-                      <TableSortHeader label="Grid" columnKey="grid_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" />
-                      <TableSortHeader label="Fim" columnKey="finishing_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" />
-                      <TableSortHeader label="Delta" columnKey="delta_position" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
-                      <TableSortHeader label="Pts" columnKey="points" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="right" />
-                      <TableSortHeader label="Melhor Volta" columnKey="best_lap" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} className="hidden md:table-cell" />
-                      <TableSortHeader label="Status" columnKey="status" currentSortKey={raceLogSortKey} currentSortDir={raceLogSortDir} onSort={handleRaceLogSort} align="center" className="hidden md:table-cell" />
-                      <th className="py-2.5 px-3 text-center text-f1-subtle hidden md:table-cell">Atalho</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {paginatedRaceLog.length === 0 ? (
-                      <tr>
-                        <td colSpan={11} className="py-10 text-center text-xs text-f1-subtle">
-                          Nenhuma corrida encontrada para os filtros selecionados.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedRaceLog.map((r, idx) => {
-                        const isWin = r.finishing_position === 1;
-                        const isPodium = r.finishing_position && r.finishing_position <= 3;
-                        const delta = r.delta_position ?? 0;
-                        const rowKey = `${r.year}-${r.round_number}-${idx}`;
-                        const isExpanded = expandedRaceLogKey === rowKey;
-
-                        return (
-                          <React.Fragment key={rowKey}>
-                            <tr
-                              onClick={() => setExpandedRaceLogKey(isExpanded ? null : rowKey)}
-                              className={`group cursor-pointer md:cursor-default transition-colors ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/5"
-                                }`}
-                            >
-                              <td className="py-2 px-2.5 sm:px-3 font-mono font-bold text-f1-subtle whitespace-nowrap">
-                                <Link
-                                  href={`/season?year=${r.year}`}
-                                  className="hover:text-white hover:underline decoration-white/30 transition-colors pointer-events-none md:pointer-events-auto"
-                                  title={`Ver temporada ${r.year}`}
-                                >
-                                  {r.year}
-                                </Link>
-                                <span className="md:hidden text-[10px] text-white/40 block">R{r.round_number}</span>
-                              </td>
-                              <td className="py-2 px-3 font-mono font-bold text-white/60 text-center hidden md:table-cell">
-                                <Link
-                                  href={`/season/round/${r.round_number}?year=${r.year}`}
-                                  className="hover:text-white transition-colors"
-                                  title={`Ver GP da etapa ${r.round_number}`}
-                                >
-                                  R{r.round_number}
-                                </Link>
-                              </td>
-                              <td className="py-2 px-2 sm:px-3 font-bold text-white max-w-[160px] sm:max-w-none">
-                                {(() => {
-                                  const circuitDisplayName = r.circuit_name || r.official_event_name || `Round ${r.round_number}`;
-                                  const countryName = r.country;
-                                  const countryFlag = getCountryFlag(countryName);
-
-                                  return (
-                                    <>
-                                      <div className="flex items-center justify-between gap-1.5 min-w-0">
-                                        <Link
-                                          href={`/season/round/${r.round_number}?year=${r.year}`}
-                                          className="hover:text-white hover:underline decoration-white/30 transition-colors flex items-center gap-1 group/gp min-w-0 pointer-events-none md:pointer-events-auto"
-                                          title={`Abrir telemetria e análise completa do GP (${r.official_event_name})`}
-                                        >
-                                          <span className="truncate max-w-[135px] sm:max-w-[220px]">
-                                            {circuitDisplayName}
-                                          </span>
-                                          <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/gp:opacity-100 transition-opacity text-white/60 shrink-0 hidden sm:inline" />
-                                        </Link>
-                                        <span
-                                          className={`md:hidden inline-flex h-5 w-5 items-center justify-center rounded-md border shrink-0 transition-all ${isExpanded
-                                              ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
-                                              : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                            }`}
-                                          aria-hidden="true"
-                                        >
-                                          <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                                        </span>
-                                      </div>
-
-                                      {/* Linha 2: País com bandeira e equipe (no mobile) */}
-                                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-normal truncate mt-0.5">
-                                        {countryName ? (
-                                          <span className="inline-flex items-center gap-1 shrink-0 text-zinc-300 font-medium">
-                                            <span className="text-xs" aria-hidden="true">{countryFlag}</span>
-                                            <span>{countryName}</span>
-                                          </span>
-                                        ) : null}
-                                        <span className="md:hidden text-white/30">·</span>
-                                        <div className="flex md:hidden items-center gap-1 min-w-0 truncate">
-                                          <span
-                                            className="h-1.5 w-1.5 rounded-full shrink-0"
-                                            style={{ backgroundColor: r.team_color || teamColor }}
-                                          />
-                                          <span className="truncate text-f1-subtle">{r.team_name}</span>
-                                        </div>
-                                      </div>
-                                    </>
-                                  );
-                                })()}
-                              </td>
-                              <td className="py-2 px-3 hidden md:table-cell">
-                                <div className="flex items-center gap-1.5">
-                                  <span
-                                    className="h-2 w-2 rounded-full shrink-0"
-                                    style={{ backgroundColor: r.team_color || teamColor }}
-                                  />
-                                  <TeamLink
-                                    teamName={r.team_name}
-                                    teamId={r.team_id}
-                                    className="text-white/80 truncate max-w-[120px] hover:text-white hover:underline decoration-white/30 underline-offset-2 transition-colors"
-                                    title={`Ver perfil de ${r.team_name}`}
-                                  >
-                                    {r.team_name}
-                                  </TeamLink>
-                                </div>
-                              </td>
-                              <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-f1-subtle whitespace-nowrap">
-                                {r.grid_position ? `P${r.grid_position}` : "-"}
-                              </td>
-                              <td className="py-2 px-1.5 sm:px-2 text-center font-mono font-black whitespace-nowrap">
-                                {isWin ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded bg-amber-500/20 text-amber-400 px-1.5 py-0.2 border border-amber-500/30 text-[11px]">
-                                    🏆 P1
-                                  </span>
-                                ) : isPodium ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 border border-emerald-500/30 text-[11px]">
-                                    P{r.finishing_position}
-                                  </span>
-                                ) : r.finishing_position ? (
-                                  <span className="text-white">P{r.finishing_position}</span>
-                                ) : (
-                                  <span className="text-f1-subtle">-</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-2 text-center font-mono font-bold hidden md:table-cell">
-                                {delta > 0 ? (
-                                  <span className="inline-flex items-center text-emerald-400 gap-0.5">
-                                    <ArrowUp className="h-2.5 w-2.5" /> +{delta}
-                                  </span>
-                                ) : delta < 0 ? (
-                                  <span className="inline-flex items-center text-rose-400 gap-0.5">
-                                    <ArrowDown className="h-2.5 w-2.5" /> {delta}
-                                  </span>
-                                ) : (
-                                  <span className="text-white/30 font-normal">
-                                    <Minus className="h-2.5 w-2.5 inline" /> 0
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-2 px-2.5 sm:px-3 text-right font-mono font-black text-white whitespace-nowrap">
-                                {r.points > 0 ? (
-                                  <span className="text-white">+{r.points}</span>
-                                ) : (
-                                  <span className="text-white/30">0</span>
-                                )}
-                              </td>
-                              <td className="py-2 px-3 font-mono text-f1-subtle text-[11px] hidden md:table-cell">
-                                {r.best_lap || "-"}
-                              </td>
-                              <td className="py-2 px-2 text-center hidden md:table-cell">
-                                <span
-                                  className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${r.status === "Finished" || r.status?.startsWith("+")
-                                    ? "bg-white/5 text-white/80"
-                                    : "bg-rose-500/15 text-rose-400 border border-rose-500/30"
-                                    }`}
-                                >
-                                  {r.status}
-                                </span>
-                              </td>
-                              <td className="py-2 px-2 text-center hidden md:table-cell">
-                                <Link
-                                  href={`/season/round/${r.round_number}?year=${r.year}`}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-f1-red text-white text-[10px] font-bold border border-white/10 hover:border-f1-red transition-all group"
-                                  title={`Abrir telemetria e análise completa do GP`}
-                                >
-                                  <span>Ver</span>
-                                  <ExternalLink className="h-2.5 w-2.5 text-f1-subtle group-hover:text-white transition-colors" />
-                                </Link>
-                              </td>
-                            </tr>
-
-                            {isExpanded && (
-                              <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                                <td colSpan={11} className="p-3">
-                                  <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                                    <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Variação (Delta)</span>
-                                        <span className={`text-xs font-black ${delta > 0 ? "text-emerald-400" : delta < 0 ? "text-rose-400" : "text-white/60"}`}>
-                                          {delta > 0 ? `+${delta}` : delta}
-                                        </span>
-                                      </div>
-                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Melhor Volta</span>
-                                        <span className="text-xs font-black text-white">{r.best_lap || "—"}</span>
-                                      </div>
-                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                        <span className="block text-[9px] text-f1-subtle uppercase font-sans">Status</span>
-                                        <span className="text-xs font-black text-white truncate block">{r.status || "Finished"}</span>
-                                      </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                      <TeamLink
-                                        teamName={r.team_name}
-                                        teamId={r.team_id}
-                                        className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
-                                      >
-                                        <span className="truncate">Equipe {r.team_name}</span>
-                                        <ExternalLink className="h-3.5 w-3.5 text-f1-subtle shrink-0" />
-                                      </TeamLink>
-                                      <Link
-                                        href={`/season/round/${r.round_number}?year=${r.year}`}
-                                        className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-f1-red/15 hover:bg-f1-red/25 text-white font-bold text-xs transition-colors border border-f1-red/30 active:scale-95"
-                                      >
-                                        <span>Análise do GP</span>
-                                        <ChevronRight className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                                      </Link>
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        );
-                      }))}
-                  </tbody>
-                </table>
-              </div>
-
-              <TablePagination
-                currentPage={raceLogPage}
-                totalPages={totalRaceLogPages}
-                totalItems={sortedRaceLog.length}
-                pageSize={RACES_PER_PAGE}
-                onPageChange={setRaceLogPage}
-                itemName="corridas"
-              />
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+          )}
+        </main>
+      </div>
+    );
+  }
