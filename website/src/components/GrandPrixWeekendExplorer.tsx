@@ -204,35 +204,60 @@ export default function GrandPrixWeekendExplorer({
     winner.team_name.trim().toLowerCase() === p2Driver.team_name.trim().toLowerCase()
   );
 
-    // Segmentos de Qualificação (Q1, Q2, Q3 / SQ1, SQ2, SQ3)
-    const isSprintQuali = activeSession.toLowerCase().includes("sprint");
-    const qPrefix = isSprintQuali ? "SQ" : "Q";
+  const isSprintQuali = activeSession.toLowerCase().includes("sprint");
+  const qPrefix = isSprintQuali ? "SQ" : "Q";
+  // Segmentos de Qualificação (Q1, Q2, Q3 / SQ1, SQ2, SQ3)
+  const isSprintQuali = activeSession.toLowerCase().includes("sprint");
+  const qPrefix = isSprintQuali ? "SQ" : "Q";
 
-    const toSeconds = (s: string) => {
-      const hasQ1 = useMemo(
-        () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
-        [sessionResults]
-      );
-      const hasQ2 = useMemo(
-        () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
-        [sessionResults]
-      );
-      const hasQ3 = useMemo(
-        () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
-        [sessionResults]
-      );
-      const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
+  const toSeconds = (s: string) => {
+    const hasQ1 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
+      [sessionResults]
+    );
+    const hasQ2 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
+      [sessionResults]
+    );
+    const hasQ3 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
+      [sessionResults]
+    );
+    const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
+    const hasQ1 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q1 && r.q1 !== "—" && r.q1 !== "-")),
+      [sessionResults]
+    );
+    const hasQ2 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q2 && r.q2 !== "—" && r.q2 !== "-")),
+      [sessionResults]
+    );
+    const hasQ3 = useMemo(
+      () => sessionResults.some((r) => Boolean(r.q3 && r.q3 !== "—" && r.q3 !== "-")),
+      [sessionResults]
+    );
+    const hasQualiSegments = isQualiSession && (hasQ1 || hasQ2 || hasQ3);
 
-      // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
-      const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
-        const toSeconds = (s?: string | null) => {
-          if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
-          const parts = s.split(":");
-          if (parts.length === 2) {
-            return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+    // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
+    const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
+      const toSeconds = (s?: string | null) => {
+        if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
+        const parts = s.split(":");
+        if (parts.length === 2) {
+          return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+          return parts.length === 2 ? parseFloat(parts[0]) * 60 + parseFloat(parts[1]) : parseFloat(s) || Infinity;
+        };
+        // Volta mais rápida da sessão (Fastest Lap / Purple Lap) considerando todos os Qs
+        const { fastestLap, fastestLapSegment, fastestLapDrivers } = useMemo(() => {
+          const toSeconds = (s?: string | null) => {
+            if (!s || s.trim() === "" || s === "—" || s === "-") return Infinity;
+            const parts = s.split(":");
             return parts.length === 2 ? parseFloat(parts[0]) * 60 + parseFloat(parts[1]) : parseFloat(s) || Infinity;
           };
 
+          let minSec = Infinity;
+          let bestTime: string | null = null;
+          let bestSegment: string | null = null;
           let minSec = Infinity;
           let bestTime: string | null = null;
           let bestSegment: string | null = null;
@@ -251,57 +276,107 @@ export default function GrandPrixWeekendExplorer({
               if (hasQ2 && r.q2) check(r.q2, `${qPrefix}2`);
               if (hasQ3 && r.q3) check(r.q3, `${qPrefix}3`);
             });
-          }
-
-          if (!bestTime || minSec === Infinity) {
-            sessionResults.forEach((r) => {
-              const s = toSeconds(r.best_lap);
-              if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
-                minSec = s;
-                bestTime = r.best_lap;
-                bestSegment = null;
-              }
-            });
-          }
-
-          if (!bestTime || minSec === Infinity) {
-            return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] };
-          }
-
-          const matchedDrivers: SessionSummary[] = [];
-          sessionResults.forEach((r) => {
             if (hasQualiSegments) {
-              if (
-                (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
-                (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
-                (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
-                r.best_lap === bestTime
-              ) {
-                if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
+              sessionResults.forEach((r) => {
+                const check = (t: string | null | undefined, seg: string) => {
+                  const s = toSeconds(t);
+                  if (s < minSec) {
+                    minSec = s;
+                    bestTime = t!;
+                    bestSegment = seg;
+                  }
+                };
+                if (hasQ1 && r.q1) check(r.q1, `${qPrefix}1`);
+                if (hasQ2 && r.q2) check(r.q2, `${qPrefix}2`);
+                if (hasQ3 && r.q3) check(r.q3, `${qPrefix}3`);
+              });
+            }
+
+            if (!bestTime || minSec === Infinity) {
+              sessionResults.forEach((r) => {
+                const s = toSeconds(r.best_lap);
+                if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
+                  minSec = s;
+                  bestTime = r.best_lap;
+                  bestSegment = null;
+                }
+              });
+            }
+            if (!bestTime || minSec === Infinity) {
+              sessionResults.forEach((r) => {
+                const s = toSeconds(r.best_lap);
+                if (s < minSec && r.best_lap && r.best_lap !== "—" && r.best_lap !== "-") {
+                  minSec = s;
+                  bestTime = r.best_lap;
+                  bestSegment = null;
+                }
+              });
+            }
+
+            if (!bestTime || minSec === Infinity) {
+              return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] };
+              if (!bestTime || minSec === Infinity) {
+                return { fastestLap: null, fastestLapSegment: null, fastestLapDrivers: [] as SessionSummary[] };
+              }
+
+              const matchedDrivers: SessionSummary[] = [];
+              sessionResults.forEach((r) => {
+                if (hasQualiSegments) {
+                  if (
+                    (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
+                    (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
+                    (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
+                    r.best_lap === bestTime
+                  ) {
+                    if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
+                      matchedDrivers.push(r);
+                    }
+                  }
+                } else if (r.best_lap === bestTime) {
                   matchedDrivers.push(r);
                 }
-              }
-            } else if (r.best_lap === bestTime) {
-              matchedDrivers.push(r);
-            }
-            return parseFloat(s);
-          });
+              });
 
-          return {
-            fastestLap: bestTime,
-            fastestLapSegment: bestSegment,
-            fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
-          };
-        }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
+              const matchedDrivers: SessionSummary[] = [];
+              sessionResults.forEach((r) => {
+                if (hasQualiSegments) {
+                  if (
+                    (bestSegment === `${qPrefix}1` && r.q1 === bestTime) ||
+                    (bestSegment === `${qPrefix}2` && r.q2 === bestTime) ||
+                    (bestSegment === `${qPrefix}3` && r.q3 === bestTime) ||
+                    r.best_lap === bestTime
+                  ) {
+                    if (!matchedDrivers.some((m) => m.driver_id === r.driver_id)) {
+                      matchedDrivers.push(r);
+                    }
+                  }
+                } else if (r.best_lap === bestTime) {
+                  matchedDrivers.push(r);
+                }
+                return parseFloat(s);
+              });
+              return {
+                fastestLap: bestTime,
+                fastestLapSegment: bestSegment,
+                fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
+              };
+            }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
 
-      return [...valid].sort((a, b) => {
-        const tA = toSeconds(a.best_lap!);
-        const tB = toSeconds(b.best_lap!);
-        if (isNaN(tA)) return 1;
-        if (isNaN(tB)) return -1;
-        return tA - tB;
-      })[0]?.best_lap;
-    }, [sessionResults]);
+        return {
+          fastestLap: bestTime,
+          fastestLapSegment: bestSegment,
+          fastestLapDrivers: matchedDrivers.length > 0 ? matchedDrivers : (winner ? [winner] : []),
+        };
+      }, [sessionResults, hasQualiSegments, hasQ1, hasQ2, hasQ3, qPrefix, winner]);
+
+    return [...valid].sort((a, b) => {
+      const tA = toSeconds(a.best_lap!);
+      const tB = toSeconds(b.best_lap!);
+      if (isNaN(tA)) return 1;
+      if (isNaN(tB)) return -1;
+      return tA - tB;
+    })[0]?.best_lap;
+  }, [sessionResults]);
 
   const fastestLapDrivers = useMemo(() => {
     if (!fastestLap) return [];
@@ -955,66 +1030,141 @@ export default function GrandPrixWeekendExplorer({
                   <span className="hidden sm:inline">Volta Mais Rápida</span>
                 </span>
                 <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 shrink-0">
-                  FL
                   {fastestLapSegment ? `FL • ${fastestLapSegment}` : "FL"}
                 </span>
               </div>
 
               <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
-                <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
-                  {fastestLap || "—"}
-                  <div className="flex items-baseline gap-1.5 truncate">
-                    <span className="font-mono text-xs sm:text-base font-black text-white tracking-tight">
-                      {fastestLap || "—"}
+                <div className="flex items-baseline gap-1.5 truncate">
+                  <span className="font-mono text-xs sm:text-base font-black text-white tracking-tight">
+                    {fastestLap || "—"}
+                  </span>
+                  {fastestLapSegment && (
+                    <span className="text-[10px] sm:text-xs font-mono font-bold text-purple-400">
+                      ({fastestLapSegment})
                     </span>
-                    {fastestLapSegment && (
-                      <span className="text-[10px] sm:text-xs font-mono font-bold text-purple-400">
-                        ({fastestLapSegment})
-                      </span>
-                    )}
-                  </div>
-                  <TieCarouselDots carousel={flCarousel} accent="purple" />
+                  )}
+                </div>
+                <TieCarouselDots carousel={flCarousel} accent="purple" />
+              </div>
+
+              {fastestLapDrivers.length > 0 ? (
+                <TieCarouselTrack
+                  carousel={flCarousel}
+                  items={fastestLapDrivers}
+                  renderItem={(d) => (
+                    <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
+                      <div className="min-w-0 pr-1 sm:pr-2">
+                        <DriverLink driverId={d.driver_id} driverName={d.driver_full_name} className="block">
+                          <p className="text-[11px] sm:text-xs text-white hover:text-purple-300 transition-colors truncate mt-0.5 font-bold">
+                            {d.driver_full_name}
+                          </p>
+                        </DriverLink>
+                        {d.team_name ? (
+                          <TeamLink
+                            teamName={d.team_name}
+                            className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
+                            title={`Ver perfil de ${d.team_name}`}
+                          >
+                            {d.team_name}
+                          </TeamLink>
+                        ) : null}
+                      </div>
+
+                      <DriverLink
+                        driverId={d.driver_id}
+                        driverName={d.driver_full_name}
+                        className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                        style={{ borderColor: d.team_color || "#A855F7" }}
+                        title={`Ver perfil de ${d.driver_full_name}`}
+                      >
+                        {d.driver_headshot_url ? (
+                          <img
+                            src={d.driver_headshot_url}
+                            alt={d.driver_full_name}
+                            className="h-full w-full object-cover object-top"
+                          />
+                        ) : (
+                          <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-300">
+                            {d.driver_full_name.slice(0, 3).toUpperCase()}
+                          </span>
+                        )}
+                      </DriverLink>
+                    </div>
+                  )}
+                />
+              ) : (
+                <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
+              )}
+            </div>
+
+            {/* Card 3: Speed Trap (Corrida) ou Volta Ideal Teórica (Quali/Treino) ou Pilotos no Grid */}
+            {isRaceSession ? (
+              <div
+                className="relative rounded-xl border border-amber-500/30 bg-[#14120C] p-2.5 sm:p-4 flex flex-col justify-between overflow-hidden"
+                onMouseEnter={speedCarousel.pause}
+                onMouseLeave={speedCarousel.resume}
+              >
+                <TieCarouselEdgeArrows carousel={speedCarousel} accent="amber" size="xs" position="metric" />
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1 sm:gap-1.5 truncate">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <span className="sm:hidden">Speed Trap</span>
+                    <span className="hidden sm:inline">Speed Trap Máximo</span>
+                  </span>
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold text-amber-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
+                    TRAP
+                  </span>
                 </div>
 
-                {fastestLapDrivers.length > 0 ? (
+                <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${speedCarousel.isTied ? "px-2.5" : ""}`}>
+                  <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
+                    {topSpeedRecord?.max_speed_trap ? `${Number(topSpeedRecord.max_speed_trap).toFixed(1)} km/h` : "—"}
+                  </div>
+                  <TieCarouselDots carousel={speedCarousel} accent="amber" />
+                </div>
+
+                {topSpeedRecords.length > 0 ? (
                   <TieCarouselTrack
-                    carousel={flCarousel}
-                    items={fastestLapDrivers}
-                    renderItem={(d) => (
+                    carousel={speedCarousel}
+                    items={topSpeedRecords}
+                    renderItem={(rec) => (
                       <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
                         <div className="min-w-0 pr-1 sm:pr-2">
-                          <DriverLink driverId={d.driver_id} driverName={d.driver_full_name} className="block">
-                            <p className="text-[11px] sm:text-xs text-white hover:text-purple-300 transition-colors truncate mt-0.5 font-bold">
-                              {d.driver_full_name}
+                          <DriverLink driverId={rec.driver_id} driverName={rec.driver_full_name} className="block">
+                            <p className="text-[11px] sm:text-xs text-white hover:text-amber-300 transition-colors truncate mt-0.5 font-bold">
+                              {rec.driver_full_name}
                             </p>
                           </DriverLink>
-                          {d.team_name ? (
-                            <TeamLink
-                              teamName={d.team_name}
-                              className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
-                              title={`Ver perfil de ${d.team_name}`}
-                            >
-                              {d.team_name}
-                            </TeamLink>
-                          ) : null}
+                          <div className="flex items-center gap-1 sm:gap-2 mt-0.5 text-[9px] sm:text-[10px] text-amber-400/80 font-mono truncate">
+                            {rec.team_name ? (
+                              <TeamLink
+                                teamName={rec.team_name}
+                                className="hover:text-white hover:underline transition-colors truncate"
+                                title={`Ver perfil de ${rec.team_name}`}
+                              >
+                                {rec.team_name}
+                              </TeamLink>
+                            ) : null}
+                          </div>
                         </div>
 
                         <DriverLink
-                          driverId={d.driver_id}
-                          driverName={d.driver_full_name}
+                          driverId={rec.driver_id}
+                          driverName={rec.driver_full_name}
                           className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                          style={{ borderColor: d.team_color || "#A855F7" }}
-                          title={`Ver perfil de ${d.driver_full_name}`}
+                          style={{ borderColor: rec.team_color || "#F59E0B" }}
+                          title={`Ver perfil de ${rec.driver_full_name}`}
                         >
-                          {d.driver_headshot_url ? (
+                          {rec.driver_headshot_url ? (
                             <img
-                              src={d.driver_headshot_url}
-                              alt={d.driver_full_name}
+                              src={rec.driver_headshot_url}
+                              alt={rec.driver_full_name}
                               className="h-full w-full object-cover object-top"
                             />
                           ) : (
-                            <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-300">
-                              {d.driver_full_name.slice(0, 3).toUpperCase()}
+                            <span className="font-mono text-[9px] sm:text-[10px] font-bold text-amber-400">
+                              {rec.driver_full_name.slice(0, 3).toUpperCase()}
                             </span>
                           )}
                         </DriverLink>
@@ -1025,650 +1175,582 @@ export default function GrandPrixWeekendExplorer({
                   <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
                 )}
               </div>
-
-              {/* Card 3: Speed Trap (Corrida) ou Volta Ideal Teórica (Quali/Treino) ou Pilotos no Grid */}
-              {isRaceSession ? (
-                <div
-                  className="relative rounded-xl border border-amber-500/30 bg-[#14120C] p-2.5 sm:p-4 flex flex-col justify-between overflow-hidden"
-                  onMouseEnter={speedCarousel.pause}
-                  onMouseLeave={speedCarousel.resume}
-                >
-                  <TieCarouselEdgeArrows carousel={speedCarousel} accent="amber" size="xs" position="metric" />
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1 sm:gap-1.5 truncate">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
-                      <span className="sm:hidden">Speed Trap</span>
-                      <span className="hidden sm:inline">Speed Trap Máximo</span>
-                    </span>
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold text-amber-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
-                      TRAP
-                    </span>
-                  </div>
-
-                  <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${speedCarousel.isTied ? "px-2.5" : ""}`}>
-                    <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight truncate">
-                      {topSpeedRecord?.max_speed_trap ? `${Number(topSpeedRecord.max_speed_trap).toFixed(1)} km/h` : "—"}
-                    </div>
-                    <TieCarouselDots carousel={speedCarousel} accent="amber" />
-                  </div>
-
-                  {topSpeedRecords.length > 0 ? (
-                    <TieCarouselTrack
-                      carousel={speedCarousel}
-                      items={topSpeedRecords}
-                      renderItem={(rec) => (
-                        <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
-                          <div className="min-w-0 pr-1 sm:pr-2">
-                            <DriverLink driverId={rec.driver_id} driverName={rec.driver_full_name} className="block">
-                              <p className="text-[11px] sm:text-xs text-white hover:text-amber-300 transition-colors truncate mt-0.5 font-bold">
-                                {rec.driver_full_name}
-                              </p>
-                            </DriverLink>
-                            <div className="flex items-center gap-1 sm:gap-2 mt-0.5 text-[9px] sm:text-[10px] text-amber-400/80 font-mono truncate">
-                              {rec.team_name ? (
-                                <TeamLink
-                                  teamName={rec.team_name}
-                                  className="hover:text-white hover:underline transition-colors truncate"
-                                  title={`Ver perfil de ${rec.team_name}`}
-                                >
-                                  {rec.team_name}
-                                </TeamLink>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <DriverLink
-                            driverId={rec.driver_id}
-                            driverName={rec.driver_full_name}
-                            className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                            style={{ borderColor: rec.team_color || "#F59E0B" }}
-                            title={`Ver perfil de ${rec.driver_full_name}`}
-                          >
-                            {rec.driver_headshot_url ? (
-                              <img
-                                src={rec.driver_headshot_url}
-                                alt={rec.driver_full_name}
-                                className="h-full w-full object-cover object-top"
-                              />
-                            ) : (
-                              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-amber-400">
-                                {rec.driver_full_name.slice(0, 3).toUpperCase()}
-                              </span>
-                            )}
-                          </DriverLink>
-                        </div>
-                      )}
-                    />
-                  ) : (
-                    <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
-                  )}
-                </div>
-              ) : bestSectors?.theoreticalLap ? (
-                <div className="rounded-xl border border-purple-500/30 bg-[#13111E] p-2.5 sm:p-4 flex items-center justify-between">
-                  <div className="min-w-0 pr-1 sm:pr-2">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1 sm:gap-1.5 truncate">
-                      <span className="h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
-                      <span className="sm:hidden">Volta Ideal</span>
-                      <span className="hidden sm:inline">Volta Ideal Teórica</span>
-                    </span>
-                    <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight truncate">
-                      {bestSectors.theoreticalLap}
-                    </div>
-                    <p className="text-[10px] sm:text-[11px] text-purple-300/80 truncate mt-0.5 font-mono">
-                      S1 + S2 + S3
-                    </p>
-                  </div>
-
-                  <span className="font-mono text-[10px] sm:text-xs font-bold text-purple-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-purple-500/10 border border-purple-500/20 shrink-0">
-                    IDEAL
+            ) : bestSectors?.theoreticalLap ? (
+              <div className="rounded-xl border border-purple-500/30 bg-[#13111E] p-2.5 sm:p-4 flex items-center justify-between">
+                <div className="min-w-0 pr-1 sm:pr-2">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1 sm:gap-1.5 truncate">
+                    <span className="h-1.5 w-1.5 rounded-full bg-purple-400 shrink-0" />
+                    <span className="sm:hidden">Volta Ideal</span>
+                    <span className="hidden sm:inline">Volta Ideal Teórica</span>
                   </span>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
-                  <div className="min-w-0 pr-1 sm:pr-2">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400 block truncate">
-                      Grid
-                    </span>
-                    <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
-                      {sessionResults.length} pilotos
-                    </div>
-                    <p className="text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 truncate">
-                      Classificados
-                    </p>
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight truncate">
+                    {bestSectors.theoreticalLap}
                   </div>
-                  <span className="font-mono text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
-                    GRID
+                  <p className="text-[10px] sm:text-[11px] text-purple-300/80 truncate mt-0.5 font-mono">
+                    S1 + S2 + S3
+                  </p>
+                </div>
+
+                <span className="font-mono text-[10px] sm:text-xs font-bold text-purple-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-purple-500/10 border border-purple-500/20 shrink-0">
+                  IDEAL
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
+                <div className="min-w-0 pr-1 sm:pr-2">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400 block truncate">
+                    Grid
                   </span>
-                </div>
-              )}
-
-              {/* Card 4: Maior Escalador (Corrida) ou Eficiência Teórica (Quali/Treino) ou Resumo */}
-              {isRaceSession && biggestClimber ? (
-                <div
-                  className={`relative rounded-xl border border-emerald-500/30 bg-[#101716] py-2.5 sm:py-4 flex flex-col justify-between overflow-hidden ${climberCarousel.isTied ? "px-4.5 sm:px-5" : "px-2.5 sm:px-4"
-                    }`}
-                  onMouseEnter={climberCarousel.pause}
-                  onMouseLeave={climberCarousel.resume}
-                >
-                  <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1 sm:gap-1.5 truncate">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-                      <span className="sm:hidden">Escalador</span>
-                      <span className="hidden sm:inline">Maior Escalador</span>
-                    </span>
-                    <TieCarouselDots carousel={climberCarousel} accent="emerald" />
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
+                    {sessionResults.length} pilotos
                   </div>
+                  <p className="text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 truncate">
+                    Classificados
+                  </p>
+                </div>
+                <span className="font-mono text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
+                  GRID
+                </span>
+              </div>
+            )}
 
-                  <TieCarouselTrack
-                    carousel={climberCarousel}
-                    items={biggestClimbers}
-                    renderItem={(climber) => (
-                      <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
-                        <div className="min-w-0 pr-1 sm:pr-2">
-                          <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight flex items-baseline gap-1 truncate">
-                            <span className="text-emerald-400">+{climber.delta_position}</span>
-                            <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
-                              (P{climber.grid_position}➔P{climber.finishing_position})
-                            </span>
-                          </div>
-                          <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name} className="block">
-                            <p className="text-[11px] sm:text-xs text-white hover:text-emerald-300 transition-colors truncate font-bold mt-0.5">
-                              {climber.driver_full_name}
-                            </p>
-                          </DriverLink>
-                          {climber.team_name ? (
-                            <TeamLink
-                              teamName={climber.team_name}
-                              className="text-[9px] sm:text-[10px] font-mono block truncate hover:text-white hover:underline transition-colors"
-                              style={{ color: climber.team_color || undefined }}
-                              title={`Ver perfil de ${climber.team_name}`}
-                            >
-                              {climber.team_name}
-                            </TeamLink>
-                          ) : null}
+            {/* Card 4: Maior Escalador (Corrida) ou Eficiência Teórica (Quali/Treino) ou Resumo */}
+            {isRaceSession && biggestClimber ? (
+              <div
+                className={`relative rounded-xl border border-emerald-500/30 bg-[#101716] py-2.5 sm:py-4 flex flex-col justify-between overflow-hidden ${climberCarousel.isTied ? "px-4.5 sm:px-5" : "px-2.5 sm:px-4"
+                  }`}
+                onMouseEnter={climberCarousel.pause}
+                onMouseLeave={climberCarousel.resume}
+              >
+                <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1 sm:gap-1.5 truncate">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="sm:hidden">Escalador</span>
+                    <span className="hidden sm:inline">Maior Escalador</span>
+                  </span>
+                  <TieCarouselDots carousel={climberCarousel} accent="emerald" />
+                </div>
+
+                <TieCarouselTrack
+                  carousel={climberCarousel}
+                  items={biggestClimbers}
+                  renderItem={(climber) => (
+                    <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
+                      <div className="min-w-0 pr-1 sm:pr-2">
+                        <div className="font-mono text-xs sm:text-base font-black text-white tracking-tight flex items-baseline gap-1 truncate">
+                          <span className="text-emerald-400">+{climber.delta_position}</span>
+                          <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
+                            (P{climber.grid_position}➔P{climber.finishing_position})
+                          </span>
                         </div>
-
-                        <DriverLink
-                          driverId={climber.driver_id}
-                          driverName={climber.driver_full_name}
-                          className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                          style={{ borderColor: climber.team_color || "#10B981" }}
-                          title={`Ver perfil de ${climber.driver_full_name}`}
-                        >
-                          {climber.driver_headshot_url ? (
-                            <img
-                              src={climber.driver_headshot_url}
-                              alt={climber.driver_full_name}
-                              className="h-full w-full object-cover object-top"
-                            />
-                          ) : (
-                            <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">
-                              +{climber.delta_position}
-                            </span>
-                          )}
+                        <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name} className="block">
+                          <p className="text-[11px] sm:text-xs text-white hover:text-emerald-300 transition-colors truncate font-bold mt-0.5">
+                            {climber.driver_full_name}
+                          </p>
                         </DriverLink>
+                        {climber.team_name ? (
+                          <TeamLink
+                            teamName={climber.team_name}
+                            className="text-[9px] sm:text-[10px] font-mono block truncate hover:text-white hover:underline transition-colors"
+                            style={{ color: climber.team_color || undefined }}
+                            title={`Ver perfil de ${climber.team_name}`}
+                          >
+                            {climber.team_name}
+                          </TeamLink>
+                        ) : null}
                       </div>
+
+                      <DriverLink
+                        driverId={climber.driver_id}
+                        driverName={climber.driver_full_name}
+                        className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                        style={{ borderColor: climber.team_color || "#10B981" }}
+                        title={`Ver perfil de ${climber.driver_full_name}`}
+                      >
+                        {climber.driver_headshot_url ? (
+                          <img
+                            src={climber.driver_headshot_url}
+                            alt={climber.driver_full_name}
+                            className="h-full w-full object-cover object-top"
+                          />
+                        ) : (
+                          <span className="font-mono text-[9px] sm:text-xs font-bold text-emerald-400">
+                            +{climber.delta_position}
+                          </span>
+                        )}
+                      </DriverLink>
+                    </div>
+                  )}
+                />
+              </div>
+            ) : p2Driver ? (
+              <div className="rounded-xl border border-sky-500/30 bg-[#0E1520] p-2.5 sm:p-4 flex items-center justify-between">
+                <div className="min-w-0 pr-1 sm:pr-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1 sm:gap-1.5 truncate">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
+                      {isQualiSession ? "Margem da Pole" : "Margem P2"}
+                    </span>
+                    {isQualiSession && isFrontRowLockout && (
+                      <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded shrink-0">
+                        Lockout
+                      </span>
                     )}
-                  />
-                </div>
-              ) : p2Driver ? (
-                <div className="rounded-xl border border-sky-500/30 bg-[#0E1520] p-2.5 sm:p-4 flex items-center justify-between">
-                  <div className="min-w-0 pr-1 sm:pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1 sm:gap-1.5 truncate">
-                        <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
-                        {isQualiSession ? "Margem da Pole" : "Margem P2"}
-                      </span>
-                      {isQualiSession && isFrontRowLockout && (
-                        <span className="text-[9px] font-mono font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.2 rounded shrink-0">
-                          Lockout
-                        </span>
-                      )}
-                    </div>
-                    <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight flex items-baseline gap-1.5 truncate">
-                      <span className="text-sky-400 font-mono">{poleMargin || p2Driver.gap_to_leader || "—"}</span>
-                      <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
-                        {isQualiSession ? "(P2 • 1ª Fila)" : "(vs P1)"}
-                      </span>
-                    </div>
-                    <DriverLink driverId={p2Driver.driver_id} driverName={p2Driver.driver_full_name} className="block">
-                      <p className="text-[11px] sm:text-xs text-white hover:text-sky-300 transition-colors truncate mt-0.5 font-bold">
-                        <span className="sm:hidden">{p2Driver.driver_full_name.split(" ").slice(-1)[0]}</span>
-                        <span className="hidden sm:inline">{p2Driver.driver_full_name}</span>
-                      </p>
-                    </DriverLink>
-                    <p className="text-[9px] sm:text-[10px] text-f1-subtle font-mono truncate" style={{ color: p2Driver.team_color || undefined }}>
-                      {p2Driver.team_name}
+                  </div>
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1 tracking-tight flex items-baseline gap-1.5 truncate">
+                    <span className="text-sky-400 font-mono">{poleMargin || p2Driver.gap_to_leader || "—"}</span>
+                    <span className="text-[10px] sm:text-xs text-f1-subtle font-mono truncate">
+                      {isQualiSession ? "(P2 • 1ª Fila)" : "(vs P1)"}
+                    </span>
+                  </div>
+                  <DriverLink driverId={p2Driver.driver_id} driverName={p2Driver.driver_full_name} className="block">
+                    <p className="text-[11px] sm:text-xs text-white hover:text-sky-300 transition-colors truncate mt-0.5 font-bold">
+                      <span className="sm:hidden">{p2Driver.driver_full_name.split(" ").slice(-1)[0]}</span>
+                      <span className="hidden sm:inline">{p2Driver.driver_full_name}</span>
                     </p>
-                  </div>
+                  </DriverLink>
+                  <p className="text-[9px] sm:text-[10px] text-f1-subtle font-mono truncate" style={{ color: p2Driver.team_color || undefined }}>
+                    {p2Driver.team_name}
+                  </p>
+                </div>
 
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold text-sky-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
-                      {isQualiSession ? "1ª FILA" : "P2 GAP"}
-                    </span>
-                    <DriverLink
-                      driverId={p2Driver.driver_id}
-                      driverName={p2Driver.driver_full_name}
-                      className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                      style={{ borderColor: p2Driver.team_color || "#0EA5E9" }}
-                      title={`Ver perfil de ${p2Driver.driver_full_name}`}
-                    >
-                      {p2Driver.driver_headshot_url ? (
-                        <img
-                          src={p2Driver.driver_headshot_url}
-                          alt={p2Driver.driver_full_name}
-                          className="h-full w-full object-cover object-top"
-                        />
-                      ) : (
-                        <span className="font-mono text-[9px] sm:text-xs font-bold text-sky-400">P2</span>
-                      )}
-                    </DriverLink>
-                  </div>
-                </div>
-              ) : isPracticeSession ? (
-                <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
-                  <div className="min-w-0 pr-1 sm:pr-2">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 block truncate">
-                      Pilotos no Treino
-                    </span>
-                    <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
-                      {sessionResults.length} pilotos
-                    </div>
-                    <p className="text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 truncate">
-                      Tempos cronometrados
-                    </p>
-                  </div>
-                  <span className="font-mono text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
-                    FP
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold text-sky-400 uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-500/10 border border-sky-500/20">
+                    {isQualiSession ? "1ª FILA" : "P2 GAP"}
                   </span>
+                  <DriverLink
+                    driverId={p2Driver.driver_id}
+                    driverName={p2Driver.driver_full_name}
+                    className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                    style={{ borderColor: p2Driver.team_color || "#0EA5E9" }}
+                    title={`Ver perfil de ${p2Driver.driver_full_name}`}
+                  >
+                    {p2Driver.driver_headshot_url ? (
+                      <img
+                        src={p2Driver.driver_headshot_url}
+                        alt={p2Driver.driver_full_name}
+                        className="h-full w-full object-cover object-top"
+                      />
+                    ) : (
+                      <span className="font-mono text-[9px] sm:text-xs font-bold text-sky-400">P2</span>
+                    )}
+                  </DriverLink>
                 </div>
-              ) : (
-                <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
-                  <div className="min-w-0 pr-1 sm:pr-2">
-                    <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400 block truncate">
-                      Resumo da Prova
-                    </span>
-                    <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
-                      {totalLaps} voltas
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 font-mono">
-                      <span>{finishedCount} finalizados</span>
-                      {isRaceSession && <span>• {avgPitStops} pits médios</span>}
-                    </div>
-                  </div>
-                  <span className="font-mono text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
-                    RACE
+              </div>
+            ) : isPracticeSession ? (
+              <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
+                <div className="min-w-0 pr-1 sm:pr-2">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-sky-400 block truncate">
+                    Pilotos no Treino
                   </span>
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
+                    {sessionResults.length} pilotos
+                  </div>
+                  <p className="text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 truncate">
+                    Tempos cronometrados
+                  </p>
                 </div>
-              )}
-            </div>
+                <span className="font-mono text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
+                  FP
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-white/10 bg-[#111118] p-2.5 sm:p-4 flex items-center justify-between">
+                <div className="min-w-0 pr-1 sm:pr-2">
+                  <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-zinc-400 block truncate">
+                    Resumo da Prova
+                  </span>
+                  <div className="font-mono text-xs sm:text-base font-black text-white mt-0.5 sm:mt-1">
+                    {totalLaps} voltas
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-f1-subtle mt-0.5 font-mono">
+                    <span>{finishedCount} finalizados</span>
+                    {isRaceSession && <span>• {avgPitStops} pits médios</span>}
+                  </div>
+                </div>
+                <span className="font-mono text-[10px] sm:text-xs font-bold text-zinc-400 uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-white/5 border border-white/10 shrink-0">
+                  RACE
+                </span>
+              </div>
+            )}
+          </div>
 
-            {/* Barra de Alternância de Abas: Dashboard Analítico vs Volta Ideal vs Tabela FIA */}
-            <div className="flex items-center justify-between border-b border-white/10 gap-4 sm:gap-6 overflow-x-auto sm:overflow-x-visible no-scrollbar scrollbar-none">
-              <div className="flex items-center gap-3 sm:gap-6">
-                {/* Classificação Oficial sempre disponível em 1º lugar à esquerda */}
+          {/* Barra de Alternância de Abas: Dashboard Analítico vs Volta Ideal vs Tabela FIA */}
+          <div className="flex items-center justify-between border-b border-white/10 gap-4 sm:gap-6 overflow-x-auto sm:overflow-x-visible no-scrollbar scrollbar-none">
+            <div className="flex items-center gap-3 sm:gap-6">
+              {/* Classificação Oficial sempre disponível em 1º lugar à esquerda */}
+              <button
+                onClick={() => setViewMode("table")}
+                className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "table"
+                  ? "border-f1-red text-white"
+                  : "border-transparent text-f1-subtle hover:text-white"
+                  }`}
+              >
+                <span>Classificação Oficial</span>
+                <span className="font-mono text-[11px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                  {sessionResults.length}
+                </span>
+              </button>
+
+              {/* Se Corrida / Sprint: Dashboard Analítico posicionado à direita da Classificação */}
+              {isRaceSession && (
                 <button
-                  onClick={() => setViewMode("table")}
-                  className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "table"
+                  onClick={() => setViewMode("dashboard")}
+                  className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "dashboard"
                     ? "border-f1-red text-white"
                     : "border-transparent text-f1-subtle hover:text-white"
                     }`}
                 >
-                  <span>Classificação Oficial</span>
-                  <span className="font-mono text-[11px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
-                    {sessionResults.length}
-                  </span>
+                  <span>Dashboard Analítico</span>
                 </button>
+              )}
 
-                {/* Se Corrida / Sprint: Dashboard Analítico posicionado à direita da Classificação */}
-                {isRaceSession && (
-                  <button
-                    onClick={() => setViewMode("dashboard")}
-                    className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "dashboard"
-                      ? "border-f1-red text-white"
-                      : "border-transparent text-f1-subtle hover:text-white"
-                      }`}
-                  >
-                    <span>Dashboard Analítico</span>
-                  </button>
-                )}
-
-                {/* Se Qualificação (ou sessão com volta ideal): Volta Ideal Teórica */}
-                {(isQualiSession || (!isRaceSession && hasIdealData)) && (
-                  <button
-                    onClick={() => setViewMode("ideal")}
-                    className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "ideal"
-                      ? "border-f1-red text-white"
-                      : "border-transparent text-f1-subtle hover:text-white"
-                      }`}
-                  >
-                    <span>Volta Ideal Teórica</span>
-                    {idealLaps.length > 0 && (
-                      <span className="font-mono text-[11px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
-                        {idealLaps.length}
-                      </span>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-f1-subtle shrink-0">
-                <span>Modo:</span>
-                <span className="text-white font-bold uppercase">
-                  {effectiveViewMode === "dashboard"
-                    ? "Telemetria & Estratégia"
-                    : effectiveViewMode === "ideal"
-                      ? "Volta Ideal FIA"
-                      : "Tabela Oficial FIA"}
-                </span>
-              </div>
+              {/* Se Qualificação (ou sessão com volta ideal): Volta Ideal Teórica */}
+              {(isQualiSession || (!isRaceSession && hasIdealData)) && (
+                <button
+                  onClick={() => setViewMode("ideal")}
+                  className={`min-h-[44px] pb-2.5 pt-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all shrink-0 flex items-center gap-2 border-b-2 -mb-[1px] active:scale-95 ${effectiveViewMode === "ideal"
+                    ? "border-f1-red text-white"
+                    : "border-transparent text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  <span>Volta Ideal Teórica</span>
+                  {idealLaps.length > 0 && (
+                    <span className="font-mono text-[11px] text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                      {idealLaps.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
-            {/* ========================================================================= */}
-            {/* CONTEÚDO DA ABA 1: DASHBOARD ANALÍTICO (SOMENTE CORRIDA E SPRINT)         */}
-            {/* ========================================================================= */}
-            {effectiveViewMode === "dashboard" && isRaceSession && (
-              <div className="space-y-5 sm:space-y-6 animate-fadeIn">
-                {/* Banner informativo quando a sessão não possui telemetria detalhada */}
-                {!hasLapData && !hasRacePace && !hasTyres && (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
-                    <Info className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
-                    <div className="space-y-1 text-xs text-zinc-300">
-                      <p className="font-bold text-white">
-                        {year < 1996
-                          ? `Temporada Histórica (${year}): Telemetria digital detalhada não existia nesta época`
-                          : "Telemetria analítica detalhada não registrada para esta sessão"}
-                      </p>
-                      <p className="text-f1-subtle leading-relaxed">
-                        {year < 1996
-                          ? "Os dados de telemetria volta a volta, ritmo em ar limpo e stints de pneus foram introduzidos nas eras modernas da Fórmula 1. Consulte a aba Classificação Oficial para conferir as posições de chegada, voltas completadas, pontos e tempos oficiais da época."
-                          : "Esta sessão não possui registros de telemetria volta a volta ou stints de pneus em nossos dados. Consulte a aba Classificação Oficial para os resultados oficiais completos."}
-                      </p>
-                    </div>
+            <div className="hidden sm:flex items-center gap-2 text-xs font-mono text-f1-subtle shrink-0">
+              <span>Modo:</span>
+              <span className="text-white font-bold uppercase">
+                {effectiveViewMode === "dashboard"
+                  ? "Telemetria & Estratégia"
+                  : effectiveViewMode === "ideal"
+                    ? "Volta Ideal FIA"
+                    : "Tabela Oficial FIA"}
+              </span>
+            </div>
+          </div>
+
+          {/* ========================================================================= */}
+          {/* CONTEÚDO DA ABA 1: DASHBOARD ANALÍTICO (SOMENTE CORRIDA E SPRINT)         */}
+          {/* ========================================================================= */}
+          {effectiveViewMode === "dashboard" && isRaceSession && (
+            <div className="space-y-5 sm:space-y-6 animate-fadeIn">
+              {/* Banner informativo quando a sessão não possui telemetria detalhada */}
+              {!hasLapData && !hasRacePace && !hasTyres && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-start gap-3">
+                  <Info className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="space-y-1 text-xs text-zinc-300">
+                    <p className="font-bold text-white">
+                      {year < 1996
+                        ? `Temporada Histórica (${year}): Telemetria digital detalhada não existia nesta época`
+                        : "Telemetria analítica detalhada não registrada para esta sessão"}
+                    </p>
+                    <p className="text-f1-subtle leading-relaxed">
+                      {year < 1996
+                        ? "Os dados de telemetria volta a volta, ritmo em ar limpo e stints de pneus foram introduzidos nas eras modernas da Fórmula 1. Consulte a aba Classificação Oficial para conferir as posições de chegada, voltas completadas, pontos e tempos oficiais da época."
+                        : "Esta sessão não possui registros de telemetria volta a volta ou stints de pneus em nossos dados. Consulte a aba Classificação Oficial para os resultados oficiais completos."}
+                    </p>
                   </div>
-                )}
-
-                {/* Sub-abas Mobile (< lg): Alterna entre os 3 gráficos sem empilhar 3 painéis gigantes */}
-                <div className="grid grid-cols-3 lg:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
-                  <button
-                    onClick={() => setMobileChartTab("laps")}
-                    className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "laps"
-                      ? "bg-f1-red text-white shadow"
-                      : "text-f1-subtle hover:text-white"
-                      }`}
-                  >
-                    Volta a Volta
-                  </button>
-                  <button
-                    onClick={() => setMobileChartTab("pace")}
-                    className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "pace"
-                      ? "bg-f1-red text-white shadow"
-                      : "text-f1-subtle hover:text-white"
-                      }`}
-                  >
-                    Ritmo
-                  </button>
-                  <button
-                    onClick={() => setMobileChartTab("tyres")}
-                    className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "tyres"
-                      ? "bg-f1-red text-white shadow"
-                      : "text-f1-subtle hover:text-white"
-                      }`}
-                  >
-                    Pneus
-                  </button>
                 </div>
+              )}
 
-                {/* Gráfico de Evolução Volta a Volta em Largura Total */}
-                <div className={`w-full ${mobileChartTab === "laps" ? "block" : "hidden lg:block"}`}>
-                  <LapChart
-                    data={lapData}
-                    sessionResults={sessionResults}
-                    year={year}
-                    raceStatus={raceStatus}
-                  />
-                </div>
+              {/* Sub-abas Mobile (< lg): Alterna entre os 3 gráficos sem empilhar 3 painéis gigantes */}
+              <div className="grid grid-cols-3 lg:hidden rounded-xl border border-white/10 bg-[#12121A] p-1 shadow-lg">
+                <button
+                  onClick={() => setMobileChartTab("laps")}
+                  className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "laps"
+                    ? "bg-f1-red text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  Volta a Volta
+                </button>
+                <button
+                  onClick={() => setMobileChartTab("pace")}
+                  className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "pace"
+                    ? "bg-f1-red text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  Ritmo
+                </button>
+                <button
+                  onClick={() => setMobileChartTab("tyres")}
+                  className={`py-2.5 px-2 min-h-[44px] rounded-lg text-[11px] font-black uppercase tracking-wider transition-all truncate active:scale-95 flex items-center justify-center ${mobileChartTab === "tyres"
+                    ? "bg-f1-red text-white shadow"
+                    : "text-f1-subtle hover:text-white"
+                    }`}
+                >
+                  Pneus
+                </button>
+              </div>
 
-                {/* Tabelas de Ritmo e de Estratégia com Altura Igual e Scrollável */}
-                <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch ${mobileChartTab === "laps" ? "hidden lg:grid" : "grid"}`}>
-                  <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "pace" ? "block" : "hidden lg:block"}`}>
-                    {
-                      hasRacePace ? (
-                        <RacePaceChart data={racePace} sessionResults={sessionResults} className="h-full" />
-                      ) : (
-                        < div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl" >
-                          <Gauge className="h-8 w-8 text-f1-subtle/40 mb-2" />
-                          <h4 className="text-sm font-bold text-white">Ritmo de corrida indisponível</h4>
-                          <p className="text-xs text-f1-subtle mt-1 max-w-xs">
-                            {year < 1996
-                              ? "Cálculo de ritmo em ar limpo não disponível para temporadas históricas."
-                              : "Dados de voltas limpas insuficientes para calcular o ritmo médio nesta sessão."}
-                          </p>
-                        </div>
-                      )}
-                  </div>
+              {/* Gráfico de Evolução Volta a Volta em Largura Total */}
+              <div className={`w-full ${mobileChartTab === "laps" ? "block" : "hidden lg:block"}`}>
+                <LapChart
+                  data={lapData}
+                  sessionResults={sessionResults}
+                  year={year}
+                  raceStatus={raceStatus}
+                />
+              </div>
 
-                  <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "tyres" ? "block" : "hidden lg:block"}`}>
-                    {hasTyres ? (
-                      <TyreStrategyChart
-                        data={tyreStrategies}
-                        totalLaps={totalLaps}
-                        sessionResults={sessionResults}
-                        className="h-full"
-                      />
+              {/* Tabelas de Ritmo e de Estratégia com Altura Igual e Scrollável */}
+              <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch ${mobileChartTab === "laps" ? "hidden lg:grid" : "grid"}`}>
+                <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "pace" ? "block" : "hidden lg:block"}`}>
+                  {
+                    hasRacePace ? (
+                      <RacePaceChart data={racePace} sessionResults={sessionResults} className="h-full" />
                     ) : (
-                      <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl">
-                        <Disc className="h-8 w-8 text-f1-subtle/40 mb-2" />
-                        <h4 className="text-sm font-bold text-white">Estratégia de pneus indisponível</h4>
+                      < div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl" >
+                        <Gauge className="h-8 w-8 text-f1-subtle/40 mb-2" />
+                        <h4 className="text-sm font-bold text-white">Ritmo de corrida indisponível</h4>
                         <p className="text-xs text-f1-subtle mt-1 max-w-xs">
-                          {year < 2018
-                            ? "Telemetria de compostos e stints de pneus da F1 disponível a partir de 2018."
-                            : "Dados de estratégia de pneus indisponíveis para esta sessão."}
+                          {year < 1996
+                            ? "Cálculo de ritmo em ar limpo não disponível para temporadas históricas."
+                            : "Dados de voltas limpas insuficientes para calcular o ritmo médio nesta sessão."}
                         </p>
                       </div>
                     )}
-                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* ========================================================================= */}
-            {/* CONTEÚDO DA ABA 2: VOLTA IDEAL TEÓRICA (QUALIFICAÇÃO / TREINOS)           */}
-            {/* ========================================================================= */}
-            {effectiveViewMode === "ideal" && (
-              <div className="space-y-6 animate-fadeIn">
-                <IdealLapCard data={idealLaps} />
-              </div>
-            )}
-
-            {/* ========================================================================= */}
-            {/* CONTEÚDO DA ABA 3: TABELA DE CLASSIFICAÇÃO OFICIAL (TABELA COMPLETA FIA)   */}
-            {/* ========================================================================= */}
-            {effectiveViewMode === "table" && (
-              <div className="space-y-4 animate-fadeIn">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
-                  <div>
-                    <h2 className="text-lg font-black uppercase text-white tracking-tight flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-amber-400" />
-                      Classificação Oficial da Sessão
-                    </h2>
-                    <p className="text-xs text-f1-subtle font-medium mt-0.5">
-                      Resultados cronometrados oficiais, gaps, voltas concluídas e paradas registradas
-                    </p>
-                  </div>
-                  {fastestLap && (
-                    <div className="inline-flex items-center gap-2 rounded-xl bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 text-xs text-purple-300 font-bold self-start sm:self-auto">
-                      <Timer className="h-4 w-4 text-purple-400" />
-                      <span>Volta Mais Rápida: <strong className="font-mono text-white ml-1">{fastestLap}</strong></span>
+                <div className={`h-[500px] sm:h-[580px] ${mobileChartTab === "tyres" ? "block" : "hidden lg:block"}`}>
+                  {hasTyres ? (
+                    <TyreStrategyChart
+                      data={tyreStrategies}
+                      totalLaps={totalLaps}
+                      sessionResults={sessionResults}
+                      className="h-full"
+                    />
+                  ) : (
+                    <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-8 text-center text-sm text-f1-subtle h-full flex flex-col items-center justify-center shadow-xl">
+                      <Disc className="h-8 w-8 text-f1-subtle/40 mb-2" />
+                      <h4 className="text-sm font-bold text-white">Estratégia de pneus indisponível</h4>
+                      <p className="text-xs text-f1-subtle mt-1 max-w-xs">
+                        {year < 2018
+                          ? "Telemetria de compostos e stints de pneus da F1 disponível a partir de 2018."
+                          : "Dados de estratégia de pneus indisponíveis para esta sessão."}
+                      </p>
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
 
-                {sessionResults.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-12 text-center">
-                    <p className="text-sm text-f1-subtle font-medium">Nenhum resultado registrado para esta sessão no banco de dados.</p>
+          {/* ========================================================================= */}
+          {/* CONTEÚDO DA ABA 2: VOLTA IDEAL TEÓRICA (QUALIFICAÇÃO / TREINOS)           */}
+          {/* ========================================================================= */}
+          {effectiveViewMode === "ideal" && (
+            <div className="space-y-6 animate-fadeIn">
+              <IdealLapCard data={idealLaps} />
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* CONTEÚDO DA ABA 3: TABELA DE CLASSIFICAÇÃO OFICIAL (TABELA COMPLETA FIA)   */}
+          {/* ========================================================================= */}
+          {effectiveViewMode === "table" && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                <div>
+                  <h2 className="text-lg font-black uppercase text-white tracking-tight flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-amber-400" />
+                    Classificação Oficial da Sessão
+                  </h2>
+                  <p className="text-xs text-f1-subtle font-medium mt-0.5">
+                    Resultados cronometrados oficiais, gaps, voltas concluídas e paradas registradas
+                  </p>
+                </div>
+                {fastestLap && (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 text-xs text-purple-300 font-bold self-start sm:self-auto">
+                    <Timer className="h-4 w-4 text-purple-400" />
+                    <span>Volta Mais Rápida: <strong className="font-mono text-white ml-1">{fastestLap}</strong></span>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="md:hidden flex flex-col gap-2">
-                      {/* Seletor de Segmentos no Mobile (Q1, Q2, Q3, Final) */}
-                      {hasQualiSegments && (
-                        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10">
-                          <span className="text-[11px] font-mono text-f1-subtle font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
-                            <Timer className="h-3.5 w-3.5 text-f1-red" />
-                            <span>Segmento:</span>
-                          </span>
-                          <div className="inline-flex items-center rounded-lg bg-black/60 p-0.5 border border-white/10">
-                            {availableMobileSegments.map((seg) => {
-                              const isSelected = mobileQualiSegment === seg;
-                              const label = seg === "final" ? "Final" : `${qPrefix}${seg.slice(1)}`;
-                              return (
-                                <button
-                                  key={seg}
-                                  type="button"
-                                  onClick={() => setMobileQualiSegment(seg)}
-                                  onClick={() => selectMobileSegment(seg)}
-                                  className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all ${isSelected
-                                      ? "bg-f1-red text-white shadow-sm"
-                                      : "text-zinc-400 hover:text-white"
-                                    }`}
-                                >
-                                  {label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
+                )}
+              </div>
 
-                      {/* Dica de toque */}
-                      <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
-                        <span className="flex items-center gap-1.5">
-                          <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
-                          <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+              {sessionResults.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-12 text-center">
+                  <p className="text-sm text-f1-subtle font-medium">Nenhum resultado registrado para esta sessão no banco de dados.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="md:hidden flex flex-col gap-2">
+                    {/* Seletor de Segmentos no Mobile (Q1, Q2, Q3, Final) */}
+                    {hasQualiSegments && (
+                      <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/10">
+                        <span className="text-[11px] font-mono text-f1-subtle font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+                          <Timer className="h-3.5 w-3.5 text-f1-red" />
+                          <span>Segmento:</span>
                         </span>
-                        {hasQualiSegments && (
-                          <span className="font-mono text-[10px] text-f1-red font-bold">
-                            {mobileQualiSegment === "final" ? "Tempo Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}
-                          </span>
-                        )}
+                        <div className="inline-flex items-center rounded-lg bg-black/60 p-0.5 border border-white/10">
+                          {availableMobileSegments.map((seg) => {
+                            const isSelected = mobileQualiSegment === seg;
+                            const label = seg === "final" ? "Final" : `${qPrefix}${seg.slice(1)}`;
+                            return (
+                              <button
+                                key={seg}
+                                type="button"
+                                onClick={() => selectMobileSegment(seg)}
+                                className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all ${isSelected
+                                  ? "bg-f1-red text-white shadow-sm"
+                                  : "text-zinc-400 hover:text-white"
+                                  }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
+                    )}
+
+                    {/* Dica de toque */}
+                    <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/10 text-[11px] text-f1-subtle">
+                      <span className="flex items-center gap-1.5">
+                        <ChevronDown className="h-3.5 w-3.5 text-f1-red shrink-0" />
+                        <span>Toque em qualquer linha para expandir detalhes e perfil</span>
+                      </span>
+                      {hasQualiSegments && (
+                        <span className="font-mono text-[10px] text-f1-red font-bold">
+                          {mobileQualiSegment === "final" ? "Tempo Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}
+                        </span>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
-                      <div className="overflow-x-auto sm:overflow-x-visible">
-                        <table className="w-full text-left border-collapse table-fixed md:table-auto">
-                          <thead>
-                            <tr className="border-b border-white/10 bg-white/[0.02] text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-f1-subtle">
-                              <th className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center">Pos</th>
-                              <th
-                                onClick={() => handleSort("pos")}
-                                className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center cursor-pointer hover:text-white transition-colors select-none"
-                                title="Ordenar por Posição Final"
-                              >
-                                <span className="inline-flex items-center gap-1 justify-center">
-                                  <span>Pos</span>
-                                  {sortField === "pos" ? (
-                                    sortDirection === "asc" ? (
-                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    ) : (
-                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    )
-                                  ) : null}
-                                </span>
-                              </th>
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0B0B10] shadow-2xl">
+                    <div className="overflow-x-auto sm:overflow-x-visible">
+                      <table className="w-full text-left border-collapse table-fixed md:table-auto">
+                        <thead>
+                          <tr className="border-b border-white/10 bg-white/[0.02] text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-f1-subtle">
+                            <th className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center">Pos</th>
+                            <th
+                              onClick={() => handleSort("pos")}
+                              className="py-2.5 sm:py-3 pl-2 sm:pl-6 pr-1 sm:pr-3 w-8 sm:w-16 text-center cursor-pointer hover:text-white transition-colors select-none"
+                              title="Ordenar por Posição Final"
+                            >
+                              <span className="inline-flex items-center gap-1 justify-center">
+                                <span>Pos</span>
+                                {sortField === "pos" ? (
+                                  sortDirection === "asc" ? (
+                                    <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                  ) : (
+                                    <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                  )
+                                ) : null}
+                              </span>
+                            </th>
 
-                              {isRaceSession && <th className="py-3.5 px-3 w-20 text-center hidden md:table-cell">Largada</th>}
-                              {isRaceSession && <th className="py-2.5 sm:py-3 px-0.5 sm:px-3 w-8 sm:w-20 text-center">+/-</th>}
-                              <th className="py-2.5 sm:py-3 px-1.5 sm:px-4">Piloto</th>
+                            {isRaceSession && <th className="py-3.5 px-3 w-20 text-center hidden md:table-cell">Largada</th>}
+                            {isRaceSession && <th className="py-2.5 sm:py-3 px-0.5 sm:px-3 w-8 sm:w-20 text-center">+/-</th>}
+                            <th className="py-2.5 sm:py-3 px-1.5 sm:px-4">Piloto</th>
 
-                              <th
-                                onClick={() => handleSort("driver")}
-                                className="py-2.5 sm:py-3 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0 cursor-pointer hover:text-white transition-colors select-none"
-                                title="Ordenar por Nome do Piloto"
-                              >
-                                <span className="inline-flex items-center gap-1">
-                                  <span>Piloto</span>
-                                  {sortField === "driver" ? (
-                                    sortDirection === "asc" ? (
-                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    ) : (
-                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                    )
-                                  ) : null}
-                                </span>
-                              </th>
+                            <th
+                              onClick={() => handleSort("driver")}
+                              className="py-2.5 sm:py-3 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0 cursor-pointer hover:text-white transition-colors select-none"
+                              title="Ordenar por Nome do Piloto"
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                <span>Piloto</span>
+                                {sortField === "driver" ? (
+                                  sortDirection === "asc" ? (
+                                    <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                  ) : (
+                                    <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                  )
+                                ) : null}
+                              </span>
+                            </th>
 
-                              <th className="py-3.5 px-4 hidden md:table-cell">Equipe</th>
-                              <th className="py-3.5 px-3 text-center hidden lg:table-cell">Nº</th>
+                            <th className="py-3.5 px-4 hidden md:table-cell">Equipe</th>
+                            <th className="py-3.5 px-3 text-center hidden lg:table-cell">Nº</th>
 
-                              {/* Colunas de Tempo / Segmentos */}
-                              {hasQualiSegments ? (
-                                <>
-                                  {/* Mobile: coluna única dinâmica */}
-                                  <th
-                                    onClick={cycleMobileSegment}
-                                    className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer"
-                                    title="Toque para alternar segmento (Q1, Q2, Q3, Final)"
-                                    className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer select-none"
-                                    title="Toque para alternar e ordenar por segmento (Q1, Q2, Q3, Final)"
-                                  >
-                                    <span className="inline-flex items-center gap-1 justify-end font-mono text-f1-red font-bold">
-                                      <span>{mobileQualiSegment === "final" ? "Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}</span>
-                                      <ArrowUpDown className="h-2.5 w-2.5 opacity-70" />
-                                    </span>
-                                  </th>
+                            {/* Colunas de Tempo / Segmentos */}
+                            {hasQualiSegments ? (
+                              <>
+                                {/* Mobile: coluna única dinâmica */}
+                                <th
+                                  onClick={cycleMobileSegment}
+                                  className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer"
+                                  title="Toque para alternar segmento (Q1, Q2, Q3, Final)"
+                                  className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-20 sm:w-28 md:hidden cursor-pointer select-none"
+                                  title="Toque para alternar e ordenar por segmento (Q1, Q2, Q3, Final)"
+                                >
+                                  <span className="inline-flex items-center gap-1 justify-end font-mono text-f1-red font-bold">
+                                    <span>{mobileQualiSegment === "final" ? "Final" : `${qPrefix}${mobileQualiSegment.slice(1)}`}</span>
+                                    <ArrowUpDown className="h-2.5 w-2.5 opacity-70" />
+                                  </span>
+                                </th>
 
-                                  {/* Desktop: colunas individuais Q1, Q2, Q3 */}
-                                  {/* Desktop: colunas individuais Q1, Q2, Q3 com ordenação interativa */}
-                                  {hasQ1 && (
-                                    <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
-                                      {qPrefix}1
-                                      <th
-                                        onClick={() => handleSort("q1")}
+                                {/* Desktop: colunas individuais Q1, Q2, Q3 */}
+                                {/* Desktop: colunas individuais Q1, Q2, Q3 com ordenação interativa */}
+                                {hasQ1 && (
+                                  <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
+                                    {qPrefix}1
+                                    <th
+                                      onClick={() => handleSort("q1")}
+                                      className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q1" ? "text-purple-300 font-black" : "hover:text-white"
+                                        }`}
+                                      title={`Ordenar pelos tempos do ${qPrefix}1 (mais rápidos primeiro)`}
+                                    >
+                                      <span className="inline-flex items-center gap-1 justify-end">
+                                        <span>{qPrefix}1</span>
+                                        {sortField === "q1" ? (
+                                          sortDirection === "asc" ? (
+                                            <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          ) : (
+                                            <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                          )
+                                          < th
+                                      onClick={() => handleSort("q1")}
                                         className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q1" ? "text-purple-300 font-black" : "hover:text-white"
                                           }`}
                                         title={`Ordenar pelos tempos do ${qPrefix}1 (mais rápidos primeiro)`}
-                                      >
+                                    >
                                         <span className="inline-flex items-center gap-1 justify-end">
                                           <span>{qPrefix}1</span>
                                           {sortField === "q1" ? (
                                             sortDirection === "asc" ? (
                                               <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
                                             ) : (
-                                              <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                            )
-                                          ) : (
-                                            <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                          )}
+                                              <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                            )}
                                         </span>
-                                      </th>
+                                    </th>
                                 )}
-                                      {hasQ2 && (
-                                        <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
-                                          {qPrefix}2
-                                          <th
-                                            onClick={() => handleSort("q2")}
-                                            className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
-                                              }`}
-                                            title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
-                                          >
-                                            <span className="inline-flex items-center gap-1 justify-end">
-                                              <span>{qPrefix}2</span>
-                                              {sortField === "q2" ? (
-                                                sortDirection === "asc" ? (
-                                                  <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                                ) : (
-                                                  <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                                )
+                                    {hasQ2 && (
+                                      <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
+                                        {qPrefix}2
+                                        <th
+                                          onClick={() => handleSort("q2")}
+                                          className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
+                                            }`}
+                                          title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
+                                        >
+                                          <span className="inline-flex items-center gap-1 justify-end">
+                                            <span>{qPrefix}2</span>
+                                            {sortField === "q2" ? (
+                                              sortDirection === "asc" ? (
+                                                <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
                                               ) : (
-                                                <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
-                                              )}
-                                            </span>
-                                          </th>
+                                                <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                              )
+                                            ) : (
+                                              <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                            )}
+                                          </span>
+                                        </th>
                                 )}
-                                          {hasQ3 && (
+                                        {hasQ3 && (
                                             <th className="py-3.5 px-3 text-right hidden md:table-cell font-mono w-24">
                                               {qPrefix}3
                                               <th
@@ -1692,7 +1774,27 @@ export default function GrandPrixWeekendExplorer({
                                               </th>
                                 )}
                                             </>
-                                          ) : (
+                                            <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                        )
+                                        ) : (
+                                        <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                        )}
+                                      </span>
+                                    </th>
+                                )}
+                                {hasQ2 && (
+                                  <th
+                                    onClick={() => handleSort("q2")}
+                                    className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q2" ? "text-purple-300 font-black" : "hover:text-white"
+                                      }`}
+                                    title={`Ordenar pelos tempos do ${qPrefix}2 (mais rápidos primeiro)`}
+                                  >
+                                    <span className="inline-flex items-center gap-1 justify-end">
+                                      <span>{qPrefix}2</span>
+                                      {sortField === "q2" ? (
+                                        sortDirection === "asc" ? (
+                                          <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                        ) : (
                                           <th className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"}`}>
                                             <span className="sm:hidden">Tempo</span>
                                             <span className="hidden sm:inline">Melhor Volta / Tempo</span>
@@ -1714,552 +1816,646 @@ export default function GrandPrixWeekendExplorer({
                                               </span>
                                             </th>
                             )}
+                                            <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                            )
+                                            ) : (
+                                            <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                        )}
+                                          </span>
+                                    </th>
+                                )}
+                                {hasQ3 && (
+                                  <th
+                                    onClick={() => handleSort("q3")}
+                                    className={`py-3.5 px-3 text-right hidden md:table-cell font-mono w-24 cursor-pointer transition-colors select-none ${sortField === "q3" ? "text-purple-300 font-black" : "hover:text-white"
+                                      }`}
+                                    title={`Ordenar pelos tempos do ${qPrefix}3 (mais rápidos primeiro)`}
+                                  >
+                                    <span className="inline-flex items-center gap-1 justify-end">
+                                      <span>{qPrefix}3</span>
+                                      {sortField === "q3" ? (
+                                        sortDirection === "asc" ? (
+                                          <ArrowUp className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                        ) : (
+                                          <ArrowDown className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                        )
+                                      ) : (
+                                        <ArrowUpDown className="h-2.5 w-2.5 opacity-30 hover:opacity-100 shrink-0" />
+                                      )}
+                                    </span>
+                                  </th>
+                                )}
+                              </>
+                            ) : (
+                              <th
+                                onClick={() => handleSort("time")}
+                                className={`py-2.5 sm:py-3 px-1 sm:px-4 text-right cursor-pointer hover:text-white transition-colors select-none ${isRaceSession ? "hidden md:table-cell" : "w-20 sm:w-28"
+                                  }`}
+                                title="Ordenar por Tempo"
+                              >
+                                <span className="inline-flex items-center gap-1 justify-end">
+                                  <span className="sm:hidden">Tempo</span>
+                                  <span className="hidden sm:inline">Melhor Volta / Tempo</span>
+                                  {sortField === "time" ? (
+                                    sortDirection === "asc" ? (
+                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    )
+                                  ) : null}
+                                </span>
+                              </th>
+                            )}
 
-                                            <th className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24">
-                                              <span className="sm:hidden">Gap</span>
-                                              <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
-                                              <th
-                                                onClick={() => handleSort("gap")}
-                                                className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
-                                                title="Ordenar por Gap"
-                                              >
-                                                <span className="inline-flex items-center gap-1 justify-end">
-                                                  <span className="sm:hidden">Gap</span>
-                                                  <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
-                                                  {sortField === "gap" ? (
-                                                    sortDirection === "asc" ? (
-                                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                    ) : (
-                                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                    )
-                                                  ) : null}
-                                                </span>
-                                              </th>
+                            <th className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24">
+                              <span className="sm:hidden">Gap</span>
+                              <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
+                              <th
+                                onClick={() => handleSort("gap")}
+                                className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
+                                title="Ordenar por Gap"
+                              >
+                                <span className="inline-flex items-center gap-1 justify-end">
+                                  <span className="sm:hidden">Gap</span>
+                                  <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
+                                  {sortField === "gap" ? (
+                                    sortDirection === "asc" ? (
+                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    )
+                                  ) : null}
+                                </span>
+                              </th>
+                              <th
+                                onClick={() => handleSort("gap")}
+                                className="py-2.5 sm:py-3 px-1 sm:px-4 text-right w-14 sm:w-24 cursor-pointer hover:text-white transition-colors select-none"
+                                title="Ordenar por Gap"
+                              >
+                                <span className="inline-flex items-center gap-1 justify-end">
+                                  <span className="sm:hidden">Gap</span>
+                                  <span className="hidden sm:inline">{hasQualiSegments ? "Gap Pole" : "Gap Líder"}</span>
+                                  {sortField === "gap" ? (
+                                    sortDirection === "asc" ? (
+                                      <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                    )
+                                  ) : null}
+                                </span>
+                              </th>
 
-                                              {!hasQualiSegments && <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th>}
-                                              <th className={`py-3.5 px-3 text-center ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>Voltas</th>
-                                              {isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th>}
-                                              {isRaceSession && <th className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16">Pts</th>}
-                                              {isRaceSession && (
-                                                <th
-                                                  onClick={() => handleSort("points")}
-                                                  className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16 cursor-pointer hover:text-white transition-colors select-none"
-                                                  title="Ordenar por Pontos"
-                                                >
-                                                  <span className="inline-flex items-center gap-1 justify-end">
-                                                    <span>Pts</span>
-                                                    {sortField === "points" ? (
-                                                      sortDirection === "asc" ? (
-                                                        <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                      ) : (
-                                                        <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
-                                                      )
-                                                    ) : null}
-                                                  </span>
-                                                </th>
-                                              )}
-                                            </tr>
-                                          </thead>
-                                          <tbody className="divide-y divide-white/5 text-xs">
-                                            {sessionResults.map((row, index) => {
-                                              {
-                                                sortedSessionResults.map((row, index) => {
-                                                  const pos = row.finishing_position ?? index + 1;
-                                                  const teamColor = row.team_color || "#E10600";
-                                                  const isFastestLap = Boolean(row.best_lap && row.best_lap === fastestLap);
-                                                  const rowId = row.driver_id || row.driver_full_name || index;
-                                                  const isExpanded = expandedDriverRow === rowId;
+                              {!hasQualiSegments && <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th>}
+                              <th className={`py-3.5 px-3 text-center ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>Voltas</th>
+                              {isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th>}
+                              {isRaceSession && <th className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16">Pts</th>}
+                              {isRaceSession && (
+                                <th
+                                  onClick={() => handleSort("points")}
+                                  className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16 cursor-pointer hover:text-white transition-colors select-none"
+                                  title="Ordenar por Pontos"
+                                >
+                                  <span className="inline-flex items-center gap-1 justify-end">
+                                    <span>Pts</span>
+                                    {sortField === "points" ? (
+                                      sortDirection === "asc" ? (
+                                        <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                      ) : (
+                                        <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                      )
+                                    ) : null}
+                                  </span>
+                                </th>
+                              )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-xs">
+                          {sessionResults.map((row, index) => {
+                            {
+                              sortedSessionResults.map((row, index) => {
+                                { !hasQualiSegments && <th className="py-3.5 px-4 text-right hidden lg:table-cell">Intervalo</th> }
+                                <th className={`py-3.5 px-3 text-center ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>Voltas</th>
+                                { isRaceSession && <th className="py-3.5 px-3 text-center hidden md:table-cell">Paradas</th> }
+                                {
+                                  isRaceSession && (
+                                    <th
+                                      onClick={() => handleSort("points")}
+                                      className="py-2.5 sm:py-3 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right w-11 sm:w-16 cursor-pointer hover:text-white transition-colors select-none"
+                                      title="Ordenar por Pontos"
+                                    >
+                                      <span className="inline-flex items-center gap-1 justify-end">
+                                        <span>Pts</span>
+                                        {sortField === "points" ? (
+                                          sortDirection === "asc" ? (
+                                            <ArrowUp className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                          ) : (
+                                            <ArrowDown className="h-2.5 w-2.5 text-f1-red shrink-0" />
+                                          )
+                                        ) : null}
+                                      </span>
+                                    </th>
+                                  )
+                                }
+                            </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-xs">
+                        {sortedSessionResults.map((row, index) => {
+                          const pos = row.finishing_position ?? index + 1;
+                          const teamColor = row.team_color || "#E10600";
+                          const isFastestLap = Boolean(row.best_lap && row.best_lap === fastestLap);
+                          const rowId = row.driver_id || row.driver_full_name || index;
+                          const isExpanded = expandedDriverRow === rowId;
 
-                                                  // Verificação de ordenação por segmento Q
-                                                  const isSegmentSorted = sortField === "q1" || sortField === "q2" || sortField === "q3";
-                                                  const currentSegmentTime = isSegmentSorted ? row[sortField] : null;
-                                                  const hasTimeInSortedSegment = Boolean(
-                                                    currentSegmentTime &&
-                                                    currentSegmentTime !== "—" &&
-                                                    currentSegmentTime !== "-" &&
-                                                    currentSegmentTime.trim() !== ""
-                                                  );
+                          // Verificação de ordenação por segmento Q
+                          const isSegmentSorted = sortField === "q1" || sortField === "q2" || sortField === "q3";
+                          const currentSegmentTime = isSegmentSorted ? row[sortField] : null;
+                          const hasTimeInSortedSegment = Boolean(
+                            currentSegmentTime &&
+                            currentSegmentTime !== "—" &&
+                            currentSegmentTime !== "-" &&
+                            currentSegmentTime.trim() !== ""
+                          );
 
-                                                  const displayPos = isSegmentSorted
-                                                    ? hasTimeInSortedSegment
-                                                      ? index + 1
-                                                      : "—"
-                                                    : pos;
+                          const displayPos = isSegmentSorted
+                            ? hasTimeInSortedSegment
+                              ? index + 1
+                              : "—"
+                            : pos;
 
-                                                  const segmentLeaderTime = isSegmentSorted ? sortedSessionResults[0]?.[sortField] : null;
-                                                  const displayGap = isSegmentSorted
-                                                    ? hasTimeInSortedSegment
-                                                      ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
-                                                      : "—"
-                                                    : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
+                          const segmentLeaderTime = isSegmentSorted ? sortedSessionResults[0]?.[sortField] : null;
+                          const displayGap = isSegmentSorted
+                            ? hasTimeInSortedSegment
+                              ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
+                              : "—"
+                            : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
 
-                                                  return (
-                                                    <React.Fragment key={`${row.session_sk}-${row.driver_id || index}`}>
-                                                      <tr
-                                                        onClick={() => setExpandedDriverRow(isExpanded ? null : rowId)}
-                                                        className={`group transition-colors cursor-pointer md:cursor-default ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
-                                                          }`}
-                                                      >
-                                                        {/* Posição */}
-                                                        <td className="py-2 sm:py-3.5 pl-2 sm:pl-6 pr-1 sm:pr-3 text-center font-bold">
-                                                          <span
-                                                            className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${pos === 1
-                                                              ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                                                              : pos === 2
+                          return (
+                            <React.Fragment key={`${row.session_sk}-${row.driver_id || index}`}>
+                              <tr
+                                onClick={() => setExpandedDriverRow(isExpanded ? null : rowId)}
+                                className={`group transition-colors cursor-pointer md:cursor-default ${isExpanded ? "bg-white/[0.06] md:bg-transparent" : "hover:bg-white/[0.03]"
+                                  }`}
+                              >
+                                {/* Posição */}
+                                <td className="py-2 sm:py-3.5 pl-2 sm:pl-6 pr-1 sm:pr-3 text-center font-bold">
+                                  <span
+                                    className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${pos === 1
+                                      ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                                      : pos === 2
                                       className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${displayPos === 1
-                                                                ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
-                                                                : displayPos === 2
-                                                                  ? "bg-slate-300 font-black text-black"
-                                                                  : pos === 3
-                                                                    ? "bg-amber-700 font-black text-white"
-                                                                    : "bg-white/5 text-gray-300"
-                                                              }`}
+                                                            className={`inline-flex h-5 w-5 sm:h-6 sm:w-6 items-center justify-center rounded font-mono text-[10px] sm:text-xs ${displayPos === 1
+                                        ? "bg-amber-400 font-black text-black shadow-[0_0_10px_rgba(251,191,36,0.5)]"
+                                        : displayPos === 2
+                                          ? "bg-slate-300 font-black text-black"
+                                          : pos === 3
+                                            ? "bg-amber-700 font-black text-white"
+                                            : "bg-white/5 text-gray-300"
+                                      }`}
                                           : displayPos === 3
-                                                          ? "bg-amber-700 font-black text-white"
-                                                          : displayPos === "—"
-                                                          ? "bg-white/5 text-gray-500 font-medium"
-                                                          : "bg-white/5 text-gray-300"
+                                  ? "bg-amber-700 font-black text-white"
+                                  : displayPos === "—"
+                                  ? "bg-white/5 text-gray-500 font-medium"
+                                  : "bg-white/5 text-gray-300"
                                       }`}
                                     >
-                                                          {pos}
-                                                          {displayPos}
-                                                        </span>
-                                                      </td>
-
-                                                      {/* Largada (Corrida) */}
-                                                      {isRaceSession && (
-                                                        <td className="py-3.5 px-3 text-center font-mono hidden md:table-cell">
-                                                          {row.grid_position != null ? (
-                                                            <span
-                                                              title={`Largou na posição ${row.grid_position}`}
-                                                              className="inline-flex items-center justify-center rounded bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-gray-300"
-                                                            >
-                                                              P{row.grid_position}
-                                                            </span>
-                                                          ) : (
-                                                            <span className="text-f1-subtle text-xs">—</span>
-                                                          )}
-                                                        </td>
-                                                      )}
-
-                                                      {/* Evolução / Ganho ou Perda de Posições (Corrida) */}
-                                                      {isRaceSession && (
-                                                        <td className="py-2 sm:py-3.5 px-0.5 sm:px-3 text-center">
-                                                          {row.delta_position != null ? (
-                                                            row.delta_position > 0 ? (
-                                                              <span
-                                                                title={`Largou em P${row.grid_position} e ganhou ${row.delta_position} posição(ões)`}
-                                                                className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-emerald-400"
-                                                              >
-                                                                <ArrowUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                                                +{row.delta_position}
-                                                              </span>
-                                                            ) : row.delta_position < 0 ? (
-                                                              <span
-                                                                title={`Largou em P${row.grid_position} e perdeu ${Math.abs(row.delta_position)} posição(ões)`}
-                                                                className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-rose-400"
-                                                              >
-                                                                <ArrowDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                                                {row.delta_position}
-                                                              </span>
-                                                            ) : (
-                                                              <span
-                                                                title={`Largou em P${row.grid_position} e manteve a posição`}
-                                                                className="inline-flex items-center gap-0.5 rounded bg-white/5 border border-white/10 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-white/40"
-                                                              >
-                                                                <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
-                                                                0
-                                                              </span>
-                                                            )
-                                                          ) : (
-                                                            <span className="text-f1-subtle text-xs">—</span>
-                                                          )}
-                                                        </td>
-                                                      )}
-
-                                                      {/* Piloto */}
-                                                      <td className="py-2 sm:py-3.5 px-1.5 sm:px-4">
-                                                        <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0">
-                                                          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-                                                            <DriverLink
-                                                              driverId={row.driver_id}
-                                                              driverName={row.driver_full_name}
-                                                              className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
-                                                              style={{ borderColor: teamColor }}
-                                                              title={`Ver perfil de ${row.driver_full_name}`}
-                                                            >
-                                                              {row.driver_headshot_url ? (
-                                                                <img
-                                                                  src={row.driver_headshot_url}
-                                                                  alt={row.driver_full_name}
-                                                                  className="h-full w-full object-cover object-top"
-                                                                />
-                                                              ) : (
-                                                                <span className="font-mono text-[8px] sm:text-[9px] font-black text-white">
-                                                                  {row.driver_full_name.slice(0, 3).toUpperCase()}
-                                                                </span>
-                                                              )}
-                                                            </DriverLink>
-                                                            <div className="min-w-0 flex-1">
-                                                              <div className="flex items-center justify-between gap-1 min-w-0">
-                                                                <div className="flex items-center gap-1 min-w-0">
-                                                                  <DriverLink
-                                                                    driverId={row.driver_id}
-                                                                    driverName={row.driver_full_name}
-                                                                    className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors block truncate pointer-events-none md:pointer-events-auto"
-                                                                    className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors truncate pointer-events-none md:pointer-events-auto"
-                                                                    title={`Ver perfil de ${row.driver_full_name}`}
-                                                                  >
-                                                                    {row.driver_full_name}
-                                                                  </DriverLink>
-                                                                  <span
-                                                                    className={`md:hidden inline-flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded border shrink-0 transition-all ${isExpanded
-                                                                      ? "border-f1-red/50 bg-f1-red/20 text-f1-red shadow-[0_0_8px_rgba(225,6,0,0.25)]"
-                                                                      : "border-white/15 bg-white/[0.06] text-white/70 group-hover:border-white/30 group-hover:text-white"
-                                                                      }`}
-                                                                    aria-hidden="true"
-                                                                  >
-                                                                    <ChevronDown className={`h-2.5 w-2.5 sm:h-3 sm:w-3 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                                                                    {isSegmentSorted && row.finishing_position != null && (
-                                                                      <span
-                                                                        className="font-mono text-[9px] text-f1-subtle/80 bg-white/5 px-1 py-0.2 rounded shrink-0 hidden sm:inline"
-                                                                        title={`Posição Oficial de Grid: P${row.finishing_position}`}
-                                                                      >
-                                                                        P{row.finishing_position}
-                                                                      </span>
-                                                                    )}
-                                                                    <ChevronDown
-                                                                      className={`h-2.5 w-2.5 text-white/40 transition-transform duration-200 shrink-0 md:hidden ml-auto ${isExpanded ? "rotate-180 text-f1-red" : ""
-                                                                        }`}
-                                                                    />
-                                                                </div>
-                                                                <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-f1-subtle leading-tight mt-0.5 truncate">
-                                                                  <span className="truncate">
-                                                                    {row.team_name}
-                                                                  </span>
-                                                                  {isSegmentSorted && row.finishing_position != null && (
-                                                                    <span className="sm:hidden font-mono text-[9px] text-amber-400/90 shrink-0">
-                                                                      • P{row.finishing_position}
-                                                                    </span>
-                                                                  )}
-                                                                </div>
-                                                                <span className="block md:hidden text-[9px] sm:text-[10px] text-f1-subtle truncate leading-tight mt-0.5">
-                                                                  {row.team_name}
-                                                                </span>
-                                                              </div>
-                                                            </div>
-                                                        </td>
-
-                                                        {/* Equipe */}
-                                                        <td className="py-3.5 px-4 hidden md:table-cell">
-                                                          <TeamLink
-                                                            teamId={row.team_id}
-                                                            teamName={row.team_name}
-                                                            className="flex items-center gap-2 group/team"
-                                                            title={`Ver perfil da equipe ${row.team_name}`}
+                                  {pos}
+                                  {displayPos}
+                                </span>
+                              </td>
+                              ? "bg-slate-300 font-black text-black"
+                              : displayPos === 3
+                              ? "bg-amber-700 font-black text-white"
+                              : displayPos === "—"
+                              ? "bg-white/5 text-gray-500 font-medium"
+                              : "bg-white/5 text-gray-300"
+                                                            }`}
                                                           >
-                                                            <span
-                                                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                                                              style={{ backgroundColor: teamColor }}
-                                                            />
-                                                            <span className="font-medium text-gray-200 group-hover/team:text-white group-hover/team:underline decoration-white/30 transition-colors">
-                                                              {row.team_name}
-                                                            </span>
-                                                          </TeamLink>
+                              {displayPos}
+                            </span>
                                                         </td>
 
-                                                        {/* Número */}
-                                                        <td className="py-3.5 px-3 text-center font-mono font-bold text-f1-subtle hidden lg:table-cell">
-                                                          #{row.driver_number}
-                                                        </td>
+                      {/* Largada (Corrida) */}
+                      {isRaceSession && (
+                        <td className="py-3.5 px-3 text-center font-mono hidden md:table-cell">
+                          {row.grid_position != null ? (
+                            <span
+                              title={`Largou na posição ${row.grid_position}`}
+                              className="inline-flex items-center justify-center rounded bg-white/5 border border-white/10 px-2 py-0.5 text-xs font-bold text-gray-300"
+                            >
+                              P{row.grid_position}
+                            </span>
+                          ) : (
+                            <span className="text-f1-subtle text-xs">—</span>
+                          )}
+                        </td>
+                      )}
 
-                                                        {/* Colunas de Tempo / Segmentos */}
-                                                        {hasQualiSegments ? (
-                                                          <>
-                                                            {/* Mobile: valor do segmento ativo */}
-                                                            <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap md:hidden">
-                                                              {(() => {
-                                                                const segTime =
-                                                                  mobileQualiSegment === "q1"
-                                                                    ? row.q1
-                                                                    : mobileQualiSegment === "q2"
-                                                                      ? row.q2
-                                                                      : mobileQualiSegment === "q3"
-                                                                        ? row.q3
-                                                                        : row.best_lap;
+                      {/* Evolução / Ganho ou Perda de Posições (Corrida) */}
+                      {isRaceSession && (
+                        <td className="py-2 sm:py-3.5 px-0.5 sm:px-3 text-center">
+                          {row.delta_position != null ? (
+                            row.delta_position > 0 ? (
+                              <span
+                                title={`Largou em P${row.grid_position} e ganhou ${row.delta_position} posição(ões)`}
+                                className="inline-flex items-center gap-0.5 rounded bg-emerald-500/10 border border-emerald-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-emerald-400"
+                              >
+                                <ArrowUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                +{row.delta_position}
+                              </span>
+                            ) : row.delta_position < 0 ? (
+                              <span
+                                title={`Largou em P${row.grid_position} e perdeu ${Math.abs(row.delta_position)} posição(ões)`}
+                                className="inline-flex items-center gap-0.5 rounded bg-rose-500/10 border border-rose-500/25 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-rose-400"
+                              >
+                                <ArrowDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                {row.delta_position}
+                              </span>
+                            ) : (
+                              <span
+                                title={`Largou em P${row.grid_position} e manteve a posição`}
+                                className="inline-flex items-center gap-0.5 rounded bg-white/5 border border-white/10 px-0.5 sm:px-1.5 py-0.5 font-mono text-[10px] sm:text-xs font-bold text-white/40"
+                              >
+                                <Minus className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[2.5]" />
+                                0
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-f1-subtle text-xs">—</span>
+                          )}
+                        </td>
+                      )}
 
-                                                                const isSegBest =
-                                                                  (mobileQualiSegment === "q1" && segTime && segTime === bestQ1Time) ||
-                                                                  (mobileQualiSegment === "q2" && segTime && segTime === bestQ2Time) ||
-                                                                  (mobileQualiSegment === "q3" && segTime && segTime === bestQ3Time) ||
-                                                                  (mobileQualiSegment === "final" && isFastestLap);
+                      {/* Piloto */}
+                      <td className="py-2 sm:py-3.5 px-1.5 sm:px-4 min-w-[125px] sm:min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                          <DriverLink
+                            driverId={row.driver_id}
+                            driverName={row.driver_full_name}
+                            className="relative flex h-6 w-6 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5 transition-transform hover:scale-105 pointer-events-none md:pointer-events-auto"
+                            style={{ borderColor: teamColor }}
+                            title={`Ver perfil de ${row.driver_full_name}`}
+                          >
+                            {row.driver_headshot_url ? (
+                              <img
+                                src={row.driver_headshot_url}
+                                alt={row.driver_full_name}
+                                className="h-full w-full object-cover object-top"
+                              />
+                            ) : (
+                              <span className="font-mono text-[8px] sm:text-[9px] font-black text-white">
+                                {row.driver_full_name.slice(0, 3).toUpperCase()}
+                              </span>
+                            )}
+                          </DriverLink>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1 min-w-0">
+                              <DriverLink
+                                driverId={row.driver_id}
+                                driverName={row.driver_full_name}
+                                className="font-bold text-white text-[11px] sm:text-xs hover:text-f1-red transition-colors truncate pointer-events-none md:pointer-events-auto"
+                                title={`Ver perfil de ${row.driver_full_name}`}
+                              >
+                                {row.driver_full_name}
+                              </DriverLink>
+                              {isSegmentSorted && row.finishing_position != null && (
+                                <span
+                                  className="font-mono text-[9px] text-f1-subtle/80 bg-white/5 px-1 py-0.2 rounded shrink-0 hidden sm:inline"
+                                  title={`Posição Oficial de Grid: P${row.finishing_position}`}
+                                >
+                                  P{row.finishing_position}
+                                </span>
+                              )}
+                              <ChevronDown
+                                className={`h-2.5 w-2.5 text-white/40 transition-transform duration-200 shrink-0 md:hidden ml-auto ${isExpanded ? "rotate-180 text-f1-red" : ""
+                                  }`}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-f1-subtle leading-tight mt-0.5 truncate">
+                              <span className="truncate">
+                                {row.team_name}
+                              </span>
+                              {isSegmentSorted && row.finishing_position != null && (
+                                <span className="sm:hidden font-mono text-[9px] text-amber-400/90 shrink-0">
+                                  • P{row.finishing_position}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-                                                                if (!segTime || segTime === "—" || segTime === "-") {
-                                                                  return <span className="text-f1-subtle/40 text-[10px] sm:text-xs font-mono">—</span>;
-                                                                }
+                      {/* Equipe */}
+                      <td className="py-3.5 px-4 hidden md:table-cell">
+                        <TeamLink
+                          teamId={row.team_id}
+                          teamName={row.team_name}
+                          className="flex items-center gap-2 group/team"
+                          title={`Ver perfil da equipe ${row.team_name}`}
+                        >
+                          <span
+                            className="h-2.5 w-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: teamColor }}
+                          />
+                          <span className="font-medium text-gray-200 group-hover/team:text-white group-hover/team:underline decoration-white/30 transition-colors">
+                            {row.team_name}
+                          </span>
+                        </TeamLink>
+                      </td>
 
-                                                                if (isSegBest) {
-                                                                  return (
-                                                                    <div className="inline-flex items-center gap-0.5 justify-end">
-                                                                      <span
-                                                                        title={`Melhor tempo de ${mobileQualiSegment === "final" ? "Sessão" : mobileQualiSegment.toUpperCase()}`}
-                                                                        className="inline-flex items-center gap-0.5 rounded bg-purple-500/20 border border-purple-500/40 px-1 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_8px_rgba(168,85,247,0.25)]"
-                                                                      >
-                                                                        <Timer className="h-2.5 w-2.5 text-purple-400 shrink-0" />
-                                                                        <span>{segTime}</span>
-                                                                      </span>
-                                                                    </div>
-                                                                  );
-                                                                }
+                      {/* Número */}
+                      <td className="py-3.5 px-3 text-center font-mono font-bold text-f1-subtle hidden lg:table-cell">
+                        #{row.driver_number}
+                      </td>
 
-                                                                return <span className="text-white/80 font-mono text-[10px] sm:text-xs">{segTime}</span>;
-                                                              })()}
-                                                            </td>
+                      {/* Colunas de Tempo / Segmentos */}
+                      {hasQualiSegments ? (
+                        <>
+                          {/* Mobile: valor do segmento ativo */}
+                          <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap md:hidden">
+                            {(() => {
+                              const segTime =
+                                mobileQualiSegment === "q1"
+                                  ? row.q1
+                                  : mobileQualiSegment === "q2"
+                                    ? row.q2
+                                    : mobileQualiSegment === "q3"
+                                      ? row.q3
+                                      : row.best_lap;
 
-                                                            {/* Desktop: Q1 */}
-                                                            {hasQ1 && (
-                                                              <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                                                                {row.q1 ? (
-                                                                  row.q1 === bestQ1Time ? (
-                                                                    <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}1`}>
-                                                                      {row.q1}
-                                                                    </span>
-                                                                  ) : (
-                                                                    <span className="text-white/80">{row.q1}</span>
-                                                                  )
-                                                                ) : (
-                                                                  <span className="text-f1-subtle/40">—</span>
-                                                                )}
-                                                              </td>
-                                                            )}
+                              const isSegBest =
+                                (mobileQualiSegment === "q1" && segTime && segTime === bestQ1Time) ||
+                                (mobileQualiSegment === "q2" && segTime && segTime === bestQ2Time) ||
+                                (mobileQualiSegment === "q3" && segTime && segTime === bestQ3Time) ||
+                                (mobileQualiSegment === "final" && isFastestLap);
 
-                                                            {/* Desktop: Q2 */}
-                                                            {hasQ2 && (
-                                                              <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                                                                {row.q2 ? (
-                                                                  row.q2 === bestQ2Time ? (
-                                                                    <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}2`}>
-                                                                      {row.q2}
-                                                                    </span>
-                                                                  ) : (
-                                                                    <span className="text-white/80">{row.q2}</span>
-                                                                  )
-                                                                ) : (
-                                                                  <span className="text-f1-subtle/40">—</span>
-                                                                )}
-                                                              </td>
-                                                            )}
+                              if (!segTime || segTime === "—" || segTime === "-") {
+                                return <span className="text-f1-subtle/40 text-[10px] sm:text-xs font-mono">—</span>;
+                              }
 
-                                                            {/* Desktop: Q3 */}
-                                                            {hasQ3 && (
-                                                              <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
-                                                                {row.q3 ? (
-                                                                  row.q3 === bestQ3Time ? (
-                                                                    <span
-                                                                      title={`Melhor tempo no ${qPrefix}3 (Pole Position)`}
-                                                                      className="inline-flex items-center gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-purple-300 font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]"
-                                                                    >
-                                                                      <Timer className="h-3 w-3 text-purple-400 shrink-0" />
-                                                                      <span>{row.q3}</span>
-                                                                    </span>
-                                                                  ) : (
-                                                                    <span className="text-white/90 font-medium">{row.q3}</span>
-                                                                  )
-                                                                ) : (
-                                                                  <span className="text-f1-subtle/40">—</span>
-                                                                )}
-                                                              </td>
-                                                            )}
-                                                          </>
-                                                        ) : (
-                                                          <td className={`py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
-                                                            {isFastestLap ? (
-                                                              <div className="inline-flex items-center gap-1 justify-end">
-                                                                <span
-                                                                  title="Volta Mais Rápida da Sessão (Fastest Lap)"
-                                                                  className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1 sm:px-2 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]"
-                                                                >
-                                                                  <Timer className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
-                                                                  <span>{row.best_lap}</span>
-                                                                </span>
-                                                              </div>
-                                                            ) : (
-                                                              <span className="text-white/80 font-mono text-[10px] sm:text-xs">{row.best_lap || "—"}</span>
-                                                            )}
-                                                          </td>
-                                                        )}
+                              if (isSegBest) {
+                                return (
+                                  <div className="inline-flex items-center gap-0.5 justify-end">
+                                    <span
+                                      title={`Melhor tempo de ${mobileQualiSegment === "final" ? "Sessão" : mobileQualiSegment.toUpperCase()}`}
+                                      className="inline-flex items-center gap-0.5 rounded bg-purple-500/20 border border-purple-500/40 px-1 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_8px_rgba(168,85,247,0.25)]"
+                                    >
+                                      <Timer className="h-2.5 w-2.5 text-purple-400 shrink-0" />
+                                      <span>{segTime}</span>
+                                    </span>
+                                  </div>
+                                );
+                              }
 
-                                                        {/* Gap Líder */}
-                                                        <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap text-[10px] sm:text-xs">
-                                                          {row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—")}
-                                                          {displayGap}
-                                                        </td>
+                              return <span className="text-white/80 font-mono text-[10px] sm:text-xs">{segTime}</span>;
+                            })()}
+                          </td>
 
-                                                        {/* Intervalo */}
-                                                        {!hasQualiSegments && (
-                                                          <td className="py-3.5 px-4 text-right font-mono text-f1-subtle hidden lg:table-cell">
-                                                            {row.interval_to_car_ahead || "—"}
-                                                          </td>
-                                                        )}
+                          {/* Desktop: Q1 */}
+                          {hasQ1 && (
+                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                              {row.q1 ? (
+                                row.q1 === bestQ1Time ? (
+                                  <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}1`}>
+                                    {row.q1}
+                                  </span>
+                                ) : (
+                                  <span className="text-white/80">{row.q1}</span>
+                                )
+                              ) : (
+                                <span className="text-f1-subtle/40">—</span>
+                              )}
+                            </td>
+                          )}
 
-                                                        {/* Voltas */}
-                                                        <td className={`py-3.5 px-3 text-center font-mono font-semibold text-gray-200 ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
-                                                          {row.laps_completed ?? "—"}
-                                                        </td>
+                          {/* Desktop: Q2 */}
+                          {hasQ2 && (
+                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                              {row.q2 ? (
+                                row.q2 === bestQ2Time ? (
+                                  <span className="text-purple-300 font-bold" title={`Melhor tempo no ${qPrefix}2`}>
+                                    {row.q2}
+                                  </span>
+                                ) : (
+                                  <span className="text-white/80">{row.q2}</span>
+                                )
+                              ) : (
+                                <span className="text-f1-subtle/40">—</span>
+                              )}
+                            </td>
+                          )}
 
-                                                        {/* Paradas (Corrida) */}
-                                                        {isRaceSession && (
-                                                          <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-400 hidden md:table-cell">
-                                                            {row.stops ?? 0}
-                                                          </td>
-                                                        )}
+                          {/* Desktop: Q3 */}
+                          {hasQ3 && (
+                            <td className="py-3.5 px-3 text-right font-mono text-xs hidden md:table-cell whitespace-nowrap">
+                              {row.q3 ? (
+                                row.q3 === bestQ3Time ? (
+                                  <span
+                                    title={`Melhor tempo no ${qPrefix}3 (Pole Position)`}
+                                    className="inline-flex items-center gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-purple-300 font-bold shadow-[0_0_10px_rgba(168,85,247,0.3)]"
+                                  >
+                                    <Timer className="h-3 w-3 text-purple-400 shrink-0" />
+                                    <span>{row.q3}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-white/90 font-medium">{row.q3}</span>
+                                )
+                              ) : (
+                                <span className="text-f1-subtle/40">—</span>
+                              )}
+                            </td>
+                          )}
+                        </>
+                      ) : (
+                        <td className={`py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono font-semibold whitespace-nowrap ${isRaceSession ? "hidden md:table-cell" : ""}`}>
+                          {isFastestLap ? (
+                            <div className="inline-flex items-center gap-1 justify-end">
+                              <span
+                                title="Volta Mais Rápida da Sessão (Fastest Lap)"
+                                className="inline-flex items-center gap-0.5 sm:gap-1 rounded-md bg-purple-500/20 border border-purple-500/40 px-1 sm:px-2 py-0.5 text-purple-300 font-bold font-mono text-[10px] sm:text-xs shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                              >
+                                <Timer className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5 text-purple-400 shrink-0" />
+                                <span>{row.best_lap}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-white/80 font-mono text-[10px] sm:text-xs">{row.best_lap || "—"}</span>
+                          )}
+                        </td>
+                      )}
 
-                                                        {/* Pontos (Corrida) */}
-                                                        {isRaceSession && (
-                                                          <td className="py-2 sm:py-3.5 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap text-[10px] sm:text-xs">
-                                                            {row.points ? (
-                                                              <span className="rounded bg-white/10 px-1 sm:px-2 py-0.5 text-emerald-400 font-mono font-black">
-                                                                +{row.points}
-                                                              </span>
-                                                            ) : (
-                                                              <span className="text-f1-subtle font-mono">0</span>
-                                                            )}
-                                                          </td>
-                                                        )}
-                                                      </tr>
+                      {/* Gap Líder */}
+                      <td className="py-2 sm:py-3.5 px-1 sm:px-4 text-right font-mono text-gray-300 whitespace-nowrap text-[10px] sm:text-xs">
+                        {row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—")}
+                        {displayGap}
+                      </td>
 
-                                                      {/* Accordion Expandível Mobile (< md): Detalhes de Telemetria e Estratégia */}
-                                                      {isExpanded && (
-                                                        <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
-                                                          <td colSpan={isRaceSession ? 5 : 4} className="p-3">
-                                                            <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
-                                                              <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                  <div
-                                                                    className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
-                                                                    style={{ borderColor: teamColor }}
-                                                                  >
-                                                                    {row.driver_headshot_url ? (
-                                                                      <img
-                                                                        src={row.driver_headshot_url}
-                                                                        alt={row.driver_full_name}
-                                                                        className="h-full w-full object-cover object-top"
-                                                                      />
-                                                                    ) : (
-                                                                      <span className="font-mono text-[9px] font-black text-white">
-                                                                        {row.driver_full_name.slice(0, 3).toUpperCase()}
-                                                                      </span>
-                                                                    )}
-                                                                  </div>
-                                                                  <div className="min-w-0">
-                                                                    <span className="font-bold text-white text-xs block truncate">{row.driver_full_name}</span>
-                                                                    <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-1.5 text-[10px] text-f1-subtle hover:text-white truncate">
-                                                                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
-                                                                      <span>{row.team_name || "—"}</span>
-                                                                    </TeamLink>
-                                                                  </div>
-                                                                </div>
-                                                                <span className="text-[11px] font-mono text-f1-subtle shrink-0">
-                                                                  Carro: <strong className="text-white">#{row.driver_number || "—"}</strong>
-                                                                </span>
-                                                              </div>
+                      {/* Intervalo */}
+                      {!hasQualiSegments && (
+                        <td className="py-3.5 px-4 text-right font-mono text-f1-subtle hidden lg:table-cell">
+                          {row.interval_to_car_ahead || "—"}
+                        </td>
+                      )}
 
-                                                              {hasQualiSegments ? (
-                                                                <div className="space-y-2">
-                                                                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
-                                                                    <div className={`rounded-lg p-2 border ${row.q1 && row.q1 === bestQ1Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}1</span>
-                                                                      <span className="text-xs font-black">{row.q1 || "—"}</span>
-                                                                    </div>
-                                                                    <div className={`rounded-lg p-2 border ${row.q2 && row.q2 === bestQ2Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}2</span>
-                                                                      <span className="text-xs font-black">{row.q2 || "—"}</span>
-                                                                    </div>
-                                                                    <div className={`rounded-lg p-2 border ${row.q3 && row.q3 === bestQ3Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
-                                                                      <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}3</span>
-                                                                      <span className="text-xs font-black">{row.q3 || "—"}</span>
-                                                                    </div>
-                                                                  </div>
-                                                                  <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                      <span className="block text-[10px] text-f1-subtle uppercase">Tempo Final (Grid)</span>
-                                                                      <span className="text-xs font-black text-white">{row.best_lap || "—"}</span>
-                                                                    </div>
-                                                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                      <span className="block text-[10px] text-f1-subtle uppercase">Gap para a Pole</span>
-                                                                      <span className="text-xs font-black text-white">{row.gap_to_leader || (pos === 1 ? "Pole Position" : "—")}</span>
-                                                                    </div>
-                                                                  </div>
-                                                                </div>
-                                                              ) : (
-                                                                <>
-                                                                  <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                      <span className="block text-[10px] text-f1-subtle uppercase">Melhor Volta / Tempo</span>
-                                                                      <span className="text-xs font-black text-white">
-                                                                        {row.best_lap || "—"}
-                                                                      </span>
-                                                                    </div>
-                                                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                      <span className="block text-[10px] text-f1-subtle uppercase">Intervalo Carro Frente</span>
-                                                                      <span className="text-xs font-black text-white">
-                                                                        {row.interval_to_car_ahead || "—"}
-                                                                      </span>
-                                                                    </div>
-                                                                  </div>
+                      {/* Voltas */}
+                      <td className={`py-3.5 px-3 text-center font-mono font-semibold text-gray-200 ${hasQualiSegments ? "hidden xl:table-cell" : "hidden md:table-cell"}`}>
+                        {row.laps_completed ?? "—"}
+                      </td>
 
-                                                                  <div className="grid grid-cols-2 gap-2 text-center font-mono">
-                                                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                      <span className="block text-[10px] text-f1-subtle uppercase">Voltas Completadas</span>
-                                                                      <span className="text-xs font-black text-white">
-                                                                        {row.laps_completed ?? "—"}
-                                                                      </span>
-                                                                    </div>
-                                                                    {isRaceSession ? (
-                                                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                        <span className="block text-[10px] text-f1-subtle uppercase">Grid & Pit Stops</span>
-                                                                        <span className="text-xs font-black text-white">
-                                                                          Largou P{row.grid_position ?? "—"} • {row.stops ?? 0} pits
-                                                                        </span>
-                                                                      </div>
-                                                                    ) : (
-                                                                      <div className="rounded-lg bg-white/5 p-2 border border-white/5">
-                                                                        <span className="block text-[10px] text-f1-subtle uppercase">Gap para o Líder</span>
-                                                                        <span className="text-xs font-black text-white">
-                                                                          {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
-                                                                        </span>
-                                                                      </div>
-                                                                    )}
-                                                                  </div>
-                                                                </>
-                                                              )}
+                      {/* Paradas (Corrida) */}
+                      {isRaceSession && (
+                        <td className="py-3.5 px-3 text-center font-mono font-bold text-amber-400 hidden md:table-cell">
+                          {row.stops ?? 0}
+                        </td>
+                      )}
 
-                                                              <DriverLink
-                                                                driverId={row.driver_id}
-                                                                driverName={row.driver_full_name}
-                                                                className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
-                                                              >
-                                                                <span>Ver Perfil de {row.driver_full_name}</span>
-                                                                <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
-                                                              </DriverLink>
-                                                            </div>
-                                                          </td>
-                                                        </tr>
-                                                      )}
-                                                    </React.Fragment>
-                                                  );
+                      {/* Pontos (Corrida) */}
+                      {isRaceSession && (
+                        <td className="py-2 sm:py-3.5 pr-2.5 sm:pr-6 pl-1 sm:pl-3 text-right font-mono font-black text-white whitespace-nowrap text-[10px] sm:text-xs">
+                          {row.points ? (
+                            <span className="rounded bg-white/10 px-1 sm:px-2 py-0.5 text-emerald-400 font-mono font-black">
+                              +{row.points}
+                            </span>
+                          ) : (
+                            <span className="text-f1-subtle font-mono">0</span>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+
+                    {/* Accordion Expandível Mobile (< md): Detalhes de Telemetria e Estratégia */}
+                    {isExpanded && (
+                      <tr className="md:hidden bg-[#141420] border-b border-white/10 animate-fadeIn">
+                        <td colSpan={isRaceSession ? 5 : 4} className="p-3">
+                          <div className="rounded-xl border border-white/10 bg-black/40 p-3 space-y-2.5 text-xs">
+                            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div
+                                  className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full overflow-hidden border bg-white/5"
+                                  style={{ borderColor: teamColor }}
+                                >
+                                  {row.driver_headshot_url ? (
+                                    <img
+                                      src={row.driver_headshot_url}
+                                      alt={row.driver_full_name}
+                                      className="h-full w-full object-cover object-top"
+                                    />
+                                  ) : (
+                                    <span className="font-mono text-[9px] font-black text-white">
+                                      {row.driver_full_name.slice(0, 3).toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="font-bold text-white text-xs block truncate">{row.driver_full_name}</span>
+                                  <TeamLink teamId={row.team_id} teamName={row.team_name} className="flex items-center gap-1.5 text-[10px] text-f1-subtle hover:text-white truncate">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: teamColor }} />
+                                    <span>{row.team_name || "—"}</span>
+                                  </TeamLink>
+                                </div>
+                              </div>
+                              <span className="text-[11px] font-mono text-f1-subtle shrink-0">
+                                Carro: <strong className="text-white">#{row.driver_number || "—"}</strong>
+                              </span>
+                            </div>
+
+                            {hasQualiSegments ? (
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                                  <div className={`rounded-lg p-2 border ${row.q1 && row.q1 === bestQ1Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}1</span>
+                                    <span className="text-xs font-black">{row.q1 || "—"}</span>
+                                  </div>
+                                  <div className={`rounded-lg p-2 border ${row.q2 && row.q2 === bestQ2Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}2</span>
+                                    <span className="text-xs font-black">{row.q2 || "—"}</span>
+                                  </div>
+                                  <div className={`rounded-lg p-2 border ${row.q3 && row.q3 === bestQ3Time ? "bg-purple-500/15 border-purple-500/40 text-purple-300" : "bg-white/5 border-white/5 text-white"}`}>
+                                    <span className="block text-[9px] text-f1-subtle uppercase font-sans">{qPrefix}3</span>
+                                    <span className="text-xs font-black">{row.q3 || "—"}</span>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                    <span className="block text-[10px] text-f1-subtle uppercase">Tempo Final (Grid)</span>
+                                    <span className="text-xs font-black text-white">{row.best_lap || "—"}</span>
+                                  </div>
+                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                    <span className="block text-[10px] text-f1-subtle uppercase">Gap para a Pole</span>
+                                    <span className="text-xs font-black text-white">{row.gap_to_leader || (pos === 1 ? "Pole Position" : "—")}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                    <span className="block text-[10px] text-f1-subtle uppercase">Melhor Volta / Tempo</span>
+                                    <span className="text-xs font-black text-white">
+                                      {row.best_lap || "—"}
+                                    </span>
+                                  </div>
+                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                    <span className="block text-[10px] text-f1-subtle uppercase">Intervalo Carro Frente</span>
+                                    <span className="text-xs font-black text-white">
+                                      {row.interval_to_car_ahead || "—"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2 text-center font-mono">
+                                  <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                    <span className="block text-[10px] text-f1-subtle uppercase">Voltas Completadas</span>
+                                    <span className="text-xs font-black text-white">
+                                      {row.laps_completed ?? "—"}
+                                    </span>
+                                  </div>
+                                  {isRaceSession ? (
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[10px] text-f1-subtle uppercase">Grid & Pit Stops</span>
+                                      <span className="text-xs font-black text-white">
+                                        Largou P{row.grid_position ?? "—"} • {row.stops ?? 0} pits
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="rounded-lg bg-white/5 p-2 border border-white/5">
+                                      <span className="block text-[10px] text-f1-subtle uppercase">Gap para o Líder</span>
+                                      <span className="text-xs font-black text-white">
+                                        {row.gap_to_leader || (pos === 1 ? "Líder" : "—")}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            )}
+
+                            <DriverLink
+                              driverId={row.driver_id}
+                              driverName={row.driver_full_name}
+                              className="flex items-center justify-center gap-1.5 w-full py-2.5 min-h-[44px] rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-xs transition-colors border border-white/10 active:scale-95"
+                            >
+                              <span>Ver Perfil de {row.driver_full_name}</span>
+                              <ExternalLink className="h-3.5 w-3.5 text-f1-subtle" />
+                            </DriverLink>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                  );
                                                 })
                                               }
-                        </tbody>
+                                                })}
+                </tbody>
                                         </table>
                     </div>
-                  </div>
-                            </div>
-              )}
-                          </div>
+    </div>
+                            </div >
+              )
+}
+                          </div >
           )}
                         </>
       )}
-                      </div>
+                      </div >
                       );
 }
