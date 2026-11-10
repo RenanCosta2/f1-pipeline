@@ -9,7 +9,12 @@ import {
 import CircuitProfileHero from "@/components/circuits/CircuitProfileHero";
 import CircuitProfileTabs from "@/components/circuits/CircuitProfileTabs";
 
-export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
+export const revalidate = 1800; // ISR: HTML em cache no Edge por 30 min (stale-while-revalidate)
+
+// Nada é pré-renderizado no build: cada perfil é gerado no primeiro acesso e depois servido do cache (ISR).
+export async function generateStaticParams() {
+  return [];
+}
 
 interface Props {
   params: {

@@ -5,6 +5,10 @@ import Footer from "@/components/Footer";
 import NavigationProgressBar from "@/components/NavigationProgressBar";
 import "./globals.css";
 
+// Executa as funções serverless na mesma região do banco (Supabase pooler em AWS us-west-2 / Oregon).
+// Cada query entre regiões diferentes custa dezenas de ms de rede; co-locada, passa a ser desprezível.
+export const preferredRegion = "pdx1";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

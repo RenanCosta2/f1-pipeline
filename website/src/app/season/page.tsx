@@ -19,7 +19,7 @@ interface Props {
   };
 }
 
-export const revalidate = 60; // Cache de 1 minuto no Edge da Vercel (ISR)
+// Página dinâmica (usa searchParams): o cache é feito na camada de dados (Data Cache em db.ts).
 
 export default async function SeasonPage({ searchParams }: Props) {
   const [defaultYear, availableYears] = await Promise.all([

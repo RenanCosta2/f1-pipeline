@@ -4,7 +4,7 @@ import ConstructorsCatalogView from "@/components/constructors/ConstructorsCatal
 import ConstructorsSpotlightStrip from "@/components/constructors/ConstructorsSpotlightStrip";
 import { Shield, Trophy, Flag } from "lucide-react";
 
-export const revalidate = 120; // Cache de 2 minutos no Edge da Vercel (ISR)
+export const revalidate = 1800; // ISR: HTML em cache no Edge por 30 min (stale-while-revalidate)
 
 export default async function TeamsPage() {
   const latestYear = await getLatestSeasonYear();

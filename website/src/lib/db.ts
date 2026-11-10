@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import { unstable_cache } from 'next/cache';
 import {
   DriverStanding,
   ConstructorStanding,
@@ -39,14 +40,29 @@ import {
   mockUpcomingRace
 } from './mockData';
 
-const rawConnectionString = process.env.POSTGRES_CONNECTION_URL || process.env.DATABASE_URL;
-// Supabase pooler: porta 5432 é Session Mode (max 15 conexões). Porta 6543 é Transaction Mode (PgBouncer multiplexado para web).
-const connectionString = rawConnectionString?.includes("pooler.supabase.com:5432")
-  ? rawConnectionString.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
-  : rawConnectionString;
+/**
+ * Conexão do site (leitura) e conexão do pipeline (escrita) têm propostas distintas:
+ *  - Pipeline (`sync_serving_layer.py`): POSTGRES_CONNECTION_URL -> Session Pooler (porta 5432).
+ *    Sessão dedicada, necessária para COPY, DDL e transações de troca de tabela.
+ *  - Site (este arquivo): POSTGRES_WEB_URL -> Transaction Pooler (porta 6543).
+ *    Conexões multiplexadas, ideais para muitas leituras curtas em ambiente serverless.
+ * Compatibilidade: sem POSTGRES_WEB_URL, a URL de transação é derivada da variável legada
+ * (POSTGRES_CONNECTION_URL / DATABASE_URL) trocando a porta 5432 por 6543.
+ */
+function resolveWebConnectionString(): string | undefined {
+  const explicitUrl = process.env.POSTGRES_WEB_URL;
+  if (explicitUrl) return explicitUrl;
+
+  const legacyUrl = process.env.POSTGRES_CONNECTION_URL || process.env.DATABASE_URL;
+  return legacyUrl?.includes("pooler.supabase.com:5432")
+    ? legacyUrl.replace("pooler.supabase.com:5432", "pooler.supabase.com:6543")
+    : legacyUrl;
+}
+
+const connectionString = resolveWebConnectionString();
 
 const globalForDb = globalThis as unknown as { pool?: Pool };
-let pool: Pool | null = null;
+let rawPool: Pool | null = null;
 
 if (connectionString) {
   if (!globalForDb.pool) {
@@ -71,8 +87,67 @@ if (connectionString) {
       console.warn("Database connection pool creation failed, falling back to mock data.", e);
     }
   }
-  pool = globalForDb.pool || null;
+  rawPool = globalForDb.pool || null;
 }
+
+/**
+ * Cache persistente (Next.js Data Cache).
+ * O `Map` em memória mais abaixo é perdido a cada cold start da função serverless; o Data Cache
+ * sobrevive entre invocações e deploys, então a primeira visita após um período ocioso deixa de
+ * pagar o handshake SSL + execução das queries no Supabase.
+ *  - 'live':     dados da temporada corrente (mudam após cada sessão sincronizada)
+ *  - 'standard': histórico e agregados (mudam raramente)
+ */
+type QueryTier = 'live' | 'standard';
+interface QueryResult {
+  rows: any[];
+  rowCount: number;
+}
+
+const DATA_CACHE_TAG = 'f1-data';
+const LIVE_REVALIDATE_SECONDS = 5 * 60;
+const STANDARD_REVALIDATE_SECONDS = 30 * 60;
+
+async function executeQuery(sql: string, params: unknown[]): Promise<QueryResult> {
+  let res;
+  try {
+    res = await rawPool!.query(sql, params as any[]);
+  } catch (connErr: any) {
+    // Conexão ociosa derrubada pelo pooler: uma nova tentativa abre outra conexão
+    if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
+      res = await rawPool!.query(sql, params as any[]);
+    } else {
+      throw connErr;
+    }
+  }
+  // Normaliza (Date -> ISO string etc.) para que o dado recém-consultado e o dado vindo do cache
+  // tenham exatamente o mesmo formato.
+  return JSON.parse(JSON.stringify({ rows: res.rows, rowCount: res.rowCount ?? res.rows.length }));
+}
+
+const cachedLiveQuery = unstable_cache(executeQuery, ['pg-query-live'], {
+  revalidate: LIVE_REVALIDATE_SECONDS,
+  tags: [DATA_CACHE_TAG],
+});
+const cachedStandardQuery = unstable_cache(executeQuery, ['pg-query-standard'], {
+  revalidate: STANDARD_REVALIDATE_SECONDS,
+  tags: [DATA_CACHE_TAG],
+});
+
+// Consultas que filtram pelo ano corrente são 'live'; as demais (histórico, carreiras) são 'standard'.
+function resolveTier(params: unknown[], tier?: QueryTier): QueryTier {
+  if (tier) return tier;
+  const currentYear = new Date().getFullYear();
+  return params.some((p) => Number(p) === currentYear) ? 'live' : 'standard';
+}
+
+// Fachada com a mesma assinatura de `pool.query(sql, params)` usada em todo o arquivo.
+const pool = rawPool
+  ? {
+      query: (sql: string, params: unknown[] = [], tier?: QueryTier): Promise<QueryResult> =>
+        (resolveTier(params, tier) === 'live' ? cachedLiveQuery : cachedStandardQuery)(sql, params),
+    }
+  : null;
 
 interface CacheEntry<T> {
   data: T;
@@ -134,7 +209,7 @@ export async function getAvailableYears(): Promise<number[]> {
   const sql = `SELECT DISTINCT year FROM website.v_driver_standings ORDER BY year DESC`;
   try {
     if (pool) {
-      const res = await pool.query(sql);
+      const res = await pool.query(sql, [], 'live');
       if (res.rows && res.rows.length > 0) {
         const years = res.rows.map((r: any) => parseInt(r.year));
         cachedYears = { data: years, expiresAt: now + 30 * 1000 };

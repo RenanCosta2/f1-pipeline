@@ -22,11 +22,10 @@ interface Props {
 }
 
 export default async function TelemetryPage({ searchParams }: Props) {
-  const defaultYear = await getLatestSeasonYear();
-  const year = searchParams?.year ? parseInt(searchParams.year) : defaultYear;
-
-  const defaultRound = await getLatestCompletedRound(year);
-  const round = searchParams?.round ? parseInt(searchParams.round) : defaultRound;
+  // Só consulta o ano/rodada padrão quando a URL não os informa, e já dispara em paralelo a lista de rodadas
+  const year = searchParams?.year ? parseInt(searchParams.year) : await getLatestSeasonYear();
+  const availableRoundsPromise = getAvailableRounds(year);
+  const round = searchParams?.round ? parseInt(searchParams.round) : await getLatestCompletedRound(year);
 
   const availableSessions = await getTelemetrySessions(year, round);
   // Default to Qualifying if available, as telemetry (ideal laps) is most meaningful there; otherwise first session or Race
@@ -43,7 +42,7 @@ export default async function TelemetryPage({ searchParams }: Props) {
   const [speedData, idealLapData, availableRounds] = await Promise.all([
     getMaxSpeed(year, round, session),
     getIdealLap(year, round, session),
-    getAvailableRounds(year)
+    availableRoundsPromise
   ]);
 
   const topSpeedEntry = speedData[0];

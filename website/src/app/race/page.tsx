@@ -25,11 +25,10 @@ interface Props {
 }
 
 export default async function RacePage({ searchParams }: Props) {
-  const defaultYear = await getLatestSeasonYear();
-  const year = searchParams?.year ? parseInt(searchParams.year) : defaultYear;
-
-  const defaultRound = await getLatestCompletedRound(year);
-  const round = searchParams?.round ? parseInt(searchParams.round) : defaultRound;
+  // Só consulta o ano/rodada padrão quando a URL não os informa, e já dispara em paralelo a lista de rodadas
+  const year = searchParams?.year ? parseInt(searchParams.year) : await getLatestSeasonYear();
+  const availableRoundsPromise = getAvailableRounds(year);
+  const round = searchParams?.round ? parseInt(searchParams.round) : await getLatestCompletedRound(year);
 
   const availableSessions = await getAvailableSessions(year, round);
   const session = searchParams?.session && availableSessions.includes(searchParams.session)
@@ -41,7 +40,7 @@ export default async function RacePage({ searchParams }: Props) {
     getTyreStrategies(year, round, session),
     getLapByLap(year, round, session),
     getRacePace(year, round, session),
-    getAvailableRounds(year)
+    availableRoundsPromise
   ]);
 
   const raceName = results[0]?.official_event_name || `Grand Prix - Round ${round}`;
