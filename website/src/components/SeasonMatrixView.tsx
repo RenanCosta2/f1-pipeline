@@ -2,11 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import { SeasonMatrixItem } from "@/types/f1";
-import { 
-  Search, 
-  HelpCircle, 
-  ChevronDown, 
-  ChevronUp, 
+import {
+  Search,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
   Zap,
   Info,
   LayoutGrid,
@@ -59,14 +59,14 @@ const PALETTES: Record<PaletteMode, Record<string, CellStyle>> = {
       bg: "rgba(16, 185, 129, 0.18)", // Fundo verde esmeralda translúcido
       text: "#34D399", // Texto Verde Néon luminoso
       border: "rgba(16, 185, 129, 0.35)",
-      label: "Zona de Pontos (4º ao 10º / 4º ao 8º CS)",
+      label: "Zona de Pontos (4º ao 10º / 4º ao 8º SPR)",
       sample: "4"
     },
     no_points: {
       bg: "rgba(255, 255, 255, 0.03)", // Grafite escuro e calmo
       text: "#71717A",
       border: "rgba(255, 255, 255, 0.06)",
-      label: "Completou s/ Pontos (11º+ / 9º+ CS)",
+      label: "Completou s/ Pontos (11º+ / 9º+ SPR)",
       sample: "12"
     },
     retired: {
@@ -137,14 +137,14 @@ const PALETTES: Record<PaletteMode, Record<string, CellStyle>> = {
       bg: "#065F46",
       text: "#D1FAE5",
       border: "#10B981",
-      label: "Zona de Pontos (4º ao 10º / 4º ao 8º CS)",
+      label: "Zona de Pontos (4º ao 10º / 4º ao 8º SPR)",
       sample: "4"
     },
     no_points: {
       bg: "#181822",
       text: "#94A3B8",
       border: "#27273A",
-      label: "Completou s/ Pontos (11º+ / 9º+ CS)",
+      label: "Completou s/ Pontos (11º+ / 9º+ SPR)",
       sample: "12"
     },
     retired: {
@@ -199,7 +199,7 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
   const [hoveredCell, setHoveredCell] = useState<{
     driverId: string;
     roundNumber: number;
-    session: "CS" | "CP";
+    session: "SPR" | "GP";
   } | null>(null);
 
   const activeTheme = PALETTES[paletteMode];
@@ -341,22 +341,20 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
           <div className="flex md:hidden items-center bg-white/5 border border-white/10 p-1 rounded-xl shrink-0">
             <button
               onClick={() => setMobileMode("grid")}
-              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${
-                mobileMode === "grid"
+              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${mobileMode === "grid"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
               title="Modo Grade (Matriz Completa)"
             >
               <LayoutGrid className="h-4 w-4" />
             </button>
             <button
               onClick={() => setMobileMode("driver")}
-              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${
-                mobileMode === "driver"
+              className={`p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-all active:scale-90 ${mobileMode === "driver"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
               title="Modo Cartão do Piloto"
             >
               <CreditCard className="h-4 w-4" />
@@ -369,22 +367,20 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
           <div className="flex items-center gap-1 bg-white/5 border border-white/10 p-1 rounded-xl">
             <button
               onClick={() => setPaletteMode("dark_neon")}
-              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${
-                paletteMode === "dark_neon"
+              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${paletteMode === "dark_neon"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
               title="Paleta moderna com fundo translúcido e números néon de alto contraste"
             >
               Neon Dark
             </button>
             <button
               onClick={() => setPaletteMode("vibrant")}
-              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${
-                paletteMode === "vibrant"
+              className={`px-3 py-1.5 min-h-[40px] text-xs font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center ${paletteMode === "vibrant"
                   ? "bg-f1-red text-white shadow-sm"
                   : "text-zinc-400 hover:text-white"
-              }`}
+                }`}
               title="Paleta sólida clássica com cores esportivas de alto contraste"
             >
               Vibrante
@@ -411,8 +407,8 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
               Padrão de Cores & Indicadores ({paletteMode === "dark_neon" ? "Neon Dark" : "Vibrante"})
             </h4>
             <div className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30 font-bold">CS: Sprint</span>
-              <span className="bg-white/10 text-white px-1.5 py-0.5 rounded border border-white/15 font-bold">CP: Corrida Principal</span>
+              <span className="bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30 font-bold">SPR: Sprint</span>
+              <span className="bg-white/10 text-white px-1.5 py-0.5 rounded border border-white/15 font-bold">GP: Grande Prêmio</span>
             </div>
           </div>
 
@@ -502,7 +498,7 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                 {/* 3. Piloto */}
                 <col className="w-[105px] sm:w-[170px]" />
 
-                {/* Colunas dos GPs: 38px para etapa simples, ou 34px para CS e 34px para CP */}
+                {/* Colunas dos GPs: 38px para etapa simples, ou 34px para SPR e 34px para GP */}
                 {rounds.map((round) =>
                   round.has_sprint ? (
                     <React.Fragment key={round.round_number}>
@@ -546,18 +542,43 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                     Piloto
                   </th>
 
-                {/* Colunas de cada GP */}
-                {rounds.map((round) => {
-                  const isCurrentOrInProgress = round.round_status === "In Progress";
+                  {/* Colunas de cada GP */}
+                  {rounds.map((round) => {
+                    const isCurrentOrInProgress = round.round_status === "In Progress";
 
-                  if (round.has_sprint) {
+                    if (round.has_sprint) {
+                      return (
+                        <th
+                          key={round.round_number}
+                          colSpan={2}
+                          className={`px-1 py-1.5 text-center border-r border-white/10 transition-colors ${isCurrentOrInProgress ? "bg-emerald-950/40 text-emerald-400" : ""
+                            }`}
+                          title={`${round.round_number}. ${round.official_event_name} (${round.location}, ${round.country})`}
+                        >
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <span className="text-[9px] font-mono text-f1-subtle font-bold leading-none">
+                              R{round.round_number}
+                            </span>
+                            <CircuitLink
+                              circuitId={round.circuit_id}
+                              circuitName={round.location || round.circuit_short_code}
+                              className="text-[10px] font-black font-mono tracking-tight text-white hover:text-white hover:underline decoration-white/30 leading-tight transition-colors"
+                              title={`Ver circuito: ${round.official_event_name}`}
+                            >
+                              {round.circuit_short_code}
+                            </CircuitLink>
+                          </div>
+                        </th>
+                      );
+                    }
+
                     return (
                       <th
                         key={round.round_number}
-                        colSpan={2}
-                        className={`px-1 py-1.5 text-center border-r border-white/10 transition-colors ${
-                          isCurrentOrInProgress ? "bg-emerald-950/40 text-emerald-400" : ""
-                        }`}
+                        rowSpan={hasAnySprint ? 2 : 1}
+                        className={`px-1 py-2 text-center border-r border-white/10 transition-colors ${isCurrentOrInProgress ? "bg-emerald-950/40 text-emerald-400" : ""
+                          }`}
+                        style={{ width: "38px", minWidth: "38px", maxWidth: "38px" }}
                         title={`${round.round_number}. ${round.official_event_name} (${round.location}, ${round.country})`}
                       >
                         <div className="flex flex-col items-center justify-center gap-0.5">
@@ -575,276 +596,248 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                         </div>
                       </th>
                     );
-                  }
+                  })}
+
+                  {/* Pontos Totais */}
+                  <th
+                    rowSpan={hasAnySprint ? 2 : 1}
+                    className="px-2 py-2.5 text-right font-black text-white bg-[#12121A] border-l border-white/20"
+                    style={{ width: "54px", minWidth: "54px", maxWidth: "54px" }}
+                  >
+                    Pts.
+                  </th>
+                </tr>
+
+                {/* Linha 2 do Header (Subcolunas SPR e GP com badges modernas) */}
+                {hasAnySprint && (
+                  <tr className="bg-[#0E0E15] text-[10px] font-black font-mono border-b border-white/10">
+                    {rounds
+                      .filter((r) => r.has_sprint)
+                      .map((round) => (
+                        <React.Fragment key={`sub_${round.round_number}`}>
+                          <th
+                            className="px-0.5 py-1 text-center border-r border-white/5 bg-[#0E0E15]"
+                            style={{ width: "34px", minWidth: "34px", maxWidth: "34px" }}
+                            title="Corrida Sprint"
+                          >
+                            <span className="inline-block px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px]">
+                              SPR
+                            </span>
+                          </th>
+                          <th
+                            className="px-0.5 py-1 text-center border-r border-white/10 bg-[#0E0E15]"
+                            style={{ width: "34px", minWidth: "34px", maxWidth: "34px" }}
+                            title="Grande Prêmio (Corrida Principal)"
+                          >
+                            <span className="inline-block px-1 py-0.2 rounded bg-white/10 text-zinc-200 border border-white/15 text-[9px]">
+                              GP
+                            </span>
+                          </th>
+                        </React.Fragment>
+                      ))}
+                  </tr>
+                )}
+              </thead>
+
+              {/* Linhas da Tabela */}
+              <tbody className="divide-y divide-white/5">
+                {filteredRows.map((row, rowIndex) => {
+                  const teamColor = row.team_color
+                    ? row.team_color.startsWith("#")
+                      ? row.team_color
+                      : `#${row.team_color}`
+                    : "#E10600";
+                  const isEven = rowIndex % 2 === 0;
+                  const rowBg = isEven ? "bg-[#0B0B10]" : "bg-[#0E0E15]";
 
                   return (
-                    <th
-                      key={round.round_number}
-                      rowSpan={hasAnySprint ? 2 : 1}
-                      className={`px-1 py-2 text-center border-r border-white/10 transition-colors ${
-                        isCurrentOrInProgress ? "bg-emerald-950/40 text-emerald-400" : ""
-                      }`}
-                      style={{ width: "38px", minWidth: "38px", maxWidth: "38px" }}
-                      title={`${round.round_number}. ${round.official_event_name} (${round.location}, ${round.country})`}
+                    <tr
+                      key={`${row.driver_id}__${row.team_id}`}
+                      className={`hover:bg-white/[0.04] transition-colors group ${rowBg}`}
                     >
-                      <div className="flex flex-col items-center justify-center gap-0.5">
-                        <span className="text-[9px] font-mono text-f1-subtle font-bold leading-none">
-                          R{round.round_number}
-                        </span>
-                        <CircuitLink
-                          circuitId={round.circuit_id}
-                          circuitName={round.location || round.circuit_short_code}
-                          className="text-[10px] font-black font-mono tracking-tight text-white hover:text-white hover:underline decoration-white/30 leading-tight transition-colors"
-                          title={`Ver circuito: ${round.official_event_name}`}
-                        >
-                          {round.circuit_short_code}
-                        </CircuitLink>
-                      </div>
-                    </th>
-                  );
-                })}
-
-                {/* Pontos Totais */}
-                <th
-                  rowSpan={hasAnySprint ? 2 : 1}
-                  className="px-2 py-2.5 text-right font-black text-white bg-[#12121A] border-l border-white/20"
-                  style={{ width: "54px", minWidth: "54px", maxWidth: "54px" }}
-                >
-                  Pts.
-                </th>
-              </tr>
-
-              {/* Linha 2 do Header (Subcolunas CS e CP com badges modernas) */}
-              {hasAnySprint && (
-                <tr className="bg-[#0E0E15] text-[10px] font-black font-mono border-b border-white/10">
-                  {rounds
-                    .filter((r) => r.has_sprint)
-                    .map((round) => (
-                      <React.Fragment key={`sub_${round.round_number}`}>
-                        <th
-                          className="px-0.5 py-1 text-center border-r border-white/5 bg-[#0E0E15]"
-                          style={{ width: "34px", minWidth: "34px", maxWidth: "34px" }}
-                          title="Corrida Sprint"
-                        >
-                          <span className="inline-block px-1 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px]">
-                            CS
-                          </span>
-                        </th>
-                        <th
-                          className="px-0.5 py-1 text-center border-r border-white/10 bg-[#0E0E15]"
-                          style={{ width: "34px", minWidth: "34px", maxWidth: "34px" }}
-                          title="Corrida Principal"
-                        >
-                          <span className="inline-block px-1 py-0.2 rounded bg-white/10 text-zinc-200 border border-white/15 text-[9px]">
-                            CP
-                          </span>
-                        </th>
-                      </React.Fragment>
-                    ))}
-                </tr>
-              )}
-            </thead>
-
-            {/* Linhas da Tabela */}
-            <tbody className="divide-y divide-white/5">
-              {filteredRows.map((row, rowIndex) => {
-                const teamColor = row.team_color
-                  ? row.team_color.startsWith("#")
-                    ? row.team_color
-                    : `#${row.team_color}`
-                  : "#E10600";
-                const isEven = rowIndex % 2 === 0;
-                const rowBg = isEven ? "bg-[#0B0B10]" : "bg-[#0E0E15]";
-
-                return (
-                  <tr
-                    key={`${row.driver_id}__${row.team_id}`}
-                    className={`hover:bg-white/[0.04] transition-colors group ${rowBg}`}
-                  >
-                    {/* 1. Pos (Sticky 0px: 32px mobile / 36px sm+) */}
-                    <td
-                      className={`sticky left-0 z-20 px-1 py-2 text-center font-bold font-mono tabular-nums border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[32px] sm:w-[36px] min-w-[32px] sm:min-w-[36px] max-w-[32px] sm:max-w-[36px]`}
-                    >
-                      <span
-                        className={`text-[11px] sm:text-xs font-black font-mono tabular-nums ${
-                          row.championship_position === 1
-                            ? "text-amber-400"
-                            : row.championship_position === 2
-                            ? "text-slate-300"
-                            : row.championship_position === 3
-                            ? "text-amber-600"
-                            : "text-zinc-400"
-                        }`}
+                      {/* 1. Pos (Sticky 0px: 32px mobile / 36px sm+) */}
+                      <td
+                        className={`sticky left-0 z-20 px-1 py-2 text-center font-bold font-mono tabular-nums border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[32px] sm:w-[36px] min-w-[32px] sm:min-w-[36px] max-w-[32px] sm:max-w-[36px]`}
                       >
-                        {row.championship_position}
-                      </span>
-                    </td>
-
-                    {/* 2. N.º (Sticky 36px - Oculto no Mobile < sm) */}
-                    <td
-                      className={`hidden sm:table-cell sticky left-[36px] z-20 px-1 py-2 text-center border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[36px] min-w-[36px] max-w-[36px]`}
-                    >
-                      {row.driver_number ? (
-                        <span className="inline-block rounded bg-white/5 border border-white/10 px-1 py-0.2 text-[10px] font-mono tabular-nums font-bold text-zinc-300">
-                          #{row.driver_number}
+                        <span
+                          className={`text-[11px] sm:text-xs font-black font-mono tabular-nums ${row.championship_position === 1
+                              ? "text-amber-400"
+                              : row.championship_position === 2
+                                ? "text-slate-300"
+                                : row.championship_position === 3
+                                  ? "text-amber-600"
+                                  : "text-zinc-400"
+                            }`}
+                        >
+                          {row.championship_position}
                         </span>
-                      ) : (
-                        <span className="text-zinc-600 text-xs font-mono">—</span>
-                      )}
-                    </td>
+                      </td>
 
-                    {/* 3. Piloto (Sticky no Mobile: left-[32px], 105px; no Desktop: left-[72px], 170px) */}
-                    <td
-                      className={`sticky left-[32px] sm:left-[72px] z-20 px-1.5 sm:px-2.5 py-2 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)] ${rowBg} group-hover:bg-[#161622] transition-colors w-[105px] sm:w-[170px] min-w-[105px] sm:min-w-[170px] max-w-[105px] sm:max-w-[170px]`}
-                    >
-                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                        {/* Faixa de Cor da Equipe */}
-                        <div
-                          className="w-1 sm:w-1.5 h-6 sm:h-7 rounded-full shrink-0 shadow-sm"
-                          style={{ backgroundColor: teamColor }}
-                          title={row.team_name}
-                        />
+                      {/* 2. N.º (Sticky 36px - Oculto no Mobile < sm) */}
+                      <td
+                        className={`hidden sm:table-cell sticky left-[36px] z-20 px-1 py-2 text-center border-r border-white/10 ${rowBg} group-hover:bg-[#161622] transition-colors w-[36px] min-w-[36px] max-w-[36px]`}
+                      >
+                        {row.driver_number ? (
+                          <span className="inline-block rounded bg-white/5 border border-white/10 px-1 py-0.2 text-[10px] font-mono tabular-nums font-bold text-zinc-300">
+                            #{row.driver_number}
+                          </span>
+                        ) : (
+                          <span className="text-zinc-600 text-xs font-mono">—</span>
+                        )}
+                      </td>
 
-                        {/* Nome do Piloto & Equipe (Abrev no mobile, Nome completo no desktop) */}
-                        <div className="min-w-0 flex-1 block">
-                          <DriverLink
-                            driverId={row.driver_id}
-                            driverName={row.driver_full_name}
-                            driverAbbr={row.driver_abbreviation}
-                            className="block truncate font-bold text-white text-[11px] sm:text-xs hover:text-white hover:underline decoration-white/30 transition-colors leading-snug"
-                          >
-                            <span className="sm:hidden font-mono font-black">{row.driver_abbreviation}</span>
-                            <span className="hidden sm:inline">{row.driver_full_name}</span>
-                          </DriverLink>
-                          <TeamLink
-                            teamId={row.team_name}
-                            teamName={row.team_name}
-                            className="block truncate text-[9px] sm:text-[10px] text-f1-subtle hover:text-white font-medium leading-none mt-0.5 transition-colors"
-                          >
-                            {row.team_name}
-                          </TeamLink>
+                      {/* 3. Piloto (Sticky no Mobile: left-[32px], 105px; no Desktop: left-[72px], 170px) */}
+                      <td
+                        className={`sticky left-[32px] sm:left-[72px] z-20 px-1.5 sm:px-2.5 py-2 border-r border-white/20 shadow-[6px_0_16px_rgba(0,0,0,0.8)] ${rowBg} group-hover:bg-[#161622] transition-colors w-[105px] sm:w-[170px] min-w-[105px] sm:min-w-[170px] max-w-[105px] sm:max-w-[170px]`}
+                      >
+                        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                          {/* Faixa de Cor da Equipe */}
+                          <div
+                            className="w-1 sm:w-1.5 h-6 sm:h-7 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: teamColor }}
+                            title={row.team_name}
+                          />
+
+                          {/* Nome do Piloto & Equipe (Abrev no mobile, Nome completo no desktop) */}
+                          <div className="min-w-0 flex-1 block">
+                            <DriverLink
+                              driverId={row.driver_id}
+                              driverName={row.driver_full_name}
+                              driverAbbr={row.driver_abbreviation}
+                              className="block truncate font-bold text-white text-[11px] sm:text-xs hover:text-white hover:underline decoration-white/30 transition-colors leading-snug"
+                            >
+                              <span className="sm:hidden font-mono font-black">{row.driver_abbreviation}</span>
+                              <span className="hidden sm:inline">{row.driver_full_name}</span>
+                            </DriverLink>
+                            <TeamLink
+                              teamId={row.team_name}
+                              teamName={row.team_name}
+                              className="block truncate text-[9px] sm:text-[10px] text-f1-subtle hover:text-white font-medium leading-none mt-0.5 transition-colors"
+                            >
+                              {row.team_name}
+                            </TeamLink>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Células de Resultados de Cada GP */}
-                    {rounds.map((round, roundIndex) => {
-                      const item = row.resultsByRound.get(round.round_number);
+                      {/* Células de Resultados de Cada GP */}
+                      {rounds.map((round, roundIndex) => {
+                        const item = row.resultsByRound.get(round.round_number);
 
-                      // Função de renderização para uma célula de resultado (CS ou CP)
-                      const renderCell = (
-                        category: string | null | undefined,
-                        code: string | null | undefined,
-                        isPole: boolean,
-                        isFastestLap: boolean,
-                        session: "CS" | "CP",
-                        width: string
-                      ) => {
-                        const theme = category ? activeTheme[category] || activeTheme.not_participated : activeTheme.scheduled;
-                        const isHovered =
-                          hoveredCell?.driverId === row.driver_id &&
-                          hoveredCell?.roundNumber === round.round_number &&
-                          hoveredCell?.session === session;
+                        // Função de renderização para uma célula de resultado (SPR ou GP)
+                        const renderCell = (
+                          category: string | null | undefined,
+                          code: string | null | undefined,
+                          isPole: boolean,
+                          isFastestLap: boolean,
+                          session: "SPR" | "GP",
+                          width: string
+                        ) => {
+                          const theme = category ? activeTheme[category] || activeTheme.not_participated : activeTheme.scheduled;
+                          const isHovered =
+                            hoveredCell?.driverId === row.driver_id &&
+                            hoveredCell?.roundNumber === round.round_number &&
+                            hoveredCell?.session === session;
 
-                        const isScheduled = category === "scheduled" || !code || code === "—";
+                          const isScheduled = category === "scheduled" || !code || code === "—";
 
-                        // POSICIONAMENTO INTELIGENTE DA TOOLTIP:
-                        // Vertical: Para as primeiras 4 linhas (topo), posiciona ABAIXO (top-full mt-2).
-                        // Para as demais linhas, posiciona ACIMA (bottom-full mb-2).
-                        const verticalPos = rowIndex < 4 ? "top-full mt-2" : "bottom-full mb-2";
-                        const horizontalPos =
-                          roundIndex <= 2
-                            ? "left-0"
-                            : roundIndex >= rounds.length - 3
-                            ? "right-0"
-                            : "left-1/2 -translate-x-1/2";
+                          // POSICIONAMENTO INTELIGENTE DA TOOLTIP:
+                          // Vertical: Para as primeiras 4 linhas (topo), posiciona ABAIXO (top-full mt-2).
+                          // Para as demais linhas, posiciona ACIMA (bottom-full mb-2).
+                          const verticalPos = rowIndex < 4 ? "top-full mt-2" : "bottom-full mb-2";
+                          const horizontalPos =
+                            roundIndex <= 2
+                              ? "left-0"
+                              : roundIndex >= rounds.length - 3
+                                ? "right-0"
+                                : "left-1/2 -translate-x-1/2";
 
-                        return (
-                          <td
-                            key={`${round.round_number}_${session}`}
-                            onMouseEnter={() =>
-                              setHoveredCell({
-                                driverId: row.driver_id,
-                                roundNumber: round.round_number,
-                                session
-                              })
-                            }
-                            onMouseLeave={() => setHoveredCell(null)}
-                            className="relative p-0.5 border-r border-white/5 text-center select-none"
-                            style={{
-                              width,
-                              minWidth: width,
-                              maxWidth: width
-                            }}
-                          >
-                            <div
-                              className={`w-full h-7 rounded-[4px] flex items-center justify-center font-bold text-xs leading-none font-mono transition-transform duration-100 ${
-                                isHovered && !isScheduled ? "scale-105 z-20 shadow-md ring-1 ring-white/50" : ""
-                              }`}
+                          return (
+                            <td
+                              key={`${round.round_number}_${session}`}
+                              onMouseEnter={() =>
+                                setHoveredCell({
+                                  driverId: row.driver_id,
+                                  roundNumber: round.round_number,
+                                  session
+                                })
+                              }
+                              onMouseLeave={() => setHoveredCell(null)}
+                              className="relative p-0.5 border-r border-white/5 text-center select-none"
                               style={{
-                                backgroundColor: theme.bg,
-                                color: theme.text,
-                                border: theme.border ? `1px solid ${theme.border}` : "1px solid rgba(255,255,255,0.05)"
+                                width,
+                                minWidth: width,
+                                maxWidth: width
                               }}
                             >
-                              <span
-                                className={`${isPole ? "font-black underline decoration-purple-400 decoration-2" : ""} ${
-                                   isFastestLap ? "italic font-black text-pink-200" : ""
-                                } ${isScheduled ? "text-zinc-700 font-normal" : ""}`}
-                              >
-                                {code || "—"}
-                              </span>
-                            </div>
-
-                            {/* Tooltip Rico com Posicionamento Anti-Corte */}
-                            {isHovered && item && !isScheduled && (
                               <div
-                                className={`absolute ${verticalPos} ${horizontalPos} w-56 rounded-2xl bg-[#14141E]/95 backdrop-blur-md p-3 text-left shadow-2xl border border-white/20 z-50 pointer-events-none text-white font-sans text-xs animate-in fade-in zoom-in-95 duration-100`}
+                                className={`w-full h-7 rounded-[4px] flex items-center justify-center font-bold text-xs leading-none font-mono transition-transform duration-100 ${isHovered && !isScheduled ? "scale-105 z-20 shadow-md ring-1 ring-white/50" : ""
+                                  }`}
+                                style={{
+                                  backgroundColor: theme.bg,
+                                  color: theme.text,
+                                  border: theme.border ? `1px solid ${theme.border}` : "1px solid rgba(255,255,255,0.05)"
+                                }}
                               >
-                                {/* Header da Tooltip */}
-                                <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
-                                  <span className="text-[11px] font-black uppercase text-amber-400">
-                                    {round.circuit_short_code} • {session === "CS" ? "Sprint (CS)" : "Corrida (CP)"}
-                                  </span>
-                                  <span className="text-f1-subtle text-[10px] font-mono">R{round.round_number}</span>
-                                </div>
+                                <span
+                                  className={`${isPole ? "font-black underline decoration-purple-400 decoration-2" : ""} ${isFastestLap ? "italic font-black text-pink-200" : ""
+                                    } ${isScheduled ? "text-zinc-700 font-normal" : ""}`}
+                                >
+                                  {code || "—"}
+                                </span>
+                              </div>
 
-                                {/* Conteúdo da Tooltip */}
-                                <div className="space-y-1 text-zinc-300 text-[11px]">
-                                  <div className="flex items-center gap-1.5 pb-0.5">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: teamColor }} />
-                                    <span className="text-white font-bold truncate">{row.driver_full_name}</span>
+                              {/* Tooltip Rico com Posicionamento Anti-Corte */}
+                              {isHovered && item && !isScheduled && (
+                                <div
+                                  className={`absolute ${verticalPos} ${horizontalPos} w-56 rounded-2xl bg-[#14141E]/95 backdrop-blur-md p-3 text-left shadow-2xl border border-white/20 z-50 pointer-events-none text-white font-sans text-xs animate-in fade-in zoom-in-95 duration-100`}
+                                >
+                                  {/* Header da Tooltip */}
+                                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+                                    <span className="text-[11px] font-black uppercase text-amber-400">
+                                      {round.circuit_short_code} • {session === "SPR" ? "Sprint (SPR)" : "Grande Prêmio (GP)"}
+                                    </span>
+                                    <span className="text-f1-subtle text-[10px] font-mono">R{round.round_number}</span>
                                   </div>
 
-                                  <div className="flex justify-between">
-                                    <span className="text-f1-subtle">Posição Final:</span>
-                                    <span className="font-black text-white">{code}</span>
-                                  </div>
-
-                                  {session === "CP" && item.race_grid_position && (
-                                    <div className="flex justify-between">
-                                      <span className="text-f1-subtle">Largada:</span>
-                                      <span>P{item.race_grid_position}</span>
+                                  {/* Conteúdo da Tooltip */}
+                                  <div className="space-y-1 text-zinc-300 text-[11px]">
+                                    <div className="flex items-center gap-1.5 pb-0.5">
+                                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: teamColor }} />
+                                      <span className="text-white font-bold truncate">{row.driver_full_name}</span>
                                     </div>
-                                  )}
 
-                                  {session === "CS" && item.sprint_grid_position && (
                                     <div className="flex justify-between">
-                                      <span className="text-f1-subtle">Largada:</span>
-                                      <span>P{item.sprint_grid_position}</span>
+                                      <span className="text-f1-subtle">Posição Final:</span>
+                                      <span className="font-black text-white">{code}</span>
                                     </div>
-                                  )}
 
-                                  {item.race_status && item.race_status !== "Finished" && session === "CP" && (
-                                    <div className="flex justify-between">
-                                      <span className="text-f1-subtle">Status:</span>
-                                      <span className="text-rose-400 font-bold">{item.race_status}</span>
-                                    </div>
-                                  )}
+                                      { session === "GP" && item.race_grid_position && (
+                                        <div className="flex justify-between">
+                                          <span className="text-f1-subtle">Largada:</span>
+                                          <span>P{item.race_grid_position}</span>
+                                        </div>
+                                      )}
 
-                                  <div className="flex justify-between pt-1 border-t border-white/10 text-emerald-400 font-bold">
+                                      { session === "SPR" && item.sprint_grid_position && (
+                                        <div className="flex justify-between">
+                                          <span className="text-f1-subtle">Largada:</span>
+                                          <span>P{item.sprint_grid_position}</span>
+                                        </div>
+                                      )}
+
+                                      {
+                                        item.race_status && item.race_status !== "Finished" && session === "GP" && (
+                                          <div className="flex justify-between">
+                                            <span className="text-f1-subtle">Status:</span>
+                                            <span className="text-rose-400 font-bold">{item.race_status}</span>
+                                          </div>
+                                        )
+                                      }
+
+                                      < div className="flex justify-between pt-1 border-t border-white/10 text-emerald-400 font-bold">
                                     <span>Pontos Obtidos:</span>
-                                    <span>+{session === "CS" ? item.sprint_points : item.race_points} pts</span>
+                                    <span>+{session === "SPR" ? item.sprint_points : item.race_points} pts</span>
                                   </div>
 
                                   {/* Badges Adicionais */}
@@ -864,201 +857,201 @@ export default function SeasonMatrixView({ matrixData, year }: Props) {
                                   )}
                                 </div>
                               </div>
-                            )}
+                          )
+                        }
                           </td>
-                        );
-                      };
+                  );
+                };
 
-                      // Se a rodada tem sprint, renderiza 2 colunas: CS e CP
-                      if (round.has_sprint) {
+                // Se a rodada tem sprint, renderiza 2 colunas: SPR e GP
+                if (round.has_sprint) {
                         return (
-                          <React.Fragment key={round.round_number}>
-                            {renderCell(
-                              item?.sprint_result_category,
-                              item?.sprint_result_code,
-                              false,
-                              false,
-                              "CS",
-                              "34px"
-                            )}
-                            {renderCell(
-                              item?.result_category,
-                              item?.result_code,
-                              Boolean(item?.is_pole),
-                              Boolean(item?.is_fastest_lap),
-                              "CP",
-                              "34px"
-                            )}
-                          </React.Fragment>
-                        );
+                <React.Fragment key={round.round_number}>
+                  {renderCell(
+                    item?.sprint_result_category,
+                    item?.sprint_result_code,
+                    false,
+                    false,
+                    "SPR",
+                    "34px"
+                  )}
+                  {renderCell(
+                    item?.result_category,
+                    item?.result_code,
+                    Boolean(item?.is_pole),
+                    Boolean(item?.is_fastest_lap),
+                    "GP",
+                    "34px"
+                  )}
+                </React.Fragment>
+                );
                       }
 
-                      // Rodada convencional: 1 coluna
-                      return renderCell(
-                        item?.result_category,
-                        item?.result_code,
-                        Boolean(item?.is_pole),
-                        Boolean(item?.is_fastest_lap),
-                        "CP",
-                        "38px"
-                      );
+                // Rodada convencional: 1 coluna
+                return renderCell(
+                item?.result_category,
+                item?.result_code,
+                Boolean(item?.is_pole),
+                Boolean(item?.is_fastest_lap),
+                "GP",
+                "38px"
+                );
                     })}
 
-                    {/* Pts (Total de Pontos Acumulados) */}
-                    <td
-                      className="px-2 py-2 text-right font-black font-mono tabular-nums text-xs text-white bg-[#12121A] border-l border-white/20"
-                      style={{ width: "54px", minWidth: "54px", maxWidth: "54px" }}
-                    >
-                      {row.total_driver_points}
-                    </td>
-                  </tr>
-                );
+                {/* Pts (Total de Pontos Acumulados) */}
+                <td
+                  className="px-2 py-2 text-right font-black font-mono tabular-nums text-xs text-white bg-[#12121A] border-l border-white/20"
+                  style={{ width: "54px", minWidth: "54px", maxWidth: "54px" }}
+                >
+                  {row.total_driver_points}
+                </td>
+              </tr>
+              );
               })}
             </tbody>
           </table>
         </div>
       </div>
-      </div>
+    </div>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* MODO 2: VISÃO CARTÃO DO PILOTO (MOBILE EXCLUSIVO)                     */}
-      {/* --------------------------------------------------------------------- */}
-      <div className={`md:hidden space-y-3 ${mobileMode === "driver" ? "block" : "hidden"}`}>
-        {/* Seletor Rápido de Piloto */}
-        <div className="flex items-center gap-2 bg-[#0B0B10] p-2 rounded-xl border border-white/10">
-          <span className="text-[11px] font-bold text-f1-subtle shrink-0">Piloto:</span>
-          <select
-            value={currentMobileDriver?.driver_id || ""}
-            onChange={(e) => setSelectedMobileDriverId(e.target.value)}
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white outline-none focus:border-f1-red transition-colors"
-          >
-            {filteredRows.map((d) => (
-              <option key={d.driver_id} value={d.driver_id} className="bg-[#12121A] text-white">
-                P{d.championship_position} · {d.driver_full_name} ({d.team_name})
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* --------------------------------------------------------------------- */ }
+  {/* MODO 2: VISÃO CARTÃO DO PILOTO (MOBILE EXCLUSIVO)                     */ }
+  {/* --------------------------------------------------------------------- */ }
+  <div className={`md:hidden space-y-3 ${mobileMode === "driver" ? "block" : "hidden"}`}>
+    {/* Seletor Rápido de Piloto */}
+    <div className="flex items-center gap-2 bg-[#0B0B10] p-2 rounded-xl border border-white/10">
+      <span className="text-[11px] font-bold text-f1-subtle shrink-0">Piloto:</span>
+      <select
+        value={currentMobileDriver?.driver_id || ""}
+        onChange={(e) => setSelectedMobileDriverId(e.target.value)}
+        className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 min-h-[44px] text-base sm:text-xs font-bold text-white outline-none focus:border-f1-red transition-colors"
+      >
+        {filteredRows.map((d) => (
+          <option key={d.driver_id} value={d.driver_id} className="bg-[#12121A] text-white">
+            P{d.championship_position} · {d.driver_full_name} ({d.team_name})
+          </option>
+        ))}
+      </select>
+    </div>
 
-        {currentMobileDriver && (
-          <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-3.5 space-y-4 shadow-xl">
-            {/* Header do Piloto Selecionado */}
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className="w-1.5 h-10 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: currentMobileDriver.team_color
-                      ? currentMobileDriver.team_color.startsWith("#")
-                        ? currentMobileDriver.team_color
-                        : `#${currentMobileDriver.team_color}`
-                      : "#E10600"
-                  }}
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-mono font-black text-amber-400">
-                      P{currentMobileDriver.championship_position}
-                    </span>
-                    <h3 className="text-sm font-black text-white truncate">
-                      {currentMobileDriver.driver_full_name}
-                    </h3>
-                  </div>
-                  <p className="text-[10px] text-f1-subtle truncate">
-                    {currentMobileDriver.team_name}
-                  </p>
-                </div>
-              </div>
-
-              <div className="text-right shrink-0">
-                <span className="block text-[9px] font-bold uppercase tracking-wider text-f1-subtle">
-                  Total
+    {currentMobileDriver && (
+      <div className="rounded-2xl border border-white/10 bg-[#0B0B10] p-3.5 space-y-4 shadow-xl">
+        {/* Header do Piloto Selecionado */}
+        <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="w-1.5 h-10 rounded-full shrink-0"
+              style={{
+                backgroundColor: currentMobileDriver.team_color
+                  ? currentMobileDriver.team_color.startsWith("#")
+                    ? currentMobileDriver.team_color
+                    : `#${currentMobileDriver.team_color}`
+                  : "#E10600"
+              }}
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-mono font-black text-amber-400">
+                  P{currentMobileDriver.championship_position}
                 </span>
-                <span className="font-mono tabular-nums text-base font-black text-white">
-                  {currentMobileDriver.total_driver_points} pts
-                </span>
+                <h3 className="text-sm font-black text-white truncate">
+                  {currentMobileDriver.driver_full_name}
+                </h3>
               </div>
-            </div>
-
-            {/* Lista Vertical de Etapas com Cards de Resultados */}
-            <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin">
-              {rounds.map((round) => {
-                const item = currentMobileDriver.resultsByRound.get(round.round_number);
-                const isCompleted = round.round_status === "Completed";
-                const cpTheme = item?.result_category
-                  ? activeTheme[item.result_category] || activeTheme.not_participated
-                  : activeTheme.scheduled;
-                const csTheme = item?.sprint_result_category
-                  ? activeTheme[item.sprint_result_category] || activeTheme.not_participated
-                  : activeTheme.scheduled;
-
-                return (
-                  <div
-                    key={round.round_number}
-                    className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] font-mono font-bold text-f1-subtle w-6 text-center shrink-0">
-                        R{round.round_number}
-                      </span>
-                      <div className="min-w-0">
-                        <span className="font-black text-xs text-white block truncate leading-tight">
-                          {round.circuit_short_code} · {round.location}
-                        </span>
-                        <span className="text-[9px] text-f1-subtle block truncate">
-                          {round.country}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Badge Sprint se houver */}
-                      {round.has_sprint && (
-                        <div className="flex flex-col items-center">
-                          <span className="text-[8px] font-mono text-amber-400 font-bold uppercase">CS</span>
-                          <div
-                            className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm"
-                            style={{
-                              backgroundColor: csTheme.bg,
-                              color: csTheme.text,
-                              border: csTheme.border ? `1px solid ${csTheme.border}` : "none"
-                            }}
-                          >
-                            {item?.sprint_result_code || "—"}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Badge Corrida Principal */}
-                      <div className="flex flex-col items-center">
-                        {round.has_sprint && (
-                          <span className="text-[8px] font-mono text-zinc-400 font-bold uppercase">CP</span>
-                        )}
-                        <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm relative"
-                          style={{
-                            backgroundColor: cpTheme.bg,
-                            color: cpTheme.text,
-                            border: cpTheme.border ? `1px solid ${cpTheme.border}` : "none"
-                          }}
-                        >
-                          <span
-                            className={`${
-                              item?.is_pole ? "underline decoration-purple-400 decoration-2" : ""
-                            } ${item?.is_fastest_lap ? "italic text-pink-300" : ""}`}
-                          >
-                            {item?.result_code || "—"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              <p className="text-[10px] text-f1-subtle truncate">
+                {currentMobileDriver.team_name}
+              </p>
             </div>
           </div>
-        )}
+
+          <div className="text-right shrink-0">
+            <span className="block text-[9px] font-bold uppercase tracking-wider text-f1-subtle">
+              Total
+            </span>
+            <span className="font-mono tabular-nums text-base font-black text-white">
+              {currentMobileDriver.total_driver_points} pts
+            </span>
+          </div>
+        </div>
+
+        {/* Lista Vertical de Etapas com Cards de Resultados */}
+        <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin">
+          {rounds.map((round) => {
+            const item = currentMobileDriver.resultsByRound.get(round.round_number);
+            const isCompleted = round.round_status === "Completed";
+            const cpTheme = item?.result_category
+              ? activeTheme[item.result_category] || activeTheme.not_participated
+              : activeTheme.scheduled;
+            const csTheme = item?.sprint_result_category
+              ? activeTheme[item.sprint_result_category] || activeTheme.not_participated
+              : activeTheme.scheduled;
+
+            return (
+              <div
+                key={round.round_number}
+                className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] font-mono font-bold text-f1-subtle w-6 text-center shrink-0">
+                    R{round.round_number}
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-black text-xs text-white block truncate leading-tight">
+                      {round.circuit_short_code} · {round.location}
+                    </span>
+                    <span className="text-[9px] text-f1-subtle block truncate">
+                      {round.country}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Badge Sprint se houver */}
+                  {round.has_sprint && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-[8px] font-mono text-amber-400 font-bold uppercase">SPR</span>
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm"
+                        style={{
+                          backgroundColor: csTheme.bg,
+                          color: csTheme.text,
+                          border: csTheme.border ? `1px solid ${csTheme.border}` : "none"
+                        }}
+                      >
+                        {item?.sprint_result_code || "—"}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Badge Corrida Principal */}
+                  <div className="flex flex-col items-center">
+                    {round.has_sprint && (
+                          <span className="text-[8px] font-mono text-zinc-400 font-bold uppercase">GP</span>
+                    )}
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs font-mono shadow-sm relative"
+                      style={{
+                        backgroundColor: cpTheme.bg,
+                        color: cpTheme.text,
+                        border: cpTheme.border ? `1px solid ${cpTheme.border}` : "none"
+                      }}
+                    >
+                      <span
+                        className={`${item?.is_pole ? "underline decoration-purple-400 decoration-2" : ""
+                          } ${item?.is_fastest_lap ? "italic text-pink-300" : ""}`}
+                      >
+                        {item?.result_code || "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    )}
+  </div>
+    </div >
   );
 }
