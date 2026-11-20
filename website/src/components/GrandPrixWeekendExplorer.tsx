@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useMemo, useTransition, useEffect } from "react";
 import Link from "next/link";
@@ -35,7 +35,8 @@ import {
   ChevronDown,
   ExternalLink,
   Loader2,
-  Info
+  Info,
+  AlertCircle
 } from "lucide-react";
 import TyreStrategyChart from "@/components/TyreStrategyChart";
 import RacePaceChart from "@/components/RacePaceChart";
@@ -168,10 +169,21 @@ export default function GrandPrixWeekendExplorer({
     return "table";
   }, [isRaceSession, isQualiSession, viewMode, hasIdealData]);
 
-  const winner = sessionResults.find(r => r.finishing_position === 1);
-  const p2Driver = useMemo(() => {
-    return sessionResults.find((r) => Number(r.finishing_position) === 2) || null;
+  // Detecta se a sessão foi afetada por clima adverso sem voltas válidas registradas
+  const isNoTimedLapsSession = useMemo(() => {
+    return (
+      sessionResults.length > 0 &&
+      sessionResults.every(
+        (r) => !r.best_lap || r.best_lap.trim() === "" || r.best_lap === "—" || r.best_lap === "-"
+      )
+    );
   }, [sessionResults]);
+
+  const winner = isNoTimedLapsSession ? null : sessionResults.find(r => r.finishing_position === 1);
+  const p2Driver = useMemo(() => {
+    if (isNoTimedLapsSession) return null;
+    return sessionResults.find((r) => Number(r.finishing_position) === 2) || null;
+  }, [sessionResults, isNoTimedLapsSession]);
 
   // Margem da Pole / Disputa P1 vs P2 na Qualificação e Treinos
   const poleMargin = useMemo(() => {
@@ -838,6 +850,21 @@ export default function GrandPrixWeekendExplorer({
         </div>
       ) : (
         <>
+          {/* Banner de Sessão sem Tempos Cronometrados */}
+          {isNoTimedLapsSession && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-3.5 sm:p-4 flex items-start gap-3 text-amber-200">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+              <div className="min-w-0">
+                <h4 className="text-xs sm:text-sm font-bold text-amber-200">
+                  Sessão sem tempos cronometrados registrados
+                </h4>
+                <p className="text-[11px] sm:text-xs text-amber-300/80 mt-0.5 leading-relaxed">
+                  Nenhum piloto completou voltas rápidas oficiais durante esta sessão (possível decorrência de interrupção com bandeira vermelha, paralisação ou condições de pista).
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ========================================================================= */}
           {/* LINHA 1: 4 CARDS KPI DE ALTO IMPACTO (BENTO GRID SUPERIOR)                 */}
           {/* ========================================================================= */}
@@ -848,7 +875,12 @@ export default function GrandPrixWeekendExplorer({
                 <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 block truncate">
                   {isRaceSession ? "Vencedor (P1)" : isQualiSession ? "Pole (P1)" : "Líder (P1)"}
                 </span>
-                {winner ? (
+                {isNoTimedLapsSession ? (
+                  <>
+                    <h4 className="text-xs sm:text-sm font-bold text-amber-300 truncate mt-0.5">Sem Líder</h4>
+                    <p className="text-[10px] sm:text-[11px] text-amber-200/70 truncate">Sessão sem voltas cronometradas</p>
+                  </>
+                ) : winner ? (
                   <DriverLink driverId={winner.driver_id} driverName={winner.driver_full_name} className="group/wlink block">
                     <h4 className="text-xs sm:text-sm font-black text-white truncate mt-0.5 group-hover/wlink:text-f1-red transition-colors">
                       <span className="sm:hidden">{winner.driver_full_name.split(" ").slice(-1)[0]}</span>
@@ -858,21 +890,32 @@ export default function GrandPrixWeekendExplorer({
                 ) : (
                   <h4 className="text-xs sm:text-sm font-black text-white truncate mt-0.5">—</h4>
                 )}
-                <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate" style={{ color: winner?.team_color || undefined }}>
-                  {winner?.team_name || "—"}
-                </p>
-                {isRaceSession && winner?.points ? (
-                  <span className="inline-block mt-1 sm:mt-2 font-mono text-[10px] sm:text-[11px] font-bold text-emerald-400">
-                    +{winner.points} pts
-                  </span>
-                ) : winner?.best_lap ? (
-                  <span className="inline-block mt-1 sm:mt-2 font-mono text-[10px] sm:text-[11px] font-bold text-purple-300">
-                    {winner.best_lap}
-                  </span>
-                ) : null}
+                {!isNoTimedLapsSession && (
+                  <>
+                    <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate" style={{ color: winner?.team_color || undefined }}>
+                      {winner?.team_name || "—"}
+                    </p>
+                    {isRaceSession && winner?.points ? (
+                      <span className="inline-block mt-1 sm:mt-2 font-mono text-[10px] sm:text-[11px] font-bold text-emerald-400">
+                        +{winner.points} pts
+                      </span>
+                    ) : winner?.best_lap ? (
+                      <span className="inline-block mt-1 sm:mt-2 font-mono text-[10px] sm:text-[11px] font-bold text-purple-300">
+                        {winner.best_lap}
+                      </span>
+                    ) : null}
+                  </>
+                )}
               </div>
 
-              {winner ? (
+              {isNoTimedLapsSession ? (
+                <div
+                  className="relative flex h-8 w-8 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 border-amber-500/40 bg-amber-500/10 text-amber-400"
+                  title="Sessão sem voltas cronometradas registradas"
+                >
+                  <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+              ) : winner ? (
                 <DriverLink
                   driverId={winner.driver_id}
                   driverName={winner.driver_full_name}
@@ -920,67 +963,80 @@ export default function GrandPrixWeekendExplorer({
                 </span>
               </div>
 
-              <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
-                <div className="flex items-baseline gap-1.5 truncate">
-                  <span className="font-mono text-xs sm:text-base font-black text-white tracking-tight">
-                    {fastestLap || "—"}
+              {isNoTimedLapsSession ? (
+                <div className="mt-1">
+                  <span className="font-mono text-xs sm:text-base font-bold text-amber-300 tracking-tight">
+                    Sem Tempos
                   </span>
-                  {fastestLapSegment && (
-                    <span className="text-[10px] sm:text-xs font-mono font-bold text-purple-400">
-                      ({fastestLapSegment})
-                    </span>
-                  )}
+                  <p className="text-[10px] sm:text-[11px] text-amber-200/70 truncate mt-0.5">
+                    Nenhum registro oficial de volta
+                  </p>
                 </div>
-                <TieCarouselDots carousel={flCarousel} accent="purple" />
-              </div>
-
-              {fastestLapDrivers.length > 0 ? (
-                <TieCarouselTrack
-                  carousel={flCarousel}
-                  items={fastestLapDrivers}
-                  renderItem={(d) => (
-                    <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
-                      <div className="min-w-0 pr-1 sm:pr-2">
-                        <DriverLink driverId={d.driver_id} driverName={d.driver_full_name} className="block">
-                          <p className="text-[11px] sm:text-xs text-white hover:text-purple-300 transition-colors truncate mt-0.5 font-bold">
-                            {d.driver_full_name}
-                          </p>
-                        </DriverLink>
-                        {d.team_name ? (
-                          <TeamLink
-                            teamName={d.team_name}
-                            className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
-                            title={`Ver perfil de ${d.team_name}`}
-                          >
-                            {d.team_name}
-                          </TeamLink>
-                        ) : null}
-                      </div>
-
-                      <DriverLink
-                        driverId={d.driver_id}
-                        driverName={d.driver_full_name}
-                        className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
-                        style={{ borderColor: d.team_color || "#A855F7" }}
-                        title={`Ver perfil de ${d.driver_full_name}`}
-                      >
-                        {d.driver_headshot_url ? (
-                          <img
-                            src={d.driver_headshot_url}
-                            alt={d.driver_full_name}
-                            className="h-full w-full object-cover object-top"
-                          />
-                        ) : (
-                          <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-300">
-                            {d.driver_full_name.slice(0, 3).toUpperCase()}
-                          </span>
-                        )}
-                      </DriverLink>
-                    </div>
-                  )}
-                />
               ) : (
-                <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
+                <>
+                  <div className={`flex items-baseline justify-between gap-2 mt-0.5 sm:mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
+                    <div className="flex items-baseline gap-1.5 truncate">
+                      <span className="font-mono text-xs sm:text-base font-black text-white tracking-tight">
+                        {fastestLap || "—"}
+                      </span>
+                      {fastestLapSegment && (
+                        <span className="text-[10px] sm:text-xs font-mono font-bold text-purple-400">
+                          ({fastestLapSegment})
+                        </span>
+                      )}
+                    </div>
+                    <TieCarouselDots carousel={flCarousel} accent="purple" />
+                  </div>
+
+                  {fastestLapDrivers.length > 0 ? (
+                    <TieCarouselTrack
+                      carousel={flCarousel}
+                      items={fastestLapDrivers}
+                      renderItem={(d) => (
+                        <div className="flex items-center justify-between gap-2 mt-0.5 sm:mt-1">
+                          <div className="min-w-0 pr-1 sm:pr-2">
+                            <DriverLink driverId={d.driver_id} driverName={d.driver_full_name} className="block">
+                              <p className="text-[11px] sm:text-xs text-white hover:text-purple-300 transition-colors truncate mt-0.5 font-bold">
+                                {d.driver_full_name}
+                              </p>
+                            </DriverLink>
+                            {d.team_name ? (
+                              <TeamLink
+                                teamName={d.team_name}
+                                className="text-[9px] sm:text-[10px] text-purple-300/80 font-mono hover:text-white hover:underline transition-colors block truncate"
+                                title={`Ver perfil de ${d.team_name}`}
+                              >
+                                {d.team_name}
+                              </TeamLink>
+                            ) : null}
+                          </div>
+
+                          <DriverLink
+                            driverId={d.driver_id}
+                            driverName={d.driver_full_name}
+                            className="relative flex h-8 w-8 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-full overflow-hidden border-2 bg-white/5 transition-transform hover:scale-105"
+                            style={{ borderColor: d.team_color || "#A855F7" }}
+                            title={`Ver perfil de ${d.driver_full_name}`}
+                          >
+                            {d.driver_headshot_url ? (
+                              <img
+                                src={d.driver_headshot_url}
+                                alt={d.driver_full_name}
+                                className="h-full w-full object-cover object-top"
+                              />
+                            ) : (
+                              <span className="font-mono text-[9px] sm:text-[10px] font-bold text-purple-300">
+                                {d.driver_full_name.slice(0, 3).toUpperCase()}
+                              </span>
+                            )}
+                          </DriverLink>
+                        </div>
+                      )}
+                    />
+                  ) : (
+                    <p className="text-[10px] sm:text-[11px] text-f1-subtle truncate mt-0.5">—</p>
+                  )}
+                </>
               )}
             </div>
 
@@ -1707,9 +1763,9 @@ export default function GrandPrixWeekendExplorer({
                           </thead>
                           <tbody className="divide-y divide-white/5 text-xs">
                             {sortedSessionResults.map((row, index) => {
-                              const pos = row.finishing_position ?? index + 1;
+                              const pos = isNoTimedLapsSession ? "—" : (row.finishing_position ?? index + 1);
                               const teamColor = row.team_color || "#E10600";
-                              const isFastestLap = Boolean(row.best_lap && row.best_lap === fastestLap);
+                              const isFastestLap = !isNoTimedLapsSession && Boolean(row.best_lap && row.best_lap === fastestLap);
                               const rowId = row.driver_id || row.driver_full_name || index;
                               const isExpanded = expandedDriverRow === rowId;
 
@@ -1723,18 +1779,22 @@ export default function GrandPrixWeekendExplorer({
                                 currentSegmentTime.trim() !== ""
                               );
 
-                              const displayPos = isSegmentSorted
-                                ? hasTimeInSortedSegment
-                                  ? index + 1
-                                  : "—"
-                                : pos;
+                              const displayPos = isNoTimedLapsSession
+                                ? "—"
+                                : isSegmentSorted
+                                  ? hasTimeInSortedSegment
+                                    ? index + 1
+                                    : "—"
+                                  : pos;
 
                               const segmentLeaderTime = isSegmentSorted ? sortedSessionResults[0]?.[sortField] : null;
-                              const displayGap = isSegmentSorted
-                                ? hasTimeInSortedSegment
-                                  ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
-                                  : "—"
-                                : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
+                              const displayGap = isNoTimedLapsSession
+                                ? "—"
+                                : isSegmentSorted
+                                  ? hasTimeInSortedSegment
+                                    ? getSegmentGap(currentSegmentTime, segmentLeaderTime)
+                                    : "—"
+                                  : row.gap_to_leader || (pos === 1 ? (hasQualiSegments ? "Pole" : "Líder") : "—");
 
                               return (
                                 <React.Fragment key={`${row.session_sk}-${row.driver_id || index}`}>

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { X, Gauge, Flag, Loader2, ArrowUp, ArrowDown, Minus, Timer, TrendingUp, ArrowUpRight } from "lucide-react";
+import { X, Gauge, Flag, Loader2, ArrowUp, ArrowDown, Minus, Timer, TrendingUp, ArrowUpRight, AlertCircle } from "lucide-react";
 import { SessionSummary } from "@/types/f1";
 import { getTeamColor, getTeamAbbr } from "./StandingsWidget";
 import DriverLink from "@/lib/driverUtils";
@@ -52,6 +52,7 @@ interface Props {
     date: string;
     time: string;
     completed: boolean;
+    no_timed_laps?: boolean;
   } | null;
   year: number;
   round: number;
@@ -82,6 +83,17 @@ export default function SessionDetailDrawer({
   const isRaceOrSprint = sessionType.includes("race") || sessionType === "sprint" || session?.code === "R" || session?.code === "S";
   const canonicalSession = getCanonicalSessionName(session?.session_name || session?.name, session?.code);
   const sessionDetailUrl = `/season/round/${round}?year=${year}&session=${encodeURIComponent(canonicalSession)}`;
+
+  // Detecta se a sessão foi afetada por clima adverso sem voltas válidas registradas
+  const isNoTimedLapsSession = useMemo(() => {
+    if (session?.no_timed_laps) return true;
+    return (
+      results.length > 0 &&
+      results.every(
+        (r) => !r.best_lap || r.best_lap.trim() === "" || r.best_lap === "—" || r.best_lap === "-"
+      )
+    );
+  }, [session?.no_timed_laps, results]);
 
   // Identifica a(s) melhor(es) volta(s) da sessão para exibição no card e destaque em roxo
   const fastestLapsInfo = useMemo(() => {
@@ -198,9 +210,16 @@ export default function SessionDetailDrawer({
         <div className="p-4 sm:p-6 border-b border-white/10 flex items-center justify-between gap-3 shrink-0">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-400">
-                Sessão Finalizada
-              </span>
+              {isNoTimedLapsSession ? (
+                <span className="inline-flex items-center gap-1.5 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase text-amber-300 border border-amber-500/30">
+                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-400" />
+                  <span>Sessão Finalizada • Sem Tempos</span>
+                </span>
+              ) : (
+                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-400">
+                  Sessão Finalizada
+                </span>
+              )}
               <span className="text-[11px] sm:text-xs text-f1-subtle">{session.date} · {session.time}</span>
             </div>
             <h3 className="text-lg sm:text-2xl font-black uppercase text-white mt-1 truncate">
@@ -324,7 +343,9 @@ export default function SessionDetailDrawer({
               ) : (
                 <>
                   <p className="font-mono text-base sm:text-xl font-bold text-white/40 mt-1">—</p>
-                  <p className="text-xs text-f1-subtle truncate">Sem dados de velocidade</p>
+                  <p className="text-xs text-f1-subtle truncate">
+                    {isNoTimedLapsSession ? "Sem telemetria registrada" : "Sem dados de velocidade"}
+                  </p>
                 </>
               )}
             </div>
@@ -341,7 +362,12 @@ export default function SessionDetailDrawer({
               <Timer className="h-3.5 w-3.5 text-purple-400 shrink-0" />
               <span className="truncate">Volta Mais Rápida</span>
             </div>
-            {fastestLapInfo ? (
+            {isNoTimedLapsSession ? (
+              <>
+                <p className="font-mono text-base sm:text-xl font-bold text-amber-300 mt-1">Sem Tempos</p>
+                <p className="text-xs text-amber-200/70 truncate">Sessão sem voltas cronometradas</p>
+              </>
+            ) : fastestLapInfo ? (
               <>
                 <div className={`flex items-baseline justify-between gap-2 mt-1 ${flCarousel.isTied ? "px-2.5" : ""}`}>
                   <p className="font-mono tabular-nums text-base sm:text-xl font-bold text-purple-400 truncate">{fastestLapInfo.best_lap}</p>
@@ -373,6 +399,21 @@ export default function SessionDetailDrawer({
             )}
           </div>
         </div>
+
+        {/* Banner de Sessão sem Tempos Cronometrados */}
+        {isNoTimedLapsSession && (
+          <div className="mx-4 sm:mx-6 mt-4 p-3.5 sm:p-4 rounded-xl border border-amber-500/30 bg-amber-950/20 flex items-start gap-3 text-amber-200">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-400 mt-0.5" />
+            <div className="min-w-0">
+              <h4 className="text-xs sm:text-sm font-bold text-amber-200">
+                Sessão sem tempos cronometrados registrados
+              </h4>
+              <p className="text-[11px] sm:text-xs text-amber-300/80 mt-0.5 leading-relaxed">
+                Nenhum piloto completou voltas rápidas oficiais durante esta sessão (possível decorrência de interrupção com bandeira vermelha, paralisação ou condições de pista).
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Setores Mais Rápidos (Abaixo dos cards nas sessões que não são corrida) */}
         {!isRaceOrSprint && bestSectors && (bestSectors.s1 || bestSectors.s2 || bestSectors.s3) && (
@@ -630,16 +671,17 @@ export default function SessionDetailDrawer({
                     {results.map((r, i) => {
                       const color = getTeamColor(r.team_name, r.team_color);
                       const abbr = getTeamAbbr(r.team_name);
-                      const isLeader = (r.finishing_position || i + 1) === 1;
+                      const isLeader = !isNoTimedLapsSession && (r.finishing_position || i + 1) === 1;
 
                       return (
                         <div
                           key={`${r.driver_full_name}-${i}`}
                           className="grid grid-cols-[32px_1fr_76px_62px] sm:grid-cols-[40px_1fr_65px_95px_95px_95px] gap-1.5 sm:gap-2 py-2.5 items-center hover:bg-white/[0.02]"
                         >
-                          <span className={`font-mono tabular-nums text-center font-bold ${isLeader ? "text-purple-400 font-black" : "text-white/60"
-                            }`}>
-                            P{r.finishing_position || i + 1}
+                          <span className={`font-mono tabular-nums text-center font-bold ${
+                            isNoTimedLapsSession ? "text-white/40" : isLeader ? "text-purple-400 font-black" : "text-white/60"
+                          }`}>
+                            {isNoTimedLapsSession ? "—" : `P${r.finishing_position || i + 1}`}
                           </span>
 
                           <DriverLink
@@ -685,7 +727,9 @@ export default function SessionDetailDrawer({
                           </TeamLink>
 
                           <div className="flex justify-end">
-                            {isLeader ? (
+                            {isNoTimedLapsSession ? (
+                              <span className="font-mono tabular-nums text-right text-[11px] text-white/40">—</span>
+                            ) : isLeader ? (
                               <span
                                 title="Melhor Volta da Sessão"
                                 className="inline-flex items-center gap-1 rounded bg-purple-500/20 border border-purple-500/40 px-1.5 py-0.5 text-purple-300 font-bold font-mono tabular-nums text-[11px] shadow-[0_0_10px_rgba(168,85,247,0.3)]"
@@ -701,14 +745,15 @@ export default function SessionDetailDrawer({
                           </div>
 
                           {/* Delta to Leader's Best Lap */}
-                          <span className={`font-mono tabular-nums text-right text-[11px] truncate ${isLeader ? "text-purple-400 font-bold" : "text-white/80"
-                            }`}>
-                            {r.gap_to_leader || (isLeader ? "Líder" : "—")}
+                          <span className={`font-mono tabular-nums text-right text-[11px] truncate ${
+                            isNoTimedLapsSession ? "text-white/40" : isLeader ? "text-purple-400 font-bold" : "text-white/80"
+                          }`}>
+                            {isNoTimedLapsSession ? "—" : r.gap_to_leader || (isLeader ? "Líder" : "—")}
                           </span>
 
                           {/* Interval to Car Ahead */}
                           <span className="font-mono tabular-nums text-right text-[11px] text-white/50 hidden sm:block">
-                            {r.interval_to_car_ahead || (isLeader ? "-" : "—")}
+                            {isNoTimedLapsSession ? "—" : r.interval_to_car_ahead || (isLeader ? "-" : "—")}
                           </span>
                         </div>
                       );

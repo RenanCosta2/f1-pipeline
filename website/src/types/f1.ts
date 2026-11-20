@@ -218,6 +218,7 @@ export interface RaceWeekendInfo {
         time: string;
         completed: boolean;
         waiting_data?: boolean;
+        no_timed_laps?: boolean;
         session_date_utc?: string;
         leader?: string;
         best_lap?: string;

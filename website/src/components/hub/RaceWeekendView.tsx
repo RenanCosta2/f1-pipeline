@@ -7,7 +7,8 @@ import {
   Calendar,
   ChevronRight,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertCircle
 } from "lucide-react";
 import { RaceWeekendInfo } from "@/types/f1";
 import DriverLink, { parseDriverNames } from "@/lib/driverUtils";
@@ -32,6 +33,7 @@ interface Props {
     date: string;
     time: string;
     completed: boolean;
+    no_timed_laps?: boolean;
   }) => void;
 }
 
@@ -368,7 +370,8 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                             session_name: session.session_name,
                             date: session.date,
                             time: session.time,
-                            completed: session.completed
+                            completed: session.completed,
+                            no_timed_laps: session.no_timed_laps
                           });
                         }
                       }}
@@ -380,7 +383,8 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                           session_name: session.session_name,
                           date: session.date,
                           time: session.time,
-                          completed: session.completed
+                          completed: session.completed,
+                          no_timed_laps: session.no_timed_laps
                         })
                       }
                       className={`relative rounded-xl border p-3.5 transition-all min-h-[60px] flex flex-row sm:flex-col items-center sm:items-stretch justify-between gap-3 ${isClickable
@@ -397,7 +401,9 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                             className={`flex h-7 w-7 sm:h-5 sm:w-5 flex-shrink-0 items-center justify-center rounded-lg sm:rounded-full text-xs sm:text-[10px] font-mono font-black ${isWaitingData
                               ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                               : isClickable
-                                ? "bg-f1-red/20 text-f1-red sm:bg-white/10 sm:text-white/80"
+                                ? session.no_timed_laps
+                                  ? "bg-sky-500/20 text-sky-300 sm:bg-sky-500/10 sm:text-sky-300 border border-sky-500/30"
+                                  : "bg-f1-red/20 text-f1-red sm:bg-white/10 sm:text-white/80"
                                 : "bg-white/5 text-white/40"
                               }`}
                           >
@@ -407,9 +413,16 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                           {/* Status Badge Desktop */}
                           <div className="hidden sm:block">
                             {session.completed ? (
-                              <span className="font-mono text-[10px] font-bold uppercase text-emerald-400">
-                                Finalizado
-                              </span>
+                              session.no_timed_laps ? (
+                                <span className="inline-flex items-center gap-1 font-mono text-[10px] font-bold uppercase text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                  <AlertCircle className="h-3 w-3 shrink-0 text-amber-400" />
+                                  <span>Sem Tempos</span>
+                                </span>
+                              ) : (
+                                <span className="font-mono text-[10px] font-bold uppercase text-emerald-400">
+                                  Finalizado
+                                </span>
+                              )
                             ) : isWaitingData ? (
                               <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300">
                                 <span className="relative flex h-2 w-2">
@@ -440,7 +453,9 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                           </p>
                           <p className="sm:hidden text-[11px] text-f1-subtle font-mono mt-0.5">
                             {session.date} · <strong className="text-white">{session.time}</strong>
-                            {session.leader ? ` · Líder: ${session.leader.split(" ").pop()}` : ""}
+                            {session.no_timed_laps
+                              ? " · Sem tempos oficiais"
+                              : session.leader ? ` · Líder: ${session.leader.split(" ").pop()}` : ""}
                           </p>
                         </div>
                       </div>
@@ -453,7 +468,16 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                             <p className="text-[9px] uppercase font-bold text-white/40">{session.date}</p>
                             <p className="font-mono font-bold text-white text-xs">{session.time}</p>
                           </div>
-                          {session.leader && (
+                          {session.no_timed_laps ? (
+                            <div className="text-right max-w-[100px]">
+                              <p className="text-[8px] uppercase font-bold text-amber-400 leading-none">
+                                Status
+                              </p>
+                              <p className="text-[10px] font-semibold text-amber-300 truncate mt-0.5" title="Sessão sem voltas cronometradas registradas">
+                                Sem Tempos
+                              </p>
+                            </div>
+                          ) : session.leader ? (
                             <div className="text-right max-w-[85px]">
                               <p className="text-[8px] uppercase font-bold text-emerald-400/80 leading-none">
                                 Líder
@@ -468,15 +492,19 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                                 </DriverLink>
                               </p>
                             </div>
-                          )}
+                          ) : null}
                         </div>
 
                         {/* Mobile Action / Status Pill */}
                         <div className="flex sm:hidden items-center gap-1.5">
                           {isClickable ? (
                             <>
-                              <span className="inline-flex items-center gap-1 rounded-lg bg-f1-red/15 border border-f1-red/30 px-2.5 py-1.5 text-[11px] font-bold text-f1-red">
-                                <span>Tempos</span>
+                              <span className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-bold ${
+                                session.no_timed_laps
+                                  ? "bg-amber-500/15 border border-amber-500/30 text-amber-300"
+                                  : "bg-f1-red/15 border border-f1-red/30 text-f1-red"
+                              }`}>
+                                <span>{session.no_timed_laps ? "Detalhes" : "Tempos"}</span>
                                 <ChevronRight className="h-3.5 w-3.5" />
                               </span>
                               <Link
@@ -503,8 +531,10 @@ export default function RaceWeekendView({ raceInfo, year, onSelectSession }: Pro
                         {/* Desktop Footer Action */}
                         {isClickable && (
                           <div className="hidden sm:flex items-center justify-between gap-1.5 pt-0.5">
-                            <div className="text-[10px] font-bold text-f1-red flex items-center gap-0.5">
-                              <span>Ver tempos</span>
+                            <div className={`text-[10px] font-bold flex items-center gap-0.5 ${
+                              session.no_timed_laps ? "text-sky-400" : "text-f1-red"
+                            }`}>
+                              <span>{session.no_timed_laps ? "Ver detalhes" : "Ver tempos"}</span>
                               <ChevronRight className="h-3 w-3" />
                             </div>
                             <Link

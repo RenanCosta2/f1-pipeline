@@ -748,16 +748,27 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
       if (eventRes.rows && eventRes.rows.length > 0) {
         const event = eventRes.rows[0];
 
-        // 2. Check completed sessions in v_sessions_summary to attach real leader & best lap
+        // 2. Check completed sessions in v_sessions_summary to attach real leader, best lap & detect adverse weather
         const completedRes = await pool.query(`
-          SELECT session_name, driver_full_name, best_lap
+          SELECT 
+            session_name,
+            COUNT(*) as driver_count,
+            COUNT(CASE WHEN best_lap IS NOT NULL AND best_lap != '—' AND best_lap != '-' AND TRIM(best_lap) != '' THEN 1 END) as valid_laps_count,
+            MAX(CASE WHEN finishing_position = 1 THEN driver_full_name END) as leader_name,
+            MAX(CASE WHEN finishing_position = 1 THEN best_lap END) as leader_best_lap
           FROM website.v_sessions_summary
-          WHERE year = $1 AND CAST(round_number AS TEXT) = CAST($2 AS TEXT) AND finishing_position = 1
+          WHERE year = $1 AND CAST(round_number AS TEXT) = CAST($2 AS TEXT)
+          GROUP BY session_name
         `, [targetYear, targetRound]);
 
-        const completedMap = new Map<string, { driver: string; lap: string }>();
+        const completedMap = new Map<string, { driver?: string; lap?: string; driverCount: number; validLapsCount: number }>();
         for (const row of completedRes.rows) {
-          completedMap.set(row.session_name, { driver: row.driver_full_name, lap: row.best_lap });
+          completedMap.set(row.session_name, {
+            driver: row.leader_name || undefined,
+            lap: row.leader_best_lap || undefined,
+            driverCount: Number(row.driver_count) || 0,
+            validLapsCount: Number(row.valid_laps_count) || 0
+          });
         }
 
         const now = new Date();
@@ -812,7 +823,8 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
             const minutes = (minStr || "00").padStart(2, "0");
 
             const sessionResult = completedMap.get(rawSess.session_name);
-            const isCompleted = Boolean(sessionResult);
+            const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
+            const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
             const isWaitingData = !isCompleted && now >= sDateUtc;
 
             return {
@@ -823,9 +835,10 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
               time: `${hours}:${minutes} BRT`,
               completed: isCompleted,
               waiting_data: isWaitingData,
+              no_timed_laps: noTimedLaps,
               session_date_utc: sDateUtc.toISOString(),
-              leader: sessionResult?.driver,
-              best_lap: sessionResult?.lap
+              leader: noTimedLaps ? undefined : sessionResult?.driver,
+              best_lap: noTimedLaps ? undefined : sessionResult?.lap
             };
           });
 
@@ -850,7 +863,8 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
             const minutes = String(def.minBRT).padStart(2, '0');
 
             const sessionResult = completedMap.get(def.session_name);
-            const isCompleted = Boolean(sessionResult);
+            const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
+            const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
             const isWaitingData = !isCompleted && now >= sDateUtc;
 
             return {
@@ -861,9 +875,10 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
               time: `${hours}:${minutes} BRT`,
               completed: isCompleted,
               waiting_data: isWaitingData,
+              no_timed_laps: noTimedLaps,
               session_date_utc: sDateUtc.toISOString(),
-              leader: sessionResult?.driver,
-              best_lap: sessionResult?.lap
+              leader: noTimedLaps ? undefined : sessionResult?.driver,
+              best_lap: noTimedLaps ? undefined : sessionResult?.lap
             };
           });
 
