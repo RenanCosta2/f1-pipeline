@@ -392,197 +392,193 @@ export default function BetweenRacesView({
               </span>
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-f1-subtle transition-transform duration-200 shrink-0 ${
-                highlightsOpen ? "rotate-180 text-f1-red" : ""
-              }`}
+              className={`h-4 w-4 text-f1-subtle transition-transform duration-200 shrink-0 ${highlightsOpen ? "rotate-180 text-f1-red" : ""
+                }`}
             />
           </button>
 
           <div
-            className={`${
-              highlightsOpen ? "grid mt-2.5" : "hidden"
-            } sm:grid sm:mt-0 grid-cols-2 gap-2.5 sm:gap-4`}
+            className={`${highlightsOpen ? "grid mt-2.5" : "hidden"
+              } sm:grid sm:mt-0 grid-cols-2 gap-2.5 sm:gap-4`}
           >
-          {/* Card: Volta Mais Rápida */}
-          <div
-            onMouseEnter={flCarousel.pause}
-            onMouseLeave={flCarousel.resume}
-            className={`relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] py-3 sm:py-4 flex flex-col justify-between ${
-              flCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
-            }`}
-          >
-            <TieCarouselEdgeArrows carousel={flCarousel} accent="purple" size="xs" />
-            <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-purple-500/20">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-purple-400 shrink-0" />
-                <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-300 truncate">
-                  Volta Rápida
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <TieCarouselDots carousel={flCarousel} accent="purple" />
-                {fastestLapResult && (
-                  <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded">
-                    {formatLapTimeDisplay(fastestLapResult.best_lap)}
+            {/* Card: Volta Mais Rápida */}
+            <div
+              onMouseEnter={flCarousel.pause}
+              onMouseLeave={flCarousel.resume}
+              className={`relative overflow-hidden rounded-xl border border-purple-500/30 bg-[#13111E] py-3 sm:py-4 flex flex-col justify-between ${flCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
+                }`}
+            >
+              <TieCarouselEdgeArrows carousel={flCarousel} accent="purple" size="xs" />
+              <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-purple-500/20">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-purple-400 shrink-0" />
+                  <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-purple-300 truncate">
+                    Volta Rápida
                   </span>
-                )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <TieCarouselDots carousel={flCarousel} accent="purple" />
+                  {fastestLapResult && (
+                    <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-purple-300 bg-purple-500/15 border border-purple-500/30 px-1.5 sm:px-2 py-0.5 rounded">
+                      {formatLapTimeDisplay(fastestLapResult.best_lap)}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {fastestLapResults.length > 0 ? (
-              <div className="mt-2.5 sm:mt-3">
-                <TieCarouselTrack
-                  carousel={flCarousel}
-                  items={fastestLapResults}
-                  keyExtractor={(item) => item.driver_id || item.driver_full_name}
-                  renderItem={(fl) => (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name}>
-                          <div
-                            className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
-                            style={{
-                              borderColor: getTeamColor(fl.team_name, fl.team_color),
-                            }}
-                          >
-                            {fl.driver_headshot_url ? (
-                              <img
-                                src={fl.driver_headshot_url}
-                                alt={fl.driver_full_name}
-                                className="h-full w-full object-cover object-top"
-                              />
-                            ) : (
-                              <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-purple-300">
-                                {fl.driver_full_name.slice(0, 2).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </DriverLink>
-                        <div className="min-w-0">
+              {fastestLapResults.length > 0 ? (
+                <div className="mt-2.5 sm:mt-3">
+                  <TieCarouselTrack
+                    carousel={flCarousel}
+                    items={fastestLapResults}
+                    keyExtractor={(item) => item.driver_id || item.driver_full_name}
+                    renderItem={(fl) => (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name}>
-                            <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-purple-300 transition-colors">
-                              {fl.driver_full_name}
-                            </h4>
+                            <div
+                              className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 transition-transform hover:scale-105"
+                              style={{
+                                borderColor: getTeamColor(fl.team_name, fl.team_color),
+                              }}
+                            >
+                              {fl.driver_headshot_url ? (
+                                <img
+                                  src={fl.driver_headshot_url}
+                                  alt={fl.driver_full_name}
+                                  className="h-full w-full object-cover object-top"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-purple-300">
+                                  {fl.driver_full_name.slice(0, 2).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
                           </DriverLink>
-                          <TeamLink
-                            teamName={fl.team_name}
-                            teamId={fl.team_id}
-                            className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
-                          >
-                            {fl.team_name}
-                          </TeamLink>
+                          <div className="min-w-0">
+                            <DriverLink driverId={fl.driver_id} driverName={fl.driver_full_name}>
+                              <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-purple-300 transition-colors">
+                                {fl.driver_full_name}
+                              </h4>
+                            </DriverLink>
+                            <TeamLink
+                              teamName={fl.team_name}
+                              teamId={fl.team_id}
+                              className="text-[10px] sm:text-xs font-medium text-f1-subtle hover:text-purple-300 hover:underline transition-colors truncate block"
+                            >
+                              {fl.team_name}
+                            </TeamLink>
+                          </div>
                         </div>
+
+                        <DriverLink
+                          driverId={fl.driver_id}
+                          driverName={fl.driver_full_name}
+                          className="hidden lg:inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group shrink-0"
+                          title={`Ver perfil de ${fl.driver_full_name}`}
+                        >
+                          <span>Perfil</span>
+                          <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        </DriverLink>
                       </div>
-
-                      <DriverLink
-                        driverId={fl.driver_id}
-                        driverName={fl.driver_full_name}
-                        className="hidden lg:inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300 hover:bg-purple-500/20 hover:text-white transition-all group shrink-0"
-                        title={`Ver perfil de ${fl.driver_full_name}`}
-                      >
-                        <span>Perfil</span>
-                        <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </DriverLink>
-                    </div>
-                  )}
-                />
-              </div>
-            ) : (
-              <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
-                Sem registro
-              </div>
-            )}
-          </div>
-
-          {/* Card: Maior Escalador */}
-          <div
-            onMouseEnter={climberCarousel.pause}
-            onMouseLeave={climberCarousel.resume}
-            className={`relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] py-3 sm:py-4 flex flex-col justify-between ${
-              climberCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
-            }`}
-          >
-            <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
-            <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-emerald-500/20">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 shrink-0" />
-                <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300 truncate">
-                  <span className="sm:hidden">Escalador</span>
-                  <span className="hidden sm:inline">Maior Escalador</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <TieCarouselDots carousel={climberCarousel} accent="emerald" />
-                {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
-                  <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded">
-                    +{biggestClimber.delta_position} <span className="hidden sm:inline">pos</span>
-                  </span>
-                ) : null}
-              </div>
+                    )}
+                  />
+                </div>
+              ) : (
+                <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
+                  Sem registro
+                </div>
+              )}
             </div>
 
-            {biggestClimbers.length > 0 ? (
-              <div className="mt-2.5 sm:mt-3">
-                <TieCarouselTrack
-                  carousel={climberCarousel}
-                  items={biggestClimbers}
-                  keyExtractor={(item) => item.driver_id || item.driver_full_name}
-                  renderItem={(climber) => (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name}>
-                          <div
-                            className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
-                            style={{
-                              borderColor: getTeamColor(climber.team_name, climber.team_color),
-                            }}
-                          >
-                            {climber.driver_headshot_url ? (
-                              <img
-                                src={climber.driver_headshot_url}
-                                alt={climber.driver_full_name}
-                                className="h-full w-full object-cover object-top"
-                              />
-                            ) : (
-                              <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-emerald-300">
-                                {climber.driver_full_name.slice(0, 2).toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                        </DriverLink>
-                        <div className="min-w-0">
+            {/* Card: Maior Escalador */}
+            <div
+              onMouseEnter={climberCarousel.pause}
+              onMouseLeave={climberCarousel.resume}
+              className={`relative overflow-hidden rounded-xl border border-emerald-500/30 bg-[#101716] py-3 sm:py-4 flex flex-col justify-between ${climberCarousel.isTied ? "px-5 sm:px-6" : "px-3 sm:px-4"
+                }`}
+            >
+              <TieCarouselEdgeArrows carousel={climberCarousel} accent="emerald" size="xs" />
+              <div className="flex items-center justify-between gap-1.5 pb-2 sm:pb-2.5 border-b border-emerald-500/20">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="font-mono text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-300 truncate">
+                    <span className="sm:hidden">Escalador</span>
+                    <span className="hidden sm:inline">Maior Escalador</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <TieCarouselDots carousel={climberCarousel} accent="emerald" />
+                  {biggestClimber && biggestClimber.delta_position && biggestClimber.delta_position > 0 ? (
+                    <span className="font-mono tabular-nums text-[11px] sm:text-sm font-black text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 sm:px-2 py-0.5 rounded">
+                      +{biggestClimber.delta_position} <span className="hidden sm:inline">pos</span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {biggestClimbers.length > 0 ? (
+                <div className="mt-2.5 sm:mt-3">
+                  <TieCarouselTrack
+                    carousel={climberCarousel}
+                    items={biggestClimbers}
+                    keyExtractor={(item) => item.driver_id || item.driver_full_name}
+                    renderItem={(climber) => (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                           <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name}>
-                            <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
-                              {climber.driver_full_name}
-                            </h4>
+                            <div
+                              className="relative h-8 w-8 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border-2 bg-black/40 shadow-md transition-transform hover:scale-105"
+                              style={{
+                                borderColor: getTeamColor(climber.team_name, climber.team_color),
+                              }}
+                            >
+                              {climber.driver_headshot_url ? (
+                                <img
+                                  src={climber.driver_headshot_url}
+                                  alt={climber.driver_full_name}
+                                  className="h-full w-full object-cover object-top"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center font-mono text-[10px] sm:text-xs font-black text-emerald-300">
+                                  {climber.driver_full_name.slice(0, 2).toUpperCase()}
+                                </span>
+                              )}
+                            </div>
                           </DriverLink>
-                          <div className="flex items-center gap-1 font-mono tabular-nums text-[10px] sm:text-xs font-bold">
-                            <span className="text-white/50">P{climber.grid_position ?? "—"}</span>
-                            <span className="text-emerald-400">➔</span>
-                            <span className="text-emerald-400">P{climber.finishing_position ?? "—"}</span>
+                          <div className="min-w-0">
+                            <DriverLink driverId={climber.driver_id} driverName={climber.driver_full_name}>
+                              <h4 className="text-xs sm:text-base font-black text-white truncate hover:text-emerald-300 transition-colors">
+                                {climber.driver_full_name}
+                              </h4>
+                            </DriverLink>
+                            <div className="flex items-center gap-1 font-mono tabular-nums text-[10px] sm:text-xs font-bold">
+                              <span className="text-white/50">P{climber.grid_position ?? "—"}</span>
+                              <span className="text-emerald-400">➔</span>
+                              <span className="text-emerald-400">P{climber.finishing_position ?? "—"}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <DriverLink
-                        driverId={climber.driver_id}
-                        driverName={climber.driver_full_name}
-                        className="hidden lg:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group shrink-0"
-                        title={`Ver perfil de ${climber.driver_full_name}`}
-                      >
-                        <span>Perfil</span>
-                        <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </DriverLink>
-                    </div>
-                  )}
-                />
-              </div>
-            ) : (
-              <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
-                Sem registro
-              </div>
-            )}
-          </div>
+                        <DriverLink
+                          driverId={climber.driver_id}
+                          driverName={climber.driver_full_name}
+                          className="hidden lg:inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-white transition-all group shrink-0"
+                          title={`Ver perfil de ${climber.driver_full_name}`}
+                        >
+                          <span>Perfil</span>
+                          <ArrowUpRight className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        </DriverLink>
+                      </div>
+                    )}
+                  />
+                </div>
+              ) : (
+                <div className="mt-2.5 py-2 text-center text-[11px] text-f1-subtle font-medium">
+                  Sem registro
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -604,23 +600,29 @@ function NextRaceCountdownCard({
   const targetTime = useMemo(() => {
     if (upcomingRace?.race_timestamp_utc) {
       const parsed = new Date(upcomingRace.race_timestamp_utc).getTime();
-      if (!isNaN(parsed) && parsed > Date.now()) return parsed;
+      if (!isNaN(parsed)) return parsed;
     }
-    // Fallback: 4 days ahead
-    const fallback = new Date();
-    fallback.setDate(fallback.getDate() + 4);
-    fallback.setHours(10, 0, 0, 0);
-    return fallback.getTime();
+    if (upcomingRace?.event_date) {
+      const parsed = new Date(upcomingRace.event_date).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return null;
   }, [upcomingRace]);
 
   const [remaining, setRemaining] = useState<number>(0);
 
   useEffect(() => {
+    if (!targetTime) {
+      setRemaining(0);
+      return;
+    }
     const update = () => setRemaining(Math.max(0, targetTime - Date.now()));
     update();
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
   }, [targetTime]);
+
+  const isLiveOrStarted = Boolean(targetTime && Date.now() >= targetTime);
 
   const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
   const hours = Math.floor((remaining / (1000 * 60 * 60)) % 24);
@@ -683,36 +685,48 @@ function NextRaceCountdownCard({
         {/* Real Countdown Grid */}
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-f1-subtle mb-2 sm:mb-3">
-            Luzes se apagam em
+            {isLiveOrStarted ? "Status da Largada" : "Luzes se apagam em"}
           </p>
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
-              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
-                {String(days).padStart(2, "0")}
-              </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Dias</span>
+              {isLiveOrStarted ? (
+            <div className="rounded-xl border border-f1-red/30 bg-f1-red/10 p-3.5 sm:p-4 text-center">
+              <div className="inline-flex items-center gap-2 font-mono text-xs sm:text-sm font-black uppercase text-f1-red">
+                <span className="live-dot" />
+                <span>Luzes Apagadas • GP em Andamento</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1.5 leading-relaxed">
+                A largada oficial desta etapa já ocorreu. Acompanhe a corrida na aba &quot;Fim de Semana ao Vivo&quot;.
+              </p>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
-              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
-                {String(hours).padStart(2, "0")}
-              </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Horas</span>
+          ) : (
+            <div className="grid grid-cols-4 gap-2 text-center">
+              <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+                <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
+                  {String(days).padStart(2, "0")}
+                </span>
+                <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Dias</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+                <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
+                  {String(hours).padStart(2, "0")}
+                </span>
+                <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Horas</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+                <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
+                  {String(minutes).padStart(2, "0")}
+                </span>
+                <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Min</span>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
+                <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-f1-red">
+                  {String(seconds).padStart(2, "0")}
+                </span>
+                <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Seg</span>
+              </div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
-              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-white">
-                {String(minutes).padStart(2, "0")}
-              </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Min</span>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/40 p-2.5 sm:p-4">
-              <span className="font-mono tabular-nums text-xl sm:text-3xl font-black text-f1-red">
-                {String(seconds).padStart(2, "0")}
-              </span>
-              <span className="block text-[9px] font-bold uppercase text-f1-subtle mt-0.5 sm:mt-1">Seg</span>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
+        );
 }

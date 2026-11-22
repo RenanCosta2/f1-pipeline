@@ -144,9 +144,9 @@ function resolveTier(params: unknown[], tier?: QueryTier): QueryTier {
 // Fachada com a mesma assinatura de `pool.query(sql, params)` usada em todo o arquivo.
 const pool = rawPool
   ? {
-      query: (sql: string, params: unknown[] = [], tier?: QueryTier): Promise<QueryResult> =>
-        (resolveTier(params, tier) === 'live' ? cachedLiveQuery : cachedStandardQuery)(sql, params),
-    }
+    query: (sql: string, params: unknown[] = [], tier?: QueryTier): Promise<QueryResult> =>
+      (resolveTier(params, tier) === 'live' ? cachedLiveQuery : cachedStandardQuery)(sql, params),
+  }
   : null;
 
 interface CacheEntry<T> {
@@ -449,7 +449,8 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
         SELECT 
           round_number,
           event_date,
-          race_status
+          race_status,
+          sessions_schedule
         FROM website.v_circuit_season_summary
         WHERE year = $1 AND CAST(round_number AS INTEGER) > 0
         ORDER BY CAST(round_number AS INTEGER) ASC
@@ -463,9 +464,42 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
           const raceDate = new Date(r.event_date);
           const roundNum = parseInt(r.round_number);
 
-          // O fim de semana da etapa começa pelo menos 3 dias (72h) antes da corrida (quinta/sexta-feira)
-          const weekendStart = new Date(raceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
-          const weekendEnd = new Date(raceDate.getTime() + 24 * 60 * 60 * 1000);
+          // Parse sessions_schedule se disponível para pegar data exata do TL1 e da Corrida
+          let parsedSchedule: any[] = [];
+          if (r.sessions_schedule) {
+            try {
+              parsedSchedule = typeof r.sessions_schedule === "string" ? JSON.parse(r.sessions_schedule) : r.sessions_schedule;
+            } catch { }
+          }
+
+          let weekendStart: Date;
+          let weekendEnd: Date;
+
+          const raceSession = Array.isArray(parsedSchedule)
+            ? parsedSchedule.find((s) => s.session_type === "R" || s.session_name === "Race")
+            : null;
+
+          const firstSession = Array.isArray(parsedSchedule) && parsedSchedule.length > 0
+            ? parsedSchedule[0]
+            : null;
+
+          if (firstSession?.session_date_utc) {
+            // Inicia 24h antes da primeira sessão (ex: quinta-feira de coletivas)
+            weekendStart = new Date(new Date(firstSession.session_date_utc).getTime() - 24 * 60 * 60 * 1000);
+          } else {
+            weekendStart = new Date(raceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+          }
+
+          if (raceSession?.session_date_utc) {
+            // O fim de semana dura até 12 horas após a largada da corrida (cobrindo prova, pódio e publicação)
+            weekendEnd = new Date(new Date(raceSession.session_date_utc).getTime() + 12 * 60 * 60 * 1000);
+          } else {
+            // Fallback: 48h após event_date
+            weekendEnd = new Date(raceDate.getTime() + 48 * 60 * 60 * 1000);
+          }
+
+          // Se a prova estiver explicitamente "In Progress", o fim de semana está vivo
+          const isLiveStatus = r.race_status === "In Progress" || (now >= weekendStart && now <= weekendEnd && r.race_status !== "Completed");
 
           let nextWeekendStart: Date;
           if (i + 1 < rows.length) {
@@ -476,10 +510,9 @@ export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?:
           }
 
           if (now >= weekendStart && now < nextWeekendStart) {
-            const isLiveWeekend = now >= weekendStart && now <= weekendEnd;
             return {
               round: roundNum,
-              isLiveWeekend
+              isLiveWeekend: isLiveStatus
             };
           }
         }
