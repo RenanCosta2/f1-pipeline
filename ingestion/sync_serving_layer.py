@@ -163,13 +163,13 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
 
     postgres_url = postgres_url.strip("'\"")
 
-    # A carga usa o Session Pooler (porta 5432): sessão dedicada, necessária para COPY, DDL e a troca
-    # atômica de tabelas. O site lê pelo Transaction Pooler (6543) via POSTGRES_WEB_URL.
+    # Pipeline loading uses Session Pooler (port 5432): dedicated session required for COPY, DDL, and atomic table swaps.
+    # The website connects via Transaction Pooler (port 6543) through POSTGRES_WEB_URL.
     if "pooler.supabase.com:6543" in postgres_url:
         logger.warning(
-            "POSTGRES_CONNECTION_URL aponta para o Transaction Pooler (porta 6543). "
-            "A sincronizacao deve usar o Session Pooler (porta 5432); "
-            "a porta 6543 e reservada ao site (POSTGRES_WEB_URL)."
+            "POSTGRES_CONNECTION_URL points to Transaction Pooler (port 6543). "
+            "Synchronization should use Session Pooler (port 5432); "
+            "port 6543 is reserved for the website (POSTGRES_WEB_URL)."
         )
 
     if postgres_url.startswith("postgresql://"):
