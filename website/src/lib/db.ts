@@ -149,292 +149,292 @@ const pool = rawPool
   }
   : null;
 
-  async function queryOrFallback<T>(sql: string, params: any[], fallback: T, _ttlMs?: number): Promise<T> {
-    if (!pool) {
-      return fallback;
-    }
+async function queryOrFallback<T>(sql: string, params: any[], fallback: T, _ttlMs?: number): Promise<T> {
+  if (!pool) {
+    return fallback;
+  }
+  try {
+    let res;
     try {
-      let res;
-      try {
+      res = await pool.query(sql, params);
+    } catch (connErr: any) {
+      if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
         res = await pool.query(sql, params);
-      } catch (connErr: any) {
-        if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
-          res = await pool.query(sql, params);
-        } else {
-          throw connErr;
-        }
+      } else {
+        throw connErr;
       }
+    }
+    if (res.rows && res.rows.length > 0) {
+      const data = res.rows as unknown as T;
+      cache.set(cacheKey, { data, expiresAt: now + ttlMs });
+      return data;
+      return res.rows as unknown as T;
+    }
+    // Quando pool está ativo e a query retorna 0 linhas, respeitamos os dados reais do banco (vazio)
+    if (Array.isArray(fallback)) {
+      const emptyData = [] as unknown as T;
+      cache.set(cacheKey, { data: emptyData, expiresAt: now + ttlMs });
+      return emptyData;
+      return [] as unknown as T;
+    }
+    return fallback;
+  } catch (error) {
+    console.warn(`Query failed, returning fallback for: ${sql.slice(0, 70)}...`, error);
+    if (Array.isArray(fallback)) {
+      return [] as unknown as T;
+    }
+    return fallback;
+  }
+}
+
+let cachedYears: { data: number[]; expiresAt: number } | null = null;
+
+export async function getAvailableYears(): Promise<number[]> {
+  const now = Date.now();
+  if (cachedYears && cachedYears.expiresAt > now) {
+    return cachedYears.data;
+  }
+  const sql = `SELECT DISTINCT year FROM website.v_driver_standings ORDER BY year DESC`;
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [], 'live');
       if (res.rows && res.rows.length > 0) {
-        const data = res.rows as unknown as T;
-        cache.set(cacheKey, { data, expiresAt: now + ttlMs });
-        return data;
-        return res.rows as unknown as T;
+        const years = res.rows.map((r: any) => parseInt(r.year));
+        cachedYears = { data: years, expiresAt: now + 30 * 1000 };
+        return years;
+        return res.rows.map((r: any) => parseInt(r.year));
       }
-      // Quando pool está ativo e a query retorna 0 linhas, respeitamos os dados reais do banco (vazio)
-      if (Array.isArray(fallback)) {
-        const emptyData = [] as unknown as T;
-        cache.set(cacheKey, { data: emptyData, expiresAt: now + ttlMs });
-        return emptyData;
-        return [] as unknown as T;
-      }
-      return fallback;
-    } catch (error) {
-      console.warn(`Query failed, returning fallback for: ${sql.slice(0, 70)}...`, error);
-      if (Array.isArray(fallback)) {
-        return [] as unknown as T;
-      }
-      return fallback;
     }
+  } catch (e) {
+    console.warn("Failed to fetch available years, returning defaults.", e);
   }
+  return [2026, 2025, 2024, 2023, 2022];
+}
 
-  let cachedYears: { data: number[]; expiresAt: number } | null = null;
+export async function getLatestSeasonYear(): Promise<number> {
+  const years = await getAvailableYears();
+  return years[0] || 2026;
+}
 
-  export async function getAvailableYears(): Promise<number[]> {
-    const now = Date.now();
-    if (cachedYears && cachedYears.expiresAt > now) {
-      return cachedYears.data;
-    }
-    const sql = `SELECT DISTINCT year FROM website.v_driver_standings ORDER BY year DESC`;
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [], 'live');
-        if (res.rows && res.rows.length > 0) {
-          const years = res.rows.map((r: any) => parseInt(r.year));
-          cachedYears = { data: years, expiresAt: now + 30 * 1000 };
-          return years;
-          return res.rows.map((r: any) => parseInt(r.year));
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch available years, returning defaults.", e);
-    }
-    return [2026, 2025, 2024, 2023, 2022];
-  }
-
-  export async function getLatestSeasonYear(): Promise<number> {
-    const years = await getAvailableYears();
-    return years[0] || 2026;
-  }
-
-  export async function getDriverStandings(year?: number): Promise<DriverStanding[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getDriverStandings(year?: number): Promise<DriverStanding[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * 
     FROM website.v_driver_standings 
     WHERE year = $1 
     ORDER BY championship_position ASC
   `;
-    const rows = await queryOrFallback<any[]>(sql, [targetYear], mockDriverStandings);
+  const rows = await queryOrFallback<any[]>(sql, [targetYear], mockDriverStandings);
 
-    return rows.map((r, index) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      sprint_wins: Number(r.sprint_wins) || 0,
-      race_wins: Number(r.race_wins) || 0,
-      total_wins: Number(r.total_wins) || 0,
-      sprint_podiums: Number(r.sprint_podiums) || 0,
-      race_podiums: Number(r.race_podiums) || 0,
-      total_podiums: Number(r.total_podiums) || 0,
-      total_points: Number(r.total_points) || 0,
-      sprint_points: Number(r.sprint_points) || 0,
-      race_points: Number(r.race_points) || 0,
-      championship_position: Number(r.championship_position) || (index + 1)
-    }));
-  }
+  return rows.map((r, index) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    sprint_wins: Number(r.sprint_wins) || 0,
+    race_wins: Number(r.race_wins) || 0,
+    total_wins: Number(r.total_wins) || 0,
+    sprint_podiums: Number(r.sprint_podiums) || 0,
+    race_podiums: Number(r.race_podiums) || 0,
+    total_podiums: Number(r.total_podiums) || 0,
+    total_points: Number(r.total_points) || 0,
+    sprint_points: Number(r.sprint_points) || 0,
+    race_points: Number(r.race_points) || 0,
+    championship_position: Number(r.championship_position) || (index + 1)
+  }));
+}
 
-  export async function getConstructorStandings(year?: number): Promise<ConstructorStanding[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getConstructorStandings(year?: number): Promise<ConstructorStanding[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * FROM website.v_constructor_standings 
     WHERE year = $1 
     ORDER BY championship_position ASC
   `;
-    const rows = await queryOrFallback<any[]>(sql, [targetYear], mockConstructorStandings);
+  const rows = await queryOrFallback<any[]>(sql, [targetYear], mockConstructorStandings);
 
-    return rows.map((r, index) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      sprint_wins: Number(r.sprint_wins) || 0,
-      race_wins: Number(r.race_wins) || 0,
-      total_wins: Number(r.total_wins) || 0,
-      sprint_podiums: Number(r.sprint_podiums) || 0,
-      race_podiums: Number(r.race_podiums) || 0,
-      total_podiums: Number(r.total_podiums) || 0,
-      total_points: Number(r.total_points) || 0,
-      sprint_points: Number(r.sprint_points) || 0,
-      race_points: Number(r.race_points) || 0,
-      championship_position: Number(r.championship_position) || (index + 1)
-    }));
-  }
+  return rows.map((r, index) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    sprint_wins: Number(r.sprint_wins) || 0,
+    race_wins: Number(r.race_wins) || 0,
+    total_wins: Number(r.total_wins) || 0,
+    sprint_podiums: Number(r.sprint_podiums) || 0,
+    race_podiums: Number(r.race_podiums) || 0,
+    total_podiums: Number(r.total_podiums) || 0,
+    total_points: Number(r.total_points) || 0,
+    sprint_points: Number(r.sprint_points) || 0,
+    race_points: Number(r.race_points) || 0,
+    championship_position: Number(r.championship_position) || (index + 1)
+  }));
+}
 
-  export async function getSeasonRacesSummary(year?: number): Promise<SeasonRaceSummary[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getSeasonRacesSummary(year?: number): Promise<SeasonRaceSummary[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * 
     FROM website.v_circuit_season_summary 
     WHERE year = $1 
     ORDER BY round_number ASC
   `;
-    const rows = await queryOrFallback<any[]>(sql, [targetYear], []);
-    return rows.map((r) => {
-      const raceWinnerTeamColor = r.race_winner_team_color
-        ? (r.race_winner_team_color.startsWith('#') ? r.race_winner_team_color : `#${r.race_winner_team_color}`)
-        : null;
-      const sprintWinnerTeamColor = r.sprint_winner_team_color
-        ? (r.sprint_winner_team_color.startsWith('#') ? r.sprint_winner_team_color : `#${r.sprint_winner_team_color}`)
-        : null;
-      const fastestLapTeamColor = r.fastest_lap_team_color
-        ? (r.fastest_lap_team_color.startsWith('#') ? r.fastest_lap_team_color : `#${r.fastest_lap_team_color}`)
-        : null;
+  const rows = await queryOrFallback<any[]>(sql, [targetYear], []);
+  return rows.map((r) => {
+    const raceWinnerTeamColor = r.race_winner_team_color
+      ? (r.race_winner_team_color.startsWith('#') ? r.race_winner_team_color : `#${r.race_winner_team_color}`)
+      : null;
+    const sprintWinnerTeamColor = r.sprint_winner_team_color
+      ? (r.sprint_winner_team_color.startsWith('#') ? r.sprint_winner_team_color : `#${r.sprint_winner_team_color}`)
+      : null;
+    const fastestLapTeamColor = r.fastest_lap_team_color
+      ? (r.fastest_lap_team_color.startsWith('#') ? r.fastest_lap_team_color : `#${r.fastest_lap_team_color}`)
+      : null;
 
-      return {
-        ...r,
-        round_number: Number(r.round_number),
-        total_dnfs: r.total_dnfs != null ? Number(r.total_dnfs) : 0,
-        completed_sessions_count: r.completed_sessions_count != null ? Number(r.completed_sessions_count) : 0,
+    return {
+      ...r,
+      round_number: Number(r.round_number),
+      total_dnfs: r.total_dnfs != null ? Number(r.total_dnfs) : 0,
+      completed_sessions_count: r.completed_sessions_count != null ? Number(r.completed_sessions_count) : 0,
 
-        // Format team colors
-        race_winner_team_color: raceWinnerTeamColor,
-        sprint_winner_team_color: sprintWinnerTeamColor,
-        fastest_lap_team_color: fastestLapTeamColor,
+      // Format team colors
+      race_winner_team_color: raceWinnerTeamColor,
+      sprint_winner_team_color: sprintWinnerTeamColor,
+      fastest_lap_team_color: fastestLapTeamColor,
 
-        // Numbers
-        race_winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
-        race_laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
-        race_total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
+      // Numbers
+      race_winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
+      race_laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
+      race_total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
 
-        sprint_winner_number: r.sprint_winner_number != null ? Number(r.sprint_winner_number) : null,
-        sprint_laps_completed: r.sprint_laps_completed != null ? Number(r.sprint_laps_completed) : null,
-        sprint_total_time_seconds: r.sprint_total_time_seconds != null ? Number(r.sprint_total_time_seconds) : null,
+      sprint_winner_number: r.sprint_winner_number != null ? Number(r.sprint_winner_number) : null,
+      sprint_laps_completed: r.sprint_laps_completed != null ? Number(r.sprint_laps_completed) : null,
+      sprint_total_time_seconds: r.sprint_total_time_seconds != null ? Number(r.sprint_total_time_seconds) : null,
 
-        fastest_lap_time_seconds: r.fastest_lap_time_seconds != null ? Number(r.fastest_lap_time_seconds) : null,
+      fastest_lap_time_seconds: r.fastest_lap_time_seconds != null ? Number(r.fastest_lap_time_seconds) : null,
 
-        // Aliases retrocompatíveis
-        driver_id: r.race_winner_driver_id || null,
-        winner_name: r.race_winner_driver || null,
-        winner_code: r.race_winner_code || null,
-        winner_headshot_url: r.race_winner_headshot_url || null,
-        winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
-        team_id: r.race_winner_team_id || null,
-        team_name: r.race_winner_team || null,
-        team_color: raceWinnerTeamColor,
-        laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
-        total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
-        time_formatted: r.race_time_formatted || null,
-      };
-    });
-  }
+      // Aliases retrocompatíveis
+      driver_id: r.race_winner_driver_id || null,
+      winner_name: r.race_winner_driver || null,
+      winner_code: r.race_winner_code || null,
+      winner_headshot_url: r.race_winner_headshot_url || null,
+      winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
+      team_id: r.race_winner_team_id || null,
+      team_name: r.race_winner_team || null,
+      team_color: raceWinnerTeamColor,
+      laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
+      total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
+      time_formatted: r.race_time_formatted || null,
+    };
+  });
+}
 
-  export async function getSeasonMatrix(year?: number): Promise<SeasonMatrixItem[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getSeasonMatrix(year?: number): Promise<SeasonMatrixItem[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * 
     FROM website.v_season_matrix 
     WHERE year = $1 
     ORDER BY championship_position ASC, round_number ASC
   `;
-    const rows = await queryOrFallback<any[]>(sql, [targetYear], []);
-    return rows.map((r) => ({
-      ...r,
-      year: Number(r.year),
-      round_number: Number(r.round_number),
-      driver_number: r.driver_number != null ? Number(r.driver_number) : null,
-      championship_position: Number(r.championship_position) || 0,
-      total_driver_points: Number(r.total_driver_points) || 0,
-      total_driver_wins: Number(r.total_driver_wins) || 0,
-      total_driver_podiums: Number(r.total_driver_podiums) || 0,
-      is_participated: Boolean(r.is_participated),
-      has_sprint: Boolean(r.has_sprint),
-      race_grid_position: r.race_grid_position != null ? Number(r.race_grid_position) : null,
-      race_finishing_position: r.race_finishing_position != null ? Number(r.race_finishing_position) : null,
-      laps_completed: r.laps_completed != null ? Number(r.laps_completed) : null,
-      race_points: Number(r.race_points) || 0,
-      sprint_grid_position: r.sprint_grid_position != null ? Number(r.sprint_grid_position) : null,
-      sprint_finishing_position: r.sprint_finishing_position != null ? Number(r.sprint_finishing_position) : null,
-      sprint_points: Number(r.sprint_points) || 0,
-      total_round_points: Number(r.total_round_points) || 0,
-      is_pole: Boolean(r.is_pole),
-      is_fastest_lap: Boolean(r.is_fastest_lap),
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      result_code: r.result_code || null,
-      result_category: r.result_category || 'not_participated',
-      sprint_result_code: r.sprint_result_code || null,
-      sprint_result_category: r.sprint_result_category || null,
-    }));
-  }
+  const rows = await queryOrFallback<any[]>(sql, [targetYear], []);
+  return rows.map((r) => ({
+    ...r,
+    year: Number(r.year),
+    round_number: Number(r.round_number),
+    driver_number: r.driver_number != null ? Number(r.driver_number) : null,
+    championship_position: Number(r.championship_position) || 0,
+    total_driver_points: Number(r.total_driver_points) || 0,
+    total_driver_wins: Number(r.total_driver_wins) || 0,
+    total_driver_podiums: Number(r.total_driver_podiums) || 0,
+    is_participated: Boolean(r.is_participated),
+    has_sprint: Boolean(r.has_sprint),
+    race_grid_position: r.race_grid_position != null ? Number(r.race_grid_position) : null,
+    race_finishing_position: r.race_finishing_position != null ? Number(r.race_finishing_position) : null,
+    laps_completed: r.laps_completed != null ? Number(r.laps_completed) : null,
+    race_points: Number(r.race_points) || 0,
+    sprint_grid_position: r.sprint_grid_position != null ? Number(r.sprint_grid_position) : null,
+    sprint_finishing_position: r.sprint_finishing_position != null ? Number(r.sprint_finishing_position) : null,
+    sprint_points: Number(r.sprint_points) || 0,
+    total_round_points: Number(r.total_round_points) || 0,
+    is_pole: Boolean(r.is_pole),
+    is_fastest_lap: Boolean(r.is_fastest_lap),
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    result_code: r.result_code || null,
+    result_category: r.result_category || 'not_participated',
+    sprint_result_code: r.sprint_result_code || null,
+    sprint_result_category: r.sprint_result_category || null,
+  }));
+}
 
-  export async function getCumulativeDrivers(year?: number): Promise<CumulativeDriverPoint[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getCumulativeDrivers(year?: number): Promise<CumulativeDriverPoint[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * FROM website.v_cumulative_drivers_points 
     WHERE year = $1 
     ORDER BY round_number ASC
   `;
-    const rows = await queryOrFallback<CumulativeDriverPoint[]>(sql, [targetYear], mockCumulativeDrivers);
-    return rows.map((r) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      round_number: Number(r.round_number) || 0,
-      finishing_position: r.finishing_position != null ? Number(r.finishing_position) : null,
-      is_race_win: Number(r.is_race_win) || (r.session_name === 'Race' && r.finishing_position === 1 ? 1 : 0),
-      is_sprint_win: Number(r.is_sprint_win) || (r.session_name === 'Sprint' && r.finishing_position === 1 ? 1 : 0),
-      is_race_podium: Number(r.is_race_podium) || (r.session_name === 'Race' && r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
-      is_sprint_podium: Number(r.is_sprint_podium) || (r.session_name === 'Sprint' && r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
-      is_win: Number(r.is_win) || (r.finishing_position === 1 ? 1 : 0),
-      is_podium: Number(r.is_podium) || (r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
-      points: Number(r.points) || 0,
-      cumulative_driver_points: Number(r.cumulative_driver_points) || 0
-    }));
-  }
+  const rows = await queryOrFallback<CumulativeDriverPoint[]>(sql, [targetYear], mockCumulativeDrivers);
+  return rows.map((r) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    round_number: Number(r.round_number) || 0,
+    finishing_position: r.finishing_position != null ? Number(r.finishing_position) : null,
+    is_race_win: Number(r.is_race_win) || (r.session_name === 'Race' && r.finishing_position === 1 ? 1 : 0),
+    is_sprint_win: Number(r.is_sprint_win) || (r.session_name === 'Sprint' && r.finishing_position === 1 ? 1 : 0),
+    is_race_podium: Number(r.is_race_podium) || (r.session_name === 'Race' && r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
+    is_sprint_podium: Number(r.is_sprint_podium) || (r.session_name === 'Sprint' && r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
+    is_win: Number(r.is_win) || (r.finishing_position === 1 ? 1 : 0),
+    is_podium: Number(r.is_podium) || (r.finishing_position != null && Number(r.finishing_position) <= 3 ? 1 : 0),
+    points: Number(r.points) || 0,
+    cumulative_driver_points: Number(r.cumulative_driver_points) || 0
+  }));
+}
 
-  export async function getCumulativeTeams(year?: number): Promise<CumulativeTeamPoint[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getCumulativeTeams(year?: number): Promise<CumulativeTeamPoint[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT * FROM website.v_cumulative_teams_points 
     WHERE year = $1 
     ORDER BY round_number ASC
   `;
-    const rows = await queryOrFallback<CumulativeTeamPoint[]>(sql, [targetYear], mockCumulativeTeams);
-    return rows.map((r) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      round_number: Number(r.round_number) || 0,
-      race_wins: Number(r.race_wins) || 0,
-      sprint_wins: Number(r.sprint_wins) || 0,
-      race_podiums: Number(r.race_podiums) || 0,
-      sprint_podiums: Number(r.sprint_podiums) || 0,
-      wins: Number(r.wins) || 0,
-      podiums: Number(r.podiums) || 0,
-      points: Number(r.points) || 0,
-      cumulative_team_points: Number(r.cumulative_team_points) || 0
-    }));
-  }
+  const rows = await queryOrFallback<CumulativeTeamPoint[]>(sql, [targetYear], mockCumulativeTeams);
+  return rows.map((r) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    round_number: Number(r.round_number) || 0,
+    race_wins: Number(r.race_wins) || 0,
+    sprint_wins: Number(r.sprint_wins) || 0,
+    race_podiums: Number(r.race_podiums) || 0,
+    sprint_podiums: Number(r.sprint_podiums) || 0,
+    wins: Number(r.wins) || 0,
+    podiums: Number(r.podiums) || 0,
+    points: Number(r.points) || 0,
+    cumulative_team_points: Number(r.cumulative_team_points) || 0
+  }));
+}
 
-  export async function getLatestCompletedRound(year?: number): Promise<number> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getLatestCompletedRound(year?: number): Promise<number> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT MAX(round_number) AS max_round
     FROM website.v_circuit_season_summary
     WHERE year = $1 AND race_status = 'Completed'
   `;
-    try {
-      const rows = await queryOrFallback<{ max_round: string | number }[]>(sql, [targetYear], []);
-      if (rows && rows.length > 0 && rows[0]?.max_round) {
-        return parseInt(String(rows[0].max_round));
-      }
-    } catch (e) {
-      console.warn("Failed to get latest round, fallback to 16", e);
+  try {
+    const rows = await queryOrFallback<{ max_round: string | number }[]>(sql, [targetYear], []);
+    if (rows && rows.length > 0 && rows[0]?.max_round) {
+      return parseInt(String(rows[0].max_round));
     }
-    return targetYear === 2026 ? 16 : 21;
+  } catch (e) {
+    console.warn("Failed to get latest round, fallback to 16", e);
   }
+  return targetYear === 2026 ? 16 : 21;
+}
 
-  export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?: number): Promise<{ round: number; isLiveWeekend: boolean }> {
-    const targetYear = year || await getLatestSeasonYear();
-    const latestCompleted = knownLatestCompleted !== undefined ? knownLatestCompleted : await getLatestCompletedRound(targetYear);
+export async function getActiveWeekendInfo(year?: number, knownLatestCompleted?: number): Promise<{ round: number; isLiveWeekend: boolean }> {
+  const targetYear = year || await getLatestSeasonYear();
+  const latestCompleted = knownLatestCompleted !== undefined ? knownLatestCompleted : await getLatestCompletedRound(targetYear);
 
-    try {
-      if (pool) {
-        const sql = `
+  try {
+    if (pool) {
+      const sql = `
         SELECT 
           round_number,
           event_date,
@@ -444,200 +444,200 @@ const pool = rawPool
         WHERE year = $1 AND CAST(round_number AS INTEGER) > 0
         ORDER BY CAST(round_number AS INTEGER) ASC
       `;
-        const rows = await queryOrFallback<any[]>(sql, [targetYear], [], 10 * 60 * 1000);
-        if (rows && rows.length > 0) {
-          const now = new Date();
+      const rows = await queryOrFallback<any[]>(sql, [targetYear], [], 10 * 60 * 1000);
+      if (rows && rows.length > 0) {
+        const now = new Date();
 
-          for (let i = 0; i < rows.length; i++) {
-            const r = rows[i];
-            const raceDate = new Date(r.event_date);
-            const roundNum = parseInt(r.round_number);
+        for (let i = 0; i < rows.length; i++) {
+          const r = rows[i];
+          const raceDate = new Date(r.event_date);
+          const roundNum = parseInt(r.round_number);
 
-            // Parse sessions_schedule se disponível para pegar data exata do TL1 e da Corrida
-            let parsedSchedule: any[] = [];
-            if (r.sessions_schedule) {
-              try {
-                parsedSchedule = typeof r.sessions_schedule === "string" ? JSON.parse(r.sessions_schedule) : r.sessions_schedule;
-              } catch { }
-            }
+          // Parse sessions_schedule se disponível para pegar data exata do TL1 e da Corrida
+          let parsedSchedule: any[] = [];
+          if (r.sessions_schedule) {
+            try {
+              parsedSchedule = typeof r.sessions_schedule === "string" ? JSON.parse(r.sessions_schedule) : r.sessions_schedule;
+            } catch { }
+          }
 
-            let weekendStart: Date;
-            let weekendEnd: Date;
+          let weekendStart: Date;
+          let weekendEnd: Date;
 
-            const raceSession = Array.isArray(parsedSchedule)
-              ? parsedSchedule.find((s) => s.session_type === "R" || s.session_name === "Race")
-              : null;
+          const raceSession = Array.isArray(parsedSchedule)
+            ? parsedSchedule.find((s) => s.session_type === "R" || s.session_name === "Race")
+            : null;
 
-            const firstSession = Array.isArray(parsedSchedule) && parsedSchedule.length > 0
-              ? parsedSchedule[0]
-              : null;
+          const firstSession = Array.isArray(parsedSchedule) && parsedSchedule.length > 0
+            ? parsedSchedule[0]
+            : null;
 
-            if (firstSession?.session_date_utc) {
-              // Inicia 24h antes da primeira sessão (ex: quinta-feira de coletivas)
-              weekendStart = new Date(new Date(firstSession.session_date_utc).getTime() - 24 * 60 * 60 * 1000);
-            } else {
-              weekendStart = new Date(raceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
-            }
+          if (firstSession?.session_date_utc) {
+            // Inicia 24h antes da primeira sessão (ex: quinta-feira de coletivas)
+            weekendStart = new Date(new Date(firstSession.session_date_utc).getTime() - 24 * 60 * 60 * 1000);
+          } else {
+            weekendStart = new Date(raceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+          }
 
-            if (raceSession?.session_date_utc) {
-              // O fim de semana dura até 12 horas após a largada da corrida (cobrindo prova, pódio e publicação)
-              weekendEnd = new Date(new Date(raceSession.session_date_utc).getTime() + 12 * 60 * 60 * 1000);
-            } else {
-              // Fallback: 48h após event_date
-              weekendEnd = new Date(raceDate.getTime() + 48 * 60 * 60 * 1000);
-            }
+          if (raceSession?.session_date_utc) {
+            // O fim de semana dura até 12 horas após a largada da corrida (cobrindo prova, pódio e publicação)
+            weekendEnd = new Date(new Date(raceSession.session_date_utc).getTime() + 12 * 60 * 60 * 1000);
+          } else {
+            // Fallback: 48h após event_date
+            weekendEnd = new Date(raceDate.getTime() + 48 * 60 * 60 * 1000);
+          }
 
-            // Se a prova estiver explicitamente "In Progress", o fim de semana está vivo
-            const isLiveStatus = r.race_status === "In Progress" || (now >= weekendStart && now <= weekendEnd && r.race_status !== "Completed");
+          // Se a prova estiver explicitamente "In Progress", o fim de semana está vivo
+          const isLiveStatus = r.race_status === "In Progress" || (now >= weekendStart && now <= weekendEnd && r.race_status !== "Completed");
 
-            let nextWeekendStart: Date;
-            if (i + 1 < rows.length) {
-              const nextRaceDate = new Date(rows[i + 1].event_date);
-              nextWeekendStart = new Date(nextRaceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
-            } else {
-              nextWeekendStart = new Date(targetYear + 1, 0, 1);
-            }
+          let nextWeekendStart: Date;
+          if (i + 1 < rows.length) {
+            const nextRaceDate = new Date(rows[i + 1].event_date);
+            nextWeekendStart = new Date(nextRaceDate.getTime() - 3 * 24 * 60 * 60 * 1000);
+          } else {
+            nextWeekendStart = new Date(targetYear + 1, 0, 1);
+          }
 
-            if (now >= weekendStart && now < nextWeekendStart) {
-              return {
-                round: roundNum,
-                isLiveWeekend: isLiveStatus
-              };
-            }
+          if (now >= weekendStart && now < nextWeekendStart) {
+            return {
+              round: roundNum,
+              isLiveWeekend: isLiveStatus
+            };
           }
         }
       }
-    } catch (e) {
-      console.warn("Failed to get active weekend round, falling back to latest completed", e);
     }
-
-    return { round: latestCompleted ? latestCompleted + 1 : 14, isLiveWeekend: false };
+  } catch (e) {
+    console.warn("Failed to get active weekend round, falling back to latest completed", e);
   }
 
-  export async function getActiveWeekendRound(year?: number): Promise<number> {
-    const info = await getActiveWeekendInfo(year);
-    return info.round;
-  }
+  return { round: latestCompleted ? latestCompleted + 1 : 14, isLiveWeekend: false };
+}
 
-  export async function getAvailableRounds(year?: number): Promise<{ round_number: number; official_event_name: string }[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const sql = `
+export async function getActiveWeekendRound(year?: number): Promise<number> {
+  const info = await getActiveWeekendInfo(year);
+  return info.round;
+}
+
+export async function getAvailableRounds(year?: number): Promise<{ round_number: number; official_event_name: string }[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const sql = `
     SELECT DISTINCT round_number, official_event_name 
     FROM website.v_sessions_summary 
     WHERE year = $1 AND session_name = 'Race'
     ORDER BY round_number ASC
   `;
-    const rows = await queryOrFallback<{ round_number: any; official_event_name: string }[]>(sql, [targetYear], []);
-    if (rows && rows.length > 0) {
-      return rows.map((r) => ({
-        round_number: parseInt(r.round_number),
-        official_event_name: r.official_event_name
-      }));
-    }
-    return [
-      { round_number: 1, official_event_name: "Australian Grand Prix" },
-      { round_number: 14, official_event_name: "Gran Premio de España" }
-    ];
+  const rows = await queryOrFallback<{ round_number: any; official_event_name: string }[]>(sql, [targetYear], []);
+  if (rows && rows.length > 0) {
+    return rows.map((r) => ({
+      round_number: parseInt(r.round_number),
+      official_event_name: r.official_event_name
+    }));
   }
+  return [
+    { round_number: 1, official_event_name: "Australian Grand Prix" },
+    { round_number: 14, official_event_name: "Gran Premio de España" }
+  ];
+}
 
-  export async function getAvailableSessions(year?: number, roundNumber?: number): Promise<string[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getAvailableSessions(year?: number, roundNumber?: number): Promise<string[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const fallbackSql = `
+  const fallbackSql = `
     SELECT DISTINCT session_name 
     FROM website.v_sessions_summary
     WHERE year = $1 AND round_number = $2
   `;
-    const fallbackRows = await queryOrFallback<{ session_name: string }[]>(
-      fallbackSql,
-      [targetYear, targetRound],
-      []
-    );
+  const fallbackRows = await queryOrFallback<{ session_name: string }[]>(
+    fallbackSql,
+    [targetYear, targetRound],
+    []
+  );
 
-    const sessionNames = fallbackRows.map((r) => r.session_name);
-    const hasSprint = sessionNames.some((s) => s.toLowerCase().includes("sprint"));
+  const sessionNames = fallbackRows.map((r) => r.session_name);
+  const hasSprint = sessionNames.some((s) => s.toLowerCase().includes("sprint"));
 
-    // Ordem cronológica oficial da F1:
-    // Se tem Sprint (F1 moderna 2024+): Treino Livre 1 -> Qualificação Sprint / Shootout -> Corrida Sprint -> Qualificação Principal -> Corrida
-    // Se não tem Sprint: Treino Livre 1 -> Treino Livre 2 -> Treino Livre 3 -> Qualificação -> Corrida
-    const sprintOrder = [
-      'Practice 1',
-      'Sprint Shootout',
-      'Sprint Qualifying',
-      'Sprint',
-      'Practice 2', // Formato legado 2021-2022
-      'Qualifying',
-      'Race'
-    ];
+  // Ordem cronológica oficial da F1:
+  // Se tem Sprint (F1 moderna 2024+): Treino Livre 1 -> Qualificação Sprint / Shootout -> Corrida Sprint -> Qualificação Principal -> Corrida
+  // Se não tem Sprint: Treino Livre 1 -> Treino Livre 2 -> Treino Livre 3 -> Qualificação -> Corrida
+  const sprintOrder = [
+    'Practice 1',
+    'Sprint Shootout',
+    'Sprint Qualifying',
+    'Sprint',
+    'Practice 2', // Formato legado 2021-2022
+    'Qualifying',
+    'Race'
+  ];
 
-    const standardOrder = [
-      'Practice 1',
-      'Practice 2',
-      'Practice 3',
-      'Qualifying',
-      'Race'
-    ];
+  const standardOrder = [
+    'Practice 1',
+    'Practice 2',
+    'Practice 3',
+    'Qualifying',
+    'Race'
+  ];
 
-    const order = hasSprint ? sprintOrder : standardOrder;
+  const order = hasSprint ? sprintOrder : standardOrder;
 
-    return sessionNames.sort((a, b) => {
-      const idxA = order.indexOf(a);
-      const idxB = order.indexOf(b);
-      return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
-    });
-  }
+  return sessionNames.sort((a, b) => {
+    const idxA = order.indexOf(a);
+    const idxB = order.indexOf(b);
+    return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
+  });
+}
 
-  export async function getSessionSummary(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<SessionSummary[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getSessionSummary(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<SessionSummary[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT s.*
     FROM website.v_sessions_summary s
     WHERE s.year = $1 AND s.round_number = $2 AND s.session_name = $3
     ORDER BY s.finishing_position ASC NULLS LAST
   `;
-    const rows = await queryOrFallback<SessionSummary[]>(sql, [targetYear, targetRound, sessionName], []);
-    return rows.map((r) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      finishing_position: r.finishing_position != null ? Number(r.finishing_position) : null,
-      grid_position: r.grid_position != null ? Number(r.grid_position) : null,
-      delta_position: r.delta_position != null ? Number(r.delta_position) : null,
-      stops: r.stops != null ? Number(r.stops) : 0,
-      points: r.points != null ? Number(r.points) : 0,
-      laps_completed: r.laps_completed != null ? Number(r.laps_completed) : null,
-      driver_headshot_url: r.driver_headshot_url || null,
-    }));
-  }
+  const rows = await queryOrFallback<SessionSummary[]>(sql, [targetYear, targetRound, sessionName], []);
+  return rows.map((r) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    finishing_position: r.finishing_position != null ? Number(r.finishing_position) : null,
+    grid_position: r.grid_position != null ? Number(r.grid_position) : null,
+    delta_position: r.delta_position != null ? Number(r.delta_position) : null,
+    stops: r.stops != null ? Number(r.stops) : 0,
+    points: r.points != null ? Number(r.points) : 0,
+    laps_completed: r.laps_completed != null ? Number(r.laps_completed) : null,
+    driver_headshot_url: r.driver_headshot_url || null,
+  }));
+}
 
-  export async function getTyreStrategies(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<TyreStrategy[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getTyreStrategies(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<TyreStrategy[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT t.*
     FROM website.v_tyre_strategy t
     WHERE t.year = $1 AND t.round_number = $2 AND t.session_name = $3
     ORDER BY t.driver_full_name ASC, t.stint ASC
   `;
-    const rows = await queryOrFallback<TyreStrategy[]>(sql, [targetYear, targetRound, sessionName], []);
-    return rows.map((r) => ({
-      ...r,
-      stint: Number(r.stint) || 1,
-      lap_start: Number(r.lap_start) || 1,
-      lap_end: Number(r.lap_end) || 1,
-      stint_laps_completed: Number(r.stint_laps_completed) || 0,
-      driver_headshot_url: r.driver_headshot_url || null,
-    }));
-  }
+  const rows = await queryOrFallback<TyreStrategy[]>(sql, [targetYear, targetRound, sessionName], []);
+  return rows.map((r) => ({
+    ...r,
+    stint: Number(r.stint) || 1,
+    lap_start: Number(r.lap_start) || 1,
+    lap_end: Number(r.lap_end) || 1,
+    stint_laps_completed: Number(r.stint_laps_completed) || 0,
+    driver_headshot_url: r.driver_headshot_url || null,
+  }));
+}
 
-  export async function getLapByLap(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<LapByLap[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getLapByLap(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<LapByLap[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT 
       l.lap_number,
       l.position,
@@ -651,107 +651,107 @@ const pool = rawPool
     WHERE l.year = $1 AND l.round_number = $2 AND l.session_name = $3
     ORDER BY l.lap_number ASC, l.position ASC
   `;
-    const rows = await queryOrFallback<LapByLap[]>(sql, [targetYear, targetRound, sessionName], []);
-    return rows.map((r) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      lap_number: Number(r.lap_number) || 0,
-      position: r.position != null ? Number(r.position) : null,
-      tyre_life: r.tyre_life != null ? Number(r.tyre_life) : null,
-    }));
-  }
+  const rows = await queryOrFallback<LapByLap[]>(sql, [targetYear, targetRound, sessionName], []);
+  return rows.map((r) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    lap_number: Number(r.lap_number) || 0,
+    position: r.position != null ? Number(r.position) : null,
+    tyre_life: r.tyre_life != null ? Number(r.tyre_life) : null,
+  }));
+}
 
-  export async function getRacePace(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<RacePace[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getRacePace(year?: number, roundNumber?: number, sessionName: string = 'Race'): Promise<RacePace[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT r.*
     FROM website.v_race_pace r
     WHERE r.year = $1 AND r.round_number = $2 AND r.session_name = $3
     ORDER BY r.avg_lap_time_seconds ASC
   `;
-    const rows = await queryOrFallback<RacePace[]>(sql, [targetYear, targetRound, sessionName], []);
-    return rows.map((r) => ({
-      ...r,
-      team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
-      avg_lap_time_seconds: Number(r.avg_lap_time_seconds) || 0,
-      pace_stddev: r.pace_stddev != null ? Number(r.pace_stddev) : null,
-      driver_headshot_url: r.driver_headshot_url || null,
-    }));
-  }
+  const rows = await queryOrFallback<RacePace[]>(sql, [targetYear, targetRound, sessionName], []);
+  return rows.map((r) => ({
+    ...r,
+    team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : null,
+    avg_lap_time_seconds: Number(r.avg_lap_time_seconds) || 0,
+    pace_stddev: r.pace_stddev != null ? Number(r.pace_stddev) : null,
+    driver_headshot_url: r.driver_headshot_url || null,
+  }));
+}
 
-  export async function getTelemetrySessions(year?: number, roundNumber?: number): Promise<string[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
-    const sql = `
+export async function getTelemetrySessions(year?: number, roundNumber?: number): Promise<string[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+  const sql = `
     SELECT DISTINCT session_name 
     FROM website.v_max_speed 
     WHERE year = $1 AND round_number = $2
     ORDER BY session_name
   `;
-    const rows = await queryOrFallback<{ session_name: string }[]>(sql, [targetYear, targetRound], []);
+  const rows = await queryOrFallback<{ session_name: string }[]>(sql, [targetYear, targetRound], []);
 
-    const order: { [key: string]: number } = {
-      'Qualifying': 1,
-      'Sprint Shootout': 2,
-      'Sprint Qualifying': 2,
-      'Sprint': 3,
-      'Race': 4,
-      'Practice 3': 5,
-      'Practice 2': 6,
-      'Practice 1': 7,
-    };
-    return rows.map((r) => r.session_name).sort((a, b) => (order[a] || 99) - (order[b] || 99));
-  }
+  const order: { [key: string]: number } = {
+    'Qualifying': 1,
+    'Sprint Shootout': 2,
+    'Sprint Qualifying': 2,
+    'Sprint': 3,
+    'Race': 4,
+    'Practice 3': 5,
+    'Practice 2': 6,
+    'Practice 1': 7,
+  };
+  return rows.map((r) => r.session_name).sort((a, b) => (order[a] || 99) - (order[b] || 99));
+}
 
-  export async function getMaxSpeed(year?: number, roundNumber?: number, sessionName: string = 'Qualifying'): Promise<MaxSpeed[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getMaxSpeed(year?: number, roundNumber?: number, sessionName: string = 'Qualifying'): Promise<MaxSpeed[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT * FROM website.v_max_speed 
     WHERE year = $1 AND round_number = $2 AND session_name = $3
     ORDER BY max_speed_trap DESC NULLS LAST
   `;
-    const rows = await queryOrFallback<MaxSpeed[]>(sql, [targetYear, targetRound, sessionName], []);
-    return rows.map((r) => ({
-      ...r,
-      max_speed_trap: r.max_speed_trap != null ? Number(r.max_speed_trap) : null,
-      max_speed_fl: r.max_speed_fl != null ? Number(r.max_speed_fl) : null,
-      max_speed_i1: r.max_speed_i1 != null ? Number(r.max_speed_i1) : null,
-      max_speed_i2: r.max_speed_i2 != null ? Number(r.max_speed_i2) : null,
-    }));
-  }
+  const rows = await queryOrFallback<MaxSpeed[]>(sql, [targetYear, targetRound, sessionName], []);
+  return rows.map((r) => ({
+    ...r,
+    max_speed_trap: r.max_speed_trap != null ? Number(r.max_speed_trap) : null,
+    max_speed_fl: r.max_speed_fl != null ? Number(r.max_speed_fl) : null,
+    max_speed_i1: r.max_speed_i1 != null ? Number(r.max_speed_i1) : null,
+    max_speed_i2: r.max_speed_i2 != null ? Number(r.max_speed_i2) : null,
+  }));
+}
 
-  export async function getIdealLap(year?: number, roundNumber?: number, sessionName: string = 'Qualifying'): Promise<IdealLap[]> {
-    const targetYear = year || await getLatestSeasonYear();
-    const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
+export async function getIdealLap(year?: number, roundNumber?: number, sessionName: string = 'Qualifying'): Promise<IdealLap[]> {
+  const targetYear = year || await getLatestSeasonYear();
+  const targetRound = roundNumber || await getLatestCompletedRound(targetYear);
 
-    const sql = `
+  const sql = `
     SELECT * FROM website.v_ideal_lap 
     WHERE year = $1 AND round_number = $2 AND session_name = $3
     ORDER BY lap_time ASC NULLS LAST
   `;
-    return queryOrFallback<IdealLap[]>(sql, [targetYear, targetRound, sessionName], []);
+  return queryOrFallback<IdealLap[]>(sql, [targetYear, targetRound, sessionName], []);
+}
+
+export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): Promise<RaceWeekendInfo> {
+  const targetYear = year || await getLatestSeasonYear();
+  const latestCompleted = await getLatestCompletedRound(targetYear);
+  const targetRound = roundNumber !== undefined ? roundNumber : (latestCompleted + 1);
+
+  const cacheKey = `upcomingRaceInfo::v2::${targetYear}::${targetRound}`;
+  const nowMs = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > nowMs) {
+    return cached.data as RaceWeekendInfo;
   }
 
-  export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): Promise<RaceWeekendInfo> {
-    const targetYear = year || await getLatestSeasonYear();
-    const latestCompleted = await getLatestCompletedRound(targetYear);
-    const targetRound = roundNumber !== undefined ? roundNumber : (latestCompleted + 1);
-
-    const cacheKey = `upcomingRaceInfo::v2::${targetYear}::${targetRound}`;
-    const nowMs = Date.now();
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiresAt > nowMs) {
-      return cached.data as RaceWeekendInfo;
-    }
-
-    try {
-      if (pool) {
-        // 1. Fetch round event info directly from website serving view
-        const eventRes = await pool.query(`
+  try {
+    if (pool) {
+      // 1. Fetch round event info directly from website serving view
+      const eventRes = await pool.query(`
         SELECT 
           event_sk,
           round_number,
@@ -767,11 +767,11 @@ const pool = rawPool
         LIMIT 1
       `, [targetYear, targetRound]);
 
-        if (eventRes.rows && eventRes.rows.length > 0) {
-          const event = eventRes.rows[0];
+      if (eventRes.rows && eventRes.rows.length > 0) {
+        const event = eventRes.rows[0];
 
-          // 2. Check completed sessions in v_sessions_summary to attach real leader, best lap & detect adverse weather
-          const completedRes = await pool.query(`
+        // 2. Check completed sessions in v_sessions_summary to attach real leader, best lap & detect adverse weather
+        const completedRes = await pool.query(`
           SELECT 
             session_name,
             COUNT(*) as driver_count,
@@ -783,189 +783,189 @@ const pool = rawPool
           GROUP BY session_name
         `, [targetYear, targetRound]);
 
-          const completedMap = new Map<string, { driver?: string; lap?: string; driverCount: number; validLapsCount: number }>();
-          for (const row of completedRes.rows) {
-            completedMap.set(row.session_name, {
-              driver: row.leader_name || undefined,
-              lap: row.leader_best_lap || undefined,
-              driverCount: Number(row.driver_count) || 0,
-              validLapsCount: Number(row.valid_laps_count) || 0
-            });
+        const completedMap = new Map<string, { driver?: string; lap?: string; driverCount: number; validLapsCount: number }>();
+        for (const row of completedRes.rows) {
+          completedMap.set(row.session_name, {
+            driver: row.leader_name || undefined,
+            lap: row.leader_best_lap || undefined,
+            driverCount: Number(row.driver_count) || 0,
+            validLapsCount: Number(row.valid_laps_count) || 0
+          });
+        }
+
+        const now = new Date();
+        const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+        const sundayDate = event.event_date ? new Date(event.event_date) : new Date();
+        const fridayDate = new Date(sundayDate.getTime() - 2 * 24 * 60 * 60 * 1000);
+        const saturdayDate = new Date(sundayDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+
+        const sessionNamePtMap: Record<string, string> = {
+          'Practice 1': 'Treino Livre 1 (FP1)',
+          'Practice 2': 'Treino Livre 2 (FP2)',
+          'Practice 3': 'Treino Livre 3 (FP3)',
+          'Sprint Qualifying': 'Classificação Sprint (SQ)',
+          'Sprint Shootout': 'Classificação Sprint (SQ)',
+          'Sprint': 'Corrida Sprint (Sprint)',
+          'Qualifying': 'Classificação (Quali)',
+          'Race': 'Grande Prêmio (Corrida)',
+        };
+
+        let parsedSchedule: Array<{
+          session_number: number;
+          session_name: string;
+          session_type: string;
+          session_date_utc: string;
+          session_date_brt: string;
+        }> = [];
+
+        if (event.sessions_schedule) {
+          try {
+            parsedSchedule = typeof event.sessions_schedule === 'string'
+              ? JSON.parse(event.sessions_schedule)
+              : event.sessions_schedule;
+          } catch {
+            parsedSchedule = [];
           }
+        }
 
-          const now = new Date();
-          const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        let sessions;
+        let raceTimestampUtc: string;
 
-          const sundayDate = event.event_date ? new Date(event.event_date) : new Date();
-          const fridayDate = new Date(sundayDate.getTime() - 2 * 24 * 60 * 60 * 1000);
-          const saturdayDate = new Date(sundayDate.getTime() - 1 * 24 * 60 * 60 * 1000);
+        if (Array.isArray(parsedSchedule) && parsedSchedule.length > 0) {
+          sessions = parsedSchedule.map((rawSess) => {
+            const sDateUtc = new Date(rawSess.session_date_utc);
+            const [datePart, timePart] = (rawSess.session_date_brt || "").split("T");
+            const [, monthStr, dayStr] = (datePart || "").split("-");
+            const [hourStr, minStr] = (timePart || "00:00").split(":");
 
-          const sessionNamePtMap: Record<string, string> = {
-            'Practice 1': 'Treino Livre 1 (FP1)',
-            'Practice 2': 'Treino Livre 2 (FP2)',
-            'Practice 3': 'Treino Livre 3 (FP3)',
-            'Sprint Qualifying': 'Classificação Sprint (SQ)',
-            'Sprint Shootout': 'Classificação Sprint (SQ)',
-            'Sprint': 'Corrida Sprint (Sprint)',
-            'Qualifying': 'Classificação (Quali)',
-            'Race': 'Grande Prêmio (Corrida)',
-          };
+            const day = dayStr ? parseInt(dayStr, 10) : sDateUtc.getUTCDate();
+            const month = monthStr ? months[parseInt(monthStr, 10) - 1] : months[sDateUtc.getUTCMonth()];
+            const hours = (hourStr || "00").padStart(2, "0");
+            const minutes = (minStr || "00").padStart(2, "0");
 
-          let parsedSchedule: Array<{
-            session_number: number;
-            session_name: string;
-            session_type: string;
-            session_date_utc: string;
-            session_date_brt: string;
-          }> = [];
+            const sessionResult = completedMap.get(rawSess.session_name);
+            const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
+            const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
+            const isWaitingData = !isCompleted && now >= sDateUtc;
 
-          if (event.sessions_schedule) {
-            try {
-              parsedSchedule = typeof event.sessions_schedule === 'string'
-                ? JSON.parse(event.sessions_schedule)
-                : event.sessions_schedule;
-            } catch {
-              parsedSchedule = [];
-            }
-          }
+            return {
+              name: sessionNamePtMap[rawSess.session_name] || rawSess.session_name,
+              session_name: rawSess.session_name,
+              session_code: rawSess.session_type,
+              date: `${day} ${month}`,
+              time: `${hours}:${minutes} BRT`,
+              completed: isCompleted,
+              waiting_data: isWaitingData,
+              no_timed_laps: noTimedLaps,
+              session_date_utc: sDateUtc.toISOString(),
+              leader: noTimedLaps ? undefined : sessionResult?.driver,
+              best_lap: noTimedLaps ? undefined : sessionResult?.lap
+            };
+          });
 
-          let sessions;
-          let raceTimestampUtc: string;
+          const raceSession = parsedSchedule.find((s) => s.session_type === 'R' || s.session_name === 'Race');
+          raceTimestampUtc = raceSession?.session_date_utc
+            ? new Date(raceSession.session_date_utc).toISOString()
+            : new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0)).toISOString();
+        } else {
+          const sessionDefs = [
+            { session_name: 'Practice 1', code: 'FP1', name: 'Treino Livre 1 (FP1)', baseDate: fridayDate, hourBRT: 15, minBRT: 30, hourUTC: 18 },
+            { session_name: 'Practice 2', code: 'FP2', name: 'Treino Livre 2 (FP2)', baseDate: fridayDate, hourBRT: 19, minBRT: 0, hourUTC: 22 },
+            { session_name: 'Practice 3', code: 'FP3', name: 'Treino Livre 3 (FP3)', baseDate: saturdayDate, hourBRT: 14, minBRT: 30, hourUTC: 17 },
+            { session_name: 'Qualifying', code: 'Q', name: 'Classificação (Quali)', baseDate: saturdayDate, hourBRT: 18, minBRT: 0, hourUTC: 21 },
+            { session_name: 'Race', code: 'R', name: 'Grande Prêmio (Corrida)', baseDate: sundayDate, hourBRT: 17, minBRT: 0, hourUTC: 20 }
+          ];
 
-          if (Array.isArray(parsedSchedule) && parsedSchedule.length > 0) {
-            sessions = parsedSchedule.map((rawSess) => {
-              const sDateUtc = new Date(rawSess.session_date_utc);
-              const [datePart, timePart] = (rawSess.session_date_brt || "").split("T");
-              const [, monthStr, dayStr] = (datePart || "").split("-");
-              const [hourStr, minStr] = (timePart || "00:00").split(":");
+          sessions = sessionDefs.map((def) => {
+            const sDateUtc = new Date(Date.UTC(def.baseDate.getUTCFullYear(), def.baseDate.getUTCMonth(), def.baseDate.getUTCDate(), def.hourUTC, def.minBRT));
+            const day = def.baseDate.getUTCDate();
+            const month = months[def.baseDate.getUTCMonth()];
+            const hours = String(def.hourBRT).padStart(2, '0');
+            const minutes = String(def.minBRT).padStart(2, '0');
 
-              const day = dayStr ? parseInt(dayStr, 10) : sDateUtc.getUTCDate();
-              const month = monthStr ? months[parseInt(monthStr, 10) - 1] : months[sDateUtc.getUTCMonth()];
-              const hours = (hourStr || "00").padStart(2, "0");
-              const minutes = (minStr || "00").padStart(2, "0");
+            const sessionResult = completedMap.get(def.session_name);
+            const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
+            const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
+            const isWaitingData = !isCompleted && now >= sDateUtc;
 
-              const sessionResult = completedMap.get(rawSess.session_name);
-              const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
-              const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
-              const isWaitingData = !isCompleted && now >= sDateUtc;
+            return {
+              name: def.name,
+              session_name: def.session_name,
+              session_code: def.code,
+              date: `${day} ${month}`,
+              time: `${hours}:${minutes} BRT`,
+              completed: isCompleted,
+              waiting_data: isWaitingData,
+              no_timed_laps: noTimedLaps,
+              session_date_utc: sDateUtc.toISOString(),
+              leader: noTimedLaps ? undefined : sessionResult?.driver,
+              best_lap: noTimedLaps ? undefined : sessionResult?.lap
+            };
+          });
 
-              return {
-                name: sessionNamePtMap[rawSess.session_name] || rawSess.session_name,
-                session_name: rawSess.session_name,
-                session_code: rawSess.session_type,
-                date: `${day} ${month}`,
-                time: `${hours}:${minutes} BRT`,
-                completed: isCompleted,
-                waiting_data: isWaitingData,
-                no_timed_laps: noTimedLaps,
-                session_date_utc: sDateUtc.toISOString(),
-                leader: noTimedLaps ? undefined : sessionResult?.driver,
-                best_lap: noTimedLaps ? undefined : sessionResult?.lap
-              };
-            });
+          const raceUtc = new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0));
+          raceTimestampUtc = raceUtc.toISOString();
+        }
 
-            const raceSession = parsedSchedule.find((s) => s.session_type === 'R' || s.session_name === 'Race');
-            raceTimestampUtc = raceSession?.session_date_utc
-              ? new Date(raceSession.session_date_utc).toISOString()
-              : new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0)).toISOString();
-          } else {
-            const sessionDefs = [
-              { session_name: 'Practice 1', code: 'FP1', name: 'Treino Livre 1 (FP1)', baseDate: fridayDate, hourBRT: 15, minBRT: 30, hourUTC: 18 },
-              { session_name: 'Practice 2', code: 'FP2', name: 'Treino Livre 2 (FP2)', baseDate: fridayDate, hourBRT: 19, minBRT: 0, hourUTC: 22 },
-              { session_name: 'Practice 3', code: 'FP3', name: 'Treino Livre 3 (FP3)', baseDate: saturdayDate, hourBRT: 14, minBRT: 30, hourUTC: 17 },
-              { session_name: 'Qualifying', code: 'Q', name: 'Classificação (Quali)', baseDate: saturdayDate, hourBRT: 18, minBRT: 0, hourUTC: 21 },
-              { session_name: 'Race', code: 'R', name: 'Grande Prêmio (Corrida)', baseDate: sundayDate, hourBRT: 17, minBRT: 0, hourUTC: 20 }
-            ];
+        // 3. Query historical records for this circuit directly from pipeline tables
+        let hasHistoricalData = false;
+        let mostWins: {
+          driver: string;
+          drivers: string[];
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
+          count: number;
+        } = { driver: "—", drivers: [], count: 0 };
+        let mostPoles: {
+          driver: string;
+          drivers: string[];
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
+          count: number;
+        } = { driver: "—", drivers: [], count: 0 };
+        let raceLap: {
+          lap: string;
+          driver: string;
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          year: number;
+        } = { lap: "—", driver: "—", year: 0 };
+        let allTimeLap: {
+          lap: string;
+          driver: string;
+          driver_id?: string | null;
+          headshot_url?: string | null;
+          year: number;
+          session: string;
+        } = { lap: "—", driver: "—", year: 0, session: "—" };
+        let topSpeed: {
+          speed: number;
+          driver: string;
+          team?: string;
+          year: number;
+          headshot_url?: string | null;
+          drivers: { driver: string; team?: string; year: number; headshot_url?: string | null }[];
+        } = { speed: 0, driver: "—", year: 0, drivers: [] };
+        let totalLaps = 0;
 
-            sessions = sessionDefs.map((def) => {
-              const sDateUtc = new Date(Date.UTC(def.baseDate.getUTCFullYear(), def.baseDate.getUTCMonth(), def.baseDate.getUTCDate(), def.hourUTC, def.minBRT));
-              const day = def.baseDate.getUTCDate();
-              const month = months[def.baseDate.getUTCMonth()];
-              const hours = String(def.hourBRT).padStart(2, '0');
-              const minutes = String(def.minBRT).padStart(2, '0');
-
-              const sessionResult = completedMap.get(def.session_name);
-              const isCompleted = Boolean(sessionResult && sessionResult.driverCount > 0);
-              const noTimedLaps = Boolean(sessionResult && sessionResult.driverCount > 0 && sessionResult.validLapsCount === 0);
-              const isWaitingData = !isCompleted && now >= sDateUtc;
-
-              return {
-                name: def.name,
-                session_name: def.session_name,
-                session_code: def.code,
-                date: `${day} ${month}`,
-                time: `${hours}:${minutes} BRT`,
-                completed: isCompleted,
-                waiting_data: isWaitingData,
-                no_timed_laps: noTimedLaps,
-                session_date_utc: sDateUtc.toISOString(),
-                leader: noTimedLaps ? undefined : sessionResult?.driver,
-                best_lap: noTimedLaps ? undefined : sessionResult?.lap
-              };
-            });
-
-            const raceUtc = new Date(Date.UTC(sundayDate.getUTCFullYear(), sundayDate.getUTCMonth(), sundayDate.getUTCDate(), 20, 0));
-            raceTimestampUtc = raceUtc.toISOString();
-          }
-
-          // 3. Query historical records for this circuit directly from pipeline tables
-          let hasHistoricalData = false;
-          let mostWins: {
-            driver: string;
-            drivers: string[];
-            driver_id?: string | null;
-            headshot_url?: string | null;
-            items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
-            count: number;
-          } = { driver: "—", drivers: [], count: 0 };
-          let mostPoles: {
-            driver: string;
-            drivers: string[];
-            driver_id?: string | null;
-            headshot_url?: string | null;
-            items?: { driver: string; driver_id?: string | null; headshot_url?: string | null }[];
-            count: number;
-          } = { driver: "—", drivers: [], count: 0 };
-          let raceLap: {
-            lap: string;
-            driver: string;
-            driver_id?: string | null;
-            headshot_url?: string | null;
-            year: number;
-          } = { lap: "—", driver: "—", year: 0 };
-          let allTimeLap: {
-            lap: string;
-            driver: string;
-            driver_id?: string | null;
-            headshot_url?: string | null;
-            year: number;
-            session: string;
-          } = { lap: "—", driver: "—", year: 0, session: "—" };
-          let topSpeed: {
-            speed: number;
-            driver: string;
-            team?: string;
-            year: number;
-            headshot_url?: string | null;
-            drivers: { driver: string; team?: string; year: number; headshot_url?: string | null }[];
-          } = { speed: 0, driver: "—", year: 0, drivers: [] };
-          let totalLaps = 0;
-
-          if (event.circuit_id) {
-            const overviewPromise = pool.query(`
+        if (event.circuit_id) {
+          const overviewPromise = pool.query(`
             SELECT *
             FROM website.v_circuit_overview
             WHERE circuit_id = $1
             LIMIT 1
           `, [event.circuit_id]).catch(() => ({ rows: [] }));
 
-            const tiedDriversPromise = pool.query(`
+          const tiedDriversPromise = pool.query(`
             SELECT driver_id, driver_full_name, driver_headshot_url, race_wins, total_wins, race_poles, total_podiums, total_points
             FROM website.v_circuit_driver_performance
             WHERE circuit_id = $1
           `, [event.circuit_id]).catch(() => ({ rows: [] }));
 
-            const speedTrapPromise = pool.query(`
+          const speedTrapPromise = pool.query(`
             SELECT driver_full_name, team_name, year, MAX(max_speed_trap) as top_speed
             FROM website.v_max_speed
             WHERE (
@@ -981,258 +981,258 @@ const pool = rawPool
             LIMIT 10
           `, [event.official_event_name, event.circuit_id]).catch(() => ({ rows: [] }));
 
-            const totalLapsPromise = pool.query(`
+          const totalLapsPromise = pool.query(`
             SELECT count(*) as total_laps
             FROM website.v_lap_by_lap
             WHERE official_event_name = $1
           `, [event.official_event_name]).catch(() => ({ rows: [] }));
 
-            const [ovRes, tiedRes, speedRes, lapsRes] = await Promise.all([
-              overviewPromise,
-              tiedDriversPromise,
-              speedTrapPromise,
-              totalLapsPromise
-            ]);
+          const [ovRes, tiedRes, speedRes, lapsRes] = await Promise.all([
+            overviewPromise,
+            tiedDriversPromise,
+            speedTrapPromise,
+            totalLapsPromise
+          ]);
 
-            const headshotMap = new Map<string, string | null>();
-            if (tiedRes.rows) {
-              for (const r of tiedRes.rows) {
-                if (r.driver_full_name && r.driver_headshot_url) {
-                  headshotMap.set(String(r.driver_full_name).toLowerCase(), r.driver_headshot_url);
-                }
+          const headshotMap = new Map<string, string | null>();
+          if (tiedRes.rows) {
+            for (const r of tiedRes.rows) {
+              if (r.driver_full_name && r.driver_headshot_url) {
+                headshotMap.set(String(r.driver_full_name).toLowerCase(), r.driver_headshot_url);
               }
             }
+          }
 
-            if (ovRes.rows && ovRes.rows.length > 0) {
-              const ov = ovRes.rows[0];
-              hasHistoricalData = true;
-              if (ov.most_wins_driver) {
-                const hs = ov.most_wins_driver_headshot_url || headshotMap.get(ov.most_wins_driver.toLowerCase()) || null;
+          if (ovRes.rows && ovRes.rows.length > 0) {
+            const ov = ovRes.rows[0];
+            hasHistoricalData = true;
+            if (ov.most_wins_driver) {
+              const hs = ov.most_wins_driver_headshot_url || headshotMap.get(ov.most_wins_driver.toLowerCase()) || null;
+              mostWins = {
+                driver: ov.most_wins_driver,
+                drivers: [ov.most_wins_driver],
+                driver_id: ov.most_wins_driver_id || null,
+                headshot_url: hs,
+                items: [{ driver: ov.most_wins_driver, driver_id: ov.most_wins_driver_id || null, headshot_url: hs }],
+                count: Number(ov.most_wins_count) || 0
+              };
+            }
+            if (ov.most_poles_driver) {
+              const hs = ov.most_poles_driver_headshot_url || headshotMap.get(ov.most_poles_driver.toLowerCase()) || null;
+              mostPoles = {
+                driver: ov.most_poles_driver,
+                drivers: [ov.most_poles_driver],
+                driver_id: ov.most_poles_driver_id || null,
+                headshot_url: hs,
+                items: [{ driver: ov.most_poles_driver, driver_id: ov.most_poles_driver_id || null, headshot_url: hs }],
+                count: Number(ov.most_poles_count) || 0
+              };
+            }
+            if (ov.race_lap_record_formatted) {
+              raceLap = {
+                lap: ov.race_lap_record_formatted,
+                driver: ov.race_lap_record_driver || "—",
+                driver_id: ov.race_lap_record_driver_id || null,
+                headshot_url: ov.race_lap_record_headshot_url || (ov.race_lap_record_driver ? headshotMap.get(ov.race_lap_record_driver.toLowerCase()) : null) || null,
+                year: Number(ov.race_lap_record_year) || 0
+              };
+            }
+            if (ov.quali_lap_record_formatted) {
+              allTimeLap = {
+                lap: ov.quali_lap_record_formatted,
+                driver: ov.quali_lap_record_driver || "—",
+                driver_id: ov.quali_lap_record_driver_id || null,
+                headshot_url: ov.quali_lap_record_headshot_url || (ov.quali_lap_record_driver ? headshotMap.get(ov.quali_lap_record_driver.toLowerCase()) : null) || null,
+                year: Number(ov.quali_lap_record_year) || 0,
+                session: "Classificação"
+              };
+            }
+          }
+
+          if (tiedRes.rows && tiedRes.rows.length > 0) {
+            const rows = tiedRes.rows;
+            const maxWins = Math.max(0, ...rows.map((r: any) => Number(r.race_wins ?? r.total_wins) || 0));
+            if (maxWins > 0) {
+              const tiedWinnersRows = rows
+                .filter((r: any) => (Number(r.race_wins ?? r.total_wins) || 0) === maxWins)
+                .sort((a: any, b: any) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0));
+              const tiedWinners = tiedWinnersRows.map((r: any) => String(r.driver_full_name));
+              const tiedItems = tiedWinnersRows.map((r: any) => ({
+                driver: String(r.driver_full_name),
+                driver_id: r.driver_id || null,
+                headshot_url: r.driver_headshot_url || null
+              }));
+              if (tiedWinners.length > 0) {
                 mostWins = {
-                  driver: ov.most_wins_driver,
-                  drivers: [ov.most_wins_driver],
-                  driver_id: ov.most_wins_driver_id || null,
-                  headshot_url: hs,
-                  items: [{ driver: ov.most_wins_driver, driver_id: ov.most_wins_driver_id || null, headshot_url: hs }],
-                  count: Number(ov.most_wins_count) || 0
+                  driver: tiedWinners[0],
+                  drivers: tiedWinners,
+                  driver_id: tiedItems[0]?.driver_id || null,
+                  headshot_url: tiedItems[0]?.headshot_url || null,
+                  items: tiedItems,
+                  count: maxWins
                 };
               }
-              if (ov.most_poles_driver) {
-                const hs = ov.most_poles_driver_headshot_url || headshotMap.get(ov.most_poles_driver.toLowerCase()) || null;
+            }
+
+            const maxPoles = Math.max(0, ...rows.map((r: any) => Number(r.race_poles) || 0));
+            if (maxPoles > 0) {
+              const tiedPoleRows = rows
+                .filter((r: any) => (Number(r.race_poles) || 0) === maxPoles)
+                .sort((a: any, b: any) => (Number(b.race_wins ?? b.total_wins) || 0) - (Number(a.race_wins ?? a.total_wins) || 0));
+              const tiedPoleHolders = tiedPoleRows.map((r: any) => String(r.driver_full_name));
+              const tiedItems = tiedPoleRows.map((r: any) => ({
+                driver: String(r.driver_full_name),
+                driver_id: r.driver_id || null,
+                headshot_url: r.driver_headshot_url || null
+              }));
+              if (tiedPoleHolders.length > 0) {
                 mostPoles = {
-                  driver: ov.most_poles_driver,
-                  drivers: [ov.most_poles_driver],
-                  driver_id: ov.most_poles_driver_id || null,
-                  headshot_url: hs,
-                  items: [{ driver: ov.most_poles_driver, driver_id: ov.most_poles_driver_id || null, headshot_url: hs }],
-                  count: Number(ov.most_poles_count) || 0
+                  driver: tiedPoleHolders[0],
+                  drivers: tiedPoleHolders,
+                  driver_id: tiedItems[0]?.driver_id || null,
+                  headshot_url: tiedItems[0]?.headshot_url || null,
+                  items: tiedItems,
+                  count: maxPoles
                 };
               }
-              if (ov.race_lap_record_formatted) {
-                raceLap = {
-                  lap: ov.race_lap_record_formatted,
-                  driver: ov.race_lap_record_driver || "—",
-                  driver_id: ov.race_lap_record_driver_id || null,
-                  headshot_url: ov.race_lap_record_headshot_url || (ov.race_lap_record_driver ? headshotMap.get(ov.race_lap_record_driver.toLowerCase()) : null) || null,
-                  year: Number(ov.race_lap_record_year) || 0
-                };
-              }
-              if (ov.quali_lap_record_formatted) {
-                allTimeLap = {
-                  lap: ov.quali_lap_record_formatted,
-                  driver: ov.quali_lap_record_driver || "—",
-                  driver_id: ov.quali_lap_record_driver_id || null,
-                  headshot_url: ov.quali_lap_record_headshot_url || (ov.quali_lap_record_driver ? headshotMap.get(ov.quali_lap_record_driver.toLowerCase()) : null) || null,
-                  year: Number(ov.quali_lap_record_year) || 0,
-                  session: "Classificação"
-                };
-              }
-            }
-
-            if (tiedRes.rows && tiedRes.rows.length > 0) {
-              const rows = tiedRes.rows;
-              const maxWins = Math.max(0, ...rows.map((r: any) => Number(r.race_wins ?? r.total_wins) || 0));
-              if (maxWins > 0) {
-                const tiedWinnersRows = rows
-                  .filter((r: any) => (Number(r.race_wins ?? r.total_wins) || 0) === maxWins)
-                  .sort((a: any, b: any) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0));
-                const tiedWinners = tiedWinnersRows.map((r: any) => String(r.driver_full_name));
-                const tiedItems = tiedWinnersRows.map((r: any) => ({
-                  driver: String(r.driver_full_name),
-                  driver_id: r.driver_id || null,
-                  headshot_url: r.driver_headshot_url || null
-                }));
-                if (tiedWinners.length > 0) {
-                  mostWins = {
-                    driver: tiedWinners[0],
-                    drivers: tiedWinners,
-                    driver_id: tiedItems[0]?.driver_id || null,
-                    headshot_url: tiedItems[0]?.headshot_url || null,
-                    items: tiedItems,
-                    count: maxWins
-                  };
-                }
-              }
-
-              const maxPoles = Math.max(0, ...rows.map((r: any) => Number(r.race_poles) || 0));
-              if (maxPoles > 0) {
-                const tiedPoleRows = rows
-                  .filter((r: any) => (Number(r.race_poles) || 0) === maxPoles)
-                  .sort((a: any, b: any) => (Number(b.race_wins ?? b.total_wins) || 0) - (Number(a.race_wins ?? a.total_wins) || 0));
-                const tiedPoleHolders = tiedPoleRows.map((r: any) => String(r.driver_full_name));
-                const tiedItems = tiedPoleRows.map((r: any) => ({
-                  driver: String(r.driver_full_name),
-                  driver_id: r.driver_id || null,
-                  headshot_url: r.driver_headshot_url || null
-                }));
-                if (tiedPoleHolders.length > 0) {
-                  mostPoles = {
-                    driver: tiedPoleHolders[0],
-                    drivers: tiedPoleHolders,
-                    driver_id: tiedItems[0]?.driver_id || null,
-                    headshot_url: tiedItems[0]?.headshot_url || null,
-                    items: tiedItems,
-                    count: maxPoles
-                  };
-                }
-              }
-            }
-
-            if (lapsRes.rows && lapsRes.rows.length > 0 && Number(lapsRes.rows[0].total_laps) > 0) {
-              totalLaps = parseInt(lapsRes.rows[0].total_laps);
-              hasHistoricalData = true;
-            }
-
-            if (speedRes.rows && speedRes.rows.length > 0 && speedRes.rows[0].top_speed) {
-              const maxSpd = Number(speedRes.rows[0].top_speed);
-              const tiedSpd = speedRes.rows
-                .filter((r: any) => Number(r.top_speed) === maxSpd)
-                .map((r: any) => ({
-                  driver: String(r.driver_full_name),
-                  team: r.team_name ? String(r.team_name) : undefined,
-                  year: parseInt(r.year),
-                  headshot_url: headshotMap.get(String(r.driver_full_name).toLowerCase()) || null
-                }));
-              topSpeed = {
-                speed: maxSpd,
-                driver: speedRes.rows[0].driver_full_name,
-                team: speedRes.rows[0].team_name ? String(speedRes.rows[0].team_name) : undefined,
-                year: parseInt(speedRes.rows[0].year),
-                headshot_url: headshotMap.get(String(speedRes.rows[0].driver_full_name).toLowerCase()) || null,
-                drivers: tiedSpd
-              };
-            } else if (mockUpcomingRace.circuit_records?.max_speed_kmh) {
-              const mockRec = mockUpcomingRace.circuit_records;
-              topSpeed = {
-                speed: mockRec.max_speed_kmh || 0,
-                driver: mockRec.max_speed_driver || "—",
-                team: mockRec.max_speed_team || undefined,
-                year: mockRec.max_speed_year || 0,
-                drivers: mockRec.max_speed_drivers || (mockRec.max_speed_driver ? [{ driver: mockRec.max_speed_driver, team: mockRec.max_speed_team, year: mockRec.max_speed_year || 0 }] : [])
-              };
             }
           }
 
-          const loc = (event.location || "").toLowerCase();
-          const country = (event.country || "").toLowerCase();
-          const circuitId = (event.circuit_id || "").toLowerCase();
-
-          let typicalStrategy = hasHistoricalData
-            ? "1 a 2 Paradas (Médio ➔ Duro) balanceando degradação térmica e tempo no pit lane"
-            : "Dados de estratégia e degradação serão calibrados após os primeiros treinos livres";
-
-          if (loc.includes("baku") || country.includes("azerbaijan")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) com alta probabilidade de Safety Car devido às barreiras próximas e retas de 2.2 km";
-          } else if (loc.includes("singapore") || country.includes("singapore")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) em corrida noturna com desgaste extremo de freios e 100% de probabilidade de SC";
-          } else if (loc.includes("austin") || loc.includes("texas")) {
-            typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Médio) devido às curvas de alta energia no primeiro setor";
-          } else if (loc.includes("mexico") || country.includes("mexico") || circuitId.includes("rodriguez")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) devido à altitude de 2.200m que reduz o arrasto aerodinâmico e a refrigeração";
-          } else if (loc.includes("são paulo") || loc.includes("interlagos") || country.includes("brazil")) {
-            typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Macio) com alta sensibilidade climática e curvas de tração";
-          } else if (loc.includes("las vegas") || loc.includes("vegas")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) com baixas temperaturas noturnas e longas zonas de frenagem";
-          } else if (loc.includes("qatar") || loc.includes("lusail")) {
-            typicalStrategy = "2 a 3 Paradas (Médio ➔ Duro ➔ Médio) devido às forças laterais extremas e limite de voltas por stint";
-          } else if (loc.includes("abu dhabi") || loc.includes("yas marina")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) com queda acentuada de temperatura da pista durante o entardecer";
-          } else if (loc.includes("monza") || country.includes("italy")) {
-            typicalStrategy = "1 Parada (Médio ➔ Duro) com baixa pressão aerodinâmica e alta velocidade de reta";
-          } else if (loc.includes("silverstone") || country.includes("united kingdom")) {
-            typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Duro) devido às curvas de alta carga lateral";
+          if (lapsRes.rows && lapsRes.rows.length > 0 && Number(lapsRes.rows[0].total_laps) > 0) {
+            totalLaps = parseInt(lapsRes.rows[0].total_laps);
+            hasHistoricalData = true;
           }
 
-          const evDate = event.event_date ? new Date(event.event_date) : new Date();
-          const fullMonths = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-          const formattedEventDate = `${evDate.getUTCDate()} de ${fullMonths[evDate.getUTCMonth()]} de ${evDate.getUTCFullYear()}`;
-
-          const result: RaceWeekendInfo = {
-            round_number: parseInt(event.round_number),
-            official_event_name: event.official_event_name,
-            country: event.country || "Mexico",
-            location: event.location || "Mexico City",
-            circuit_name: event.circuit_name || "Autódromo Hermanos Rodríguez",
-            event_date: formattedEventDate,
-            is_upcoming: targetRound > latestCompleted,
-            race_timestamp_utc: raceTimestampUtc,
-            sessions: sessions,
-            circuit_records: {
-              has_historical_data: hasHistoricalData,
-              lap_record: raceLap.lap,
-              lap_record_holder: raceLap.driver,
-              lap_record_driver_id: raceLap.driver_id,
-              lap_record_headshot_url: raceLap.headshot_url,
-              lap_record_year: raceLap.year,
-              all_time_record: allTimeLap.lap,
-              all_time_holder: allTimeLap.driver,
-              all_time_driver_id: allTimeLap.driver_id,
-              all_time_headshot_url: allTimeLap.headshot_url,
-              all_time_year: allTimeLap.year,
-              all_time_session: allTimeLap.session,
-              max_speed_kmh: topSpeed.speed,
-              max_speed_driver: topSpeed.driver,
-              max_speed_team: topSpeed.team,
-              max_speed_drivers: topSpeed.drivers,
-              max_speed_headshot_url: topSpeed.headshot_url,
-              max_speed_year: topSpeed.year,
-              total_laps_analyzed: totalLaps,
-              most_wins_driver: mostWins.driver,
-              most_wins_drivers: mostWins.drivers,
-              most_wins_driver_id: mostWins.driver_id,
-              most_wins_headshot_url: mostWins.headshot_url,
-              most_wins_items: mostWins.items,
-              most_wins_count: mostWins.count,
-              most_poles_driver: mostPoles.driver,
-              most_poles_drivers: mostPoles.drivers,
-              most_poles_driver_id: mostPoles.driver_id,
-              most_poles_headshot_url: mostPoles.headshot_url,
-              most_poles_items: mostPoles.items,
-              most_poles_count: mostPoles.count,
-              typical_strategy: typicalStrategy
-            }
-          };
-
-          cache.set(cacheKey, { data: result, expiresAt: nowMs + DEFAULT_TTL_MS });
-          return result;
+          if (speedRes.rows && speedRes.rows.length > 0 && speedRes.rows[0].top_speed) {
+            const maxSpd = Number(speedRes.rows[0].top_speed);
+            const tiedSpd = speedRes.rows
+              .filter((r: any) => Number(r.top_speed) === maxSpd)
+              .map((r: any) => ({
+                driver: String(r.driver_full_name),
+                team: r.team_name ? String(r.team_name) : undefined,
+                year: parseInt(r.year),
+                headshot_url: headshotMap.get(String(r.driver_full_name).toLowerCase()) || null
+              }));
+            topSpeed = {
+              speed: maxSpd,
+              driver: speedRes.rows[0].driver_full_name,
+              team: speedRes.rows[0].team_name ? String(speedRes.rows[0].team_name) : undefined,
+              year: parseInt(speedRes.rows[0].year),
+              headshot_url: headshotMap.get(String(speedRes.rows[0].driver_full_name).toLowerCase()) || null,
+              drivers: tiedSpd
+            };
+          } else if (mockUpcomingRace.circuit_records?.max_speed_kmh) {
+            const mockRec = mockUpcomingRace.circuit_records;
+            topSpeed = {
+              speed: mockRec.max_speed_kmh || 0,
+              driver: mockRec.max_speed_driver || "—",
+              team: mockRec.max_speed_team || undefined,
+              year: mockRec.max_speed_year || 0,
+              drivers: mockRec.max_speed_drivers || (mockRec.max_speed_driver ? [{ driver: mockRec.max_speed_driver, team: mockRec.max_speed_team, year: mockRec.max_speed_year || 0 }] : [])
+            };
+          }
         }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch dynamic upcoming race info, falling back to mock.", e);
-    }
 
-    return mockUpcomingRace;
+        const loc = (event.location || "").toLowerCase();
+        const country = (event.country || "").toLowerCase();
+        const circuitId = (event.circuit_id || "").toLowerCase();
+
+        let typicalStrategy = hasHistoricalData
+          ? "1 a 2 Paradas (Médio ➔ Duro) balanceando degradação térmica e tempo no pit lane"
+          : "Dados de estratégia e degradação serão calibrados após os primeiros treinos livres";
+
+        if (loc.includes("baku") || country.includes("azerbaijan")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com alta probabilidade de Safety Car devido às barreiras próximas e retas de 2.2 km";
+        } else if (loc.includes("singapore") || country.includes("singapore")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) em corrida noturna com desgaste extremo de freios e 100% de probabilidade de SC";
+        } else if (loc.includes("austin") || loc.includes("texas")) {
+          typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Médio) devido às curvas de alta energia no primeiro setor";
+        } else if (loc.includes("mexico") || country.includes("mexico") || circuitId.includes("rodriguez")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) devido à altitude de 2.200m que reduz o arrasto aerodinâmico e a refrigeração";
+        } else if (loc.includes("são paulo") || loc.includes("interlagos") || country.includes("brazil")) {
+          typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Macio) com alta sensibilidade climática e curvas de tração";
+        } else if (loc.includes("las vegas") || loc.includes("vegas")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com baixas temperaturas noturnas e longas zonas de frenagem";
+        } else if (loc.includes("qatar") || loc.includes("lusail")) {
+          typicalStrategy = "2 a 3 Paradas (Médio ➔ Duro ➔ Médio) devido às forças laterais extremas e limite de voltas por stint";
+        } else if (loc.includes("abu dhabi") || loc.includes("yas marina")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com queda acentuada de temperatura da pista durante o entardecer";
+        } else if (loc.includes("monza") || country.includes("italy")) {
+          typicalStrategy = "1 Parada (Médio ➔ Duro) com baixa pressão aerodinâmica e alta velocidade de reta";
+        } else if (loc.includes("silverstone") || country.includes("united kingdom")) {
+          typicalStrategy = "2 Paradas (Médio ➔ Duro ➔ Duro) devido às curvas de alta carga lateral";
+        }
+
+        const evDate = event.event_date ? new Date(event.event_date) : new Date();
+        const fullMonths = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const formattedEventDate = `${evDate.getUTCDate()} de ${fullMonths[evDate.getUTCMonth()]} de ${evDate.getUTCFullYear()}`;
+
+        const result: RaceWeekendInfo = {
+          round_number: parseInt(event.round_number),
+          official_event_name: event.official_event_name,
+          country: event.country || "Mexico",
+          location: event.location || "Mexico City",
+          circuit_name: event.circuit_name || "Autódromo Hermanos Rodríguez",
+          event_date: formattedEventDate,
+          is_upcoming: targetRound > latestCompleted,
+          race_timestamp_utc: raceTimestampUtc,
+          sessions: sessions,
+          circuit_records: {
+            has_historical_data: hasHistoricalData,
+            lap_record: raceLap.lap,
+            lap_record_holder: raceLap.driver,
+            lap_record_driver_id: raceLap.driver_id,
+            lap_record_headshot_url: raceLap.headshot_url,
+            lap_record_year: raceLap.year,
+            all_time_record: allTimeLap.lap,
+            all_time_holder: allTimeLap.driver,
+            all_time_driver_id: allTimeLap.driver_id,
+            all_time_headshot_url: allTimeLap.headshot_url,
+            all_time_year: allTimeLap.year,
+            all_time_session: allTimeLap.session,
+            max_speed_kmh: topSpeed.speed,
+            max_speed_driver: topSpeed.driver,
+            max_speed_team: topSpeed.team,
+            max_speed_drivers: topSpeed.drivers,
+            max_speed_headshot_url: topSpeed.headshot_url,
+            max_speed_year: topSpeed.year,
+            total_laps_analyzed: totalLaps,
+            most_wins_driver: mostWins.driver,
+            most_wins_drivers: mostWins.drivers,
+            most_wins_driver_id: mostWins.driver_id,
+            most_wins_headshot_url: mostWins.headshot_url,
+            most_wins_items: mostWins.items,
+            most_wins_count: mostWins.count,
+            most_poles_driver: mostPoles.driver,
+            most_poles_drivers: mostPoles.drivers,
+            most_poles_driver_id: mostPoles.driver_id,
+            most_poles_headshot_url: mostPoles.headshot_url,
+            most_poles_items: mostPoles.items,
+            most_poles_count: mostPoles.count,
+            typical_strategy: typicalStrategy
+          }
+        };
+
+        cache.set(cacheKey, { data: result, expiresAt: nowMs + DEFAULT_TTL_MS });
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to fetch dynamic upcoming race info, falling back to mock.", e);
   }
 
-  export async function getDriversCatalog(): Promise<DriverCatalogItem[]> {
-    const cacheKey = "driversCatalog";
-    const now = Date.now();
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.data as DriverCatalogItem[];
-    }
+  return mockUpcomingRace;
+}
 
-    const sql = `
+export async function getDriversCatalog(): Promise<DriverCatalogItem[]> {
+  const cacheKey = "driversCatalog";
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.data as DriverCatalogItem[];
+  }
+
+  const sql = `
     WITH latest_season AS (
       SELECT MAX(year) AS max_year FROM website.v_driver_season_summary
     ),
@@ -1279,43 +1279,43 @@ const pool = rawPool
       c.total_points DESC
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql);
-        if (res.rows && res.rows.length > 0) {
-          const data = res.rows.map((r: any) => ({
-            ...r,
-            total_world_championships: Number(r.total_world_championships) || 0,
-            total_gps: Number(r.total_gps) || 0,
-            total_seasons: Number(r.total_seasons) || 0,
-            first_season: Number(r.first_season),
-            last_season: Number(r.last_season),
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_points: Number(r.total_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
-            is_active: Boolean(r.is_active)
-          }));
-          cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
-          return data;
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql);
+      if (res.rows && res.rows.length > 0) {
+        const data = res.rows.map((r: any) => ({
+          ...r,
+          total_world_championships: Number(r.total_world_championships) || 0,
+          total_gps: Number(r.total_gps) || 0,
+          total_seasons: Number(r.total_seasons) || 0,
+          first_season: Number(r.first_season),
+          last_season: Number(r.last_season),
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_points: Number(r.total_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
+          is_active: Boolean(r.is_active)
+        }));
+        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
+        return data;
       }
-    } catch (e) {
-      console.warn("Failed to fetch drivers catalog from db:", e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn("Failed to fetch drivers catalog from db:", e);
   }
 
-  export async function getDriverProfile(driverId: string): Promise<DriverCatalogItem | null> {
-    const sql = `
+  return [];
+}
+
+export async function getDriverProfile(driverId: string): Promise<DriverCatalogItem | null> {
+  const sql = `
     WITH latest_season AS (
       SELECT MAX(year) AS max_year FROM website.v_driver_season_summary
     ),
@@ -1390,64 +1390,64 @@ const pool = rawPool
     LIMIT 1;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [driverId]);
-        if (res.rows && res.rows.length > 0) {
-          const r = res.rows[0];
-          return {
-            ...r,
-            total_world_championships: Number(r.total_world_championships) || 0,
-            total_gps: Number(r.total_gps) || 0,
-            total_seasons: Number(r.total_seasons) || 0,
-            first_season: Number(r.first_season),
-            last_season: Number(r.last_season),
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_poles_to_win: Number(r.total_poles_to_win) || 0,
-            pole_to_win_rate: r.pole_to_win_rate !== null && r.pole_to_win_rate !== undefined ? Number(r.pole_to_win_rate) : undefined,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_q2_appearences: Number(r.total_q2_appearences) || 0,
-            total_q3_appearences: Number(r.total_q3_appearences) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_points: Number(r.total_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-            rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
-            rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
-            rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
-            rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
-            rank_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
-            rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
-            rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
-            rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
-            rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
-            rank_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
-            rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
-            rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
-            rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
-            rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
-            rank_points: r.rank_points ? Number(r.rank_points) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
-            is_active: Boolean(r.is_active)
-          };
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [driverId]);
+      if (res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          ...r,
+          total_world_championships: Number(r.total_world_championships) || 0,
+          total_gps: Number(r.total_gps) || 0,
+          total_seasons: Number(r.total_seasons) || 0,
+          first_season: Number(r.first_season),
+          last_season: Number(r.last_season),
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_poles_to_win: Number(r.total_poles_to_win) || 0,
+          pole_to_win_rate: r.pole_to_win_rate !== null && r.pole_to_win_rate !== undefined ? Number(r.pole_to_win_rate) : undefined,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_q2_appearences: Number(r.total_q2_appearences) || 0,
+          total_q3_appearences: Number(r.total_q3_appearences) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_points: Number(r.total_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+          rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
+          rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
+          rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
+          rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
+          rank_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
+          rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
+          rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
+          rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
+          rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
+          rank_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
+          rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
+          rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
+          rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
+          rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
+          rank_points: r.rank_points ? Number(r.rank_points) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
+          is_active: Boolean(r.is_active)
+        };
       }
-    } catch (e) {
-      console.warn(`Failed to fetch driver profile for ${driverId}:`, e);
     }
-
-    return null;
+  } catch (e) {
+    console.warn(`Failed to fetch driver profile for ${driverId}:`, e);
   }
 
-  export async function getDriverSeasons(driverId: string): Promise<DriverSeasonSummaryItem[]> {
-    const sql = `
+  return null;
+}
+
+export async function getDriverSeasons(driverId: string): Promise<DriverSeasonSummaryItem[]> {
+  const sql = `
     SELECT 
       year,
       driver_id,
@@ -1481,48 +1481,48 @@ const pool = rawPool
     ORDER BY year DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [driverId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            ...r,
-            year: Number(r.year),
-            championship_position: Number(r.championship_position) || 0,
-            is_season_completed: Boolean(r.is_season_completed),
-            total_gps: Number(r.total_gps) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            fastest_laps: Number(r.fastest_laps) || 0,
-            total_points: Number(r.total_points) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-            q2_appearences: Number(r.q2_appearences) || 0,
-            q3_appearences: Number(r.q3_appearences) || 0,
-            poles_to_win: Number(r.poles_to_win) || 0,
-            pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [driverId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          ...r,
+          year: Number(r.year),
+          championship_position: Number(r.championship_position) || 0,
+          is_season_completed: Boolean(r.is_season_completed),
+          total_gps: Number(r.total_gps) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          fastest_laps: Number(r.fastest_laps) || 0,
+          total_points: Number(r.total_points) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+          q2_appearences: Number(r.q2_appearences) || 0,
+          q3_appearences: Number(r.q3_appearences) || 0,
+          poles_to_win: Number(r.poles_to_win) || 0,
+          pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch driver seasons for ${driverId}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch driver seasons for ${driverId}:`, e);
   }
 
-  export async function getDriverCircuits(driverId: string): Promise<DriverCircuitPerformanceItem[]> {
-    const sql = `
+  return [];
+}
+
+export async function getDriverCircuits(driverId: string): Promise<DriverCircuitPerformanceItem[]> {
+  const sql = `
     SELECT 
       circuit_id,
       circuit_id AS circuit_sk,
@@ -1554,42 +1554,42 @@ const pool = rawPool
     ORDER BY total_wins DESC, total_podiums DESC, total_points DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [driverId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            ...r,
-            total_gps: Number(r.total_gps) || 0,
-            first_year: Number(r.first_year),
-            last_year: Number(r.last_year),
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_points: Number(r.total_points) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [driverId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          ...r,
+          total_gps: Number(r.total_gps) || 0,
+          first_year: Number(r.first_year),
+          last_year: Number(r.last_year),
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_points: Number(r.total_points) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch driver circuits for ${driverId}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch driver circuits for ${driverId}:`, e);
   }
 
-  export async function getDriverRaceLog(driverId: string): Promise<DriverRaceLogItem[]> {
-    const sql = `
+  return [];
+}
+
+export async function getDriverRaceLog(driverId: string): Promise<DriverRaceLogItem[]> {
+  const sql = `
     SELECT 
       s.year,
       s.round_number,
@@ -1618,43 +1618,43 @@ const pool = rawPool
     ORDER BY s.year DESC, s.round_number DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [driverId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            ...r,
-            year: Number(r.year),
-            round_number: Number(r.round_number),
-            circuit_id: r.circuit_id || undefined,
-            circuit_name: r.circuit_name || undefined,
-            country: r.country || undefined,
-            driver_number: r.driver_number ? Number(r.driver_number) : undefined,
-            grid_position: r.grid_position ? Number(r.grid_position) : undefined,
-            finishing_position: r.finishing_position ? Number(r.finishing_position) : undefined,
-            delta_position: r.delta_position !== null ? Number(r.delta_position) : undefined,
-            points: Number(r.points) || 0,
-            laps_completed: r.laps_completed ? Number(r.laps_completed) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [driverId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          ...r,
+          year: Number(r.year),
+          round_number: Number(r.round_number),
+          circuit_id: r.circuit_id || undefined,
+          circuit_name: r.circuit_name || undefined,
+          country: r.country || undefined,
+          driver_number: r.driver_number ? Number(r.driver_number) : undefined,
+          grid_position: r.grid_position ? Number(r.grid_position) : undefined,
+          finishing_position: r.finishing_position ? Number(r.finishing_position) : undefined,
+          delta_position: r.delta_position !== null ? Number(r.delta_position) : undefined,
+          points: Number(r.points) || 0,
+          laps_completed: r.laps_completed ? Number(r.laps_completed) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch driver race log for ${driverId}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch driver race log for ${driverId}:`, e);
   }
 
-  export async function getConstructorsCatalog(): Promise<ConstructorCatalogItem[]> {
-    const cacheKey = "constructorsCatalog";
-    const now = Date.now();
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.data as ConstructorCatalogItem[];
-    }
+  return [];
+}
 
-    const sql = `
+export async function getConstructorsCatalog(): Promise<ConstructorCatalogItem[]> {
+  const cacheKey = "constructorsCatalog";
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.data as ConstructorCatalogItem[];
+  }
+
+  const sql = `
     SELECT 
       team_id,
       team_name,
@@ -1710,70 +1710,70 @@ const pool = rawPool
       total_points DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql);
-        if (res.rows) {
-          const data = res.rows.map((r: any) => ({
-            ...r,
-            is_active: Boolean(r.is_active),
-            total_world_championships: Number(r.total_world_championships) || 0,
-            total_gps: Number(r.total_gps) || 0,
-            total_seasons: Number(r.total_seasons) || 0,
-            first_season: Number(r.first_season),
-            last_season: Number(r.last_season),
-            active_season_competitive_gps: Number(r.active_season_competitive_gps) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_one_two: Number(r.total_one_two) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_front_row: Number(r.total_front_row) || 0,
-            total_poles_to_win: Number(r.total_poles_to_win) || 0,
-            pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            total_double_podium: Number(r.total_double_podium) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_double_points: Number(r.total_double_points) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            total_points: Number(r.total_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-            total_q2_appearences: Number(r.total_q2_appearences) || 0,
-            total_q3_appearences: Number(r.total_q3_appearences) || 0,
-            rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
-            rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
-            rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
-            rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
-            rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
-            rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
-            rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
-            rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
-            rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
-            rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
-            rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
-            rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
-            rank_points: r.rank_points ? Number(r.rank_points) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-          }));
-          cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
-          return data;
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql);
+      if (res.rows) {
+        const data = res.rows.map((r: any) => ({
+          ...r,
+          is_active: Boolean(r.is_active),
+          total_world_championships: Number(r.total_world_championships) || 0,
+          total_gps: Number(r.total_gps) || 0,
+          total_seasons: Number(r.total_seasons) || 0,
+          first_season: Number(r.first_season),
+          last_season: Number(r.last_season),
+          active_season_competitive_gps: Number(r.active_season_competitive_gps) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_one_two: Number(r.total_one_two) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_front_row: Number(r.total_front_row) || 0,
+          total_poles_to_win: Number(r.total_poles_to_win) || 0,
+          pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          total_double_podium: Number(r.total_double_podium) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_double_points: Number(r.total_double_points) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          total_points: Number(r.total_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+          total_q2_appearences: Number(r.total_q2_appearences) || 0,
+          total_q3_appearences: Number(r.total_q3_appearences) || 0,
+          rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
+          rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
+          rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
+          rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
+          rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
+          rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
+          rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
+          rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
+          rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
+          rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
+          rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
+          rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
+          rank_points: r.rank_points ? Number(r.rank_points) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+        }));
+        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
+        return data;
       }
-    } catch (e) {
-      console.warn("Failed to fetch constructors catalog from db:", e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn("Failed to fetch constructors catalog from db:", e);
   }
 
-  export async function getConstructorProfile(teamId: string): Promise<ConstructorCatalogItem | null> {
-    const sql = `
+  return [];
+}
+
+export async function getConstructorProfile(teamId: string): Promise<ConstructorCatalogItem | null> {
+  const sql = `
     SELECT 
       team_id,
       team_name,
@@ -1837,78 +1837,78 @@ const pool = rawPool
     LIMIT 1;
   `;
 
-    try {
-      if (pool) {
-        let res;
-        try {
+  try {
+    if (pool) {
+      let res;
+      try {
+        res = await pool.query(sql, [teamId]);
+      } catch (connErr: any) {
+        if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
           res = await pool.query(sql, [teamId]);
-        } catch (connErr: any) {
-          if (connErr?.code === '08006' || connErr?.code === 'ECONNRESET') {
-            res = await pool.query(sql, [teamId]);
-          } else {
-            throw connErr;
-          }
-        }
-        if (res.rows && res.rows.length > 0) {
-          const r = res.rows[0];
-          return {
-            ...r,
-            is_active: Boolean(r.is_active),
-            total_world_championships: Number(r.total_world_championships) || 0,
-            total_gps: Number(r.total_gps) || 0,
-            total_seasons: Number(r.total_seasons) || 0,
-            first_season: Number(r.first_season),
-            last_season: Number(r.last_season),
-            active_season_competitive_gps: Number(r.active_season_competitive_gps) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_one_two: Number(r.total_one_two) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_front_row: Number(r.total_front_row) || 0,
-            total_poles_to_win: Number(r.total_poles_to_win) || 0,
-            pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            total_double_podium: Number(r.total_double_podium) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_double_points: Number(r.total_double_points) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            total_points: Number(r.total_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-            total_q2_appearences: Number(r.total_q2_appearences) || 0,
-            total_q3_appearences: Number(r.total_q3_appearences) || 0,
-            rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
-            rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
-            rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
-            rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
-            rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
-            rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
-            rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
-            rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
-            rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
-            rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
-            rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
-            rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
-            rank_points: r.rank_points ? Number(r.rank_points) : undefined,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-          };
+        } else {
+          throw connErr;
         }
       }
-    } catch (e) {
-      console.warn(`Failed to fetch constructor profile for ${teamId}:`, e);
+      if (res.rows && res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          ...r,
+          is_active: Boolean(r.is_active),
+          total_world_championships: Number(r.total_world_championships) || 0,
+          total_gps: Number(r.total_gps) || 0,
+          total_seasons: Number(r.total_seasons) || 0,
+          first_season: Number(r.first_season),
+          last_season: Number(r.last_season),
+          active_season_competitive_gps: Number(r.active_season_competitive_gps) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_one_two: Number(r.total_one_two) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_front_row: Number(r.total_front_row) || 0,
+          total_poles_to_win: Number(r.total_poles_to_win) || 0,
+          pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          total_double_podium: Number(r.total_double_podium) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_double_points: Number(r.total_double_points) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          total_points: Number(r.total_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+          total_q2_appearences: Number(r.total_q2_appearences) || 0,
+          total_q3_appearences: Number(r.total_q3_appearences) || 0,
+          rank_world_championships: r.rank_world_championships ? Number(r.rank_world_championships) : undefined,
+          rank_race_wins: r.rank_race_wins ? Number(r.rank_race_wins) : undefined,
+          rank_sprint_wins: r.rank_sprint_wins ? Number(r.rank_sprint_wins) : undefined,
+          rank_total_wins: r.rank_total_wins ? Number(r.rank_total_wins) : undefined,
+          rank_poles: r.rank_poles ? Number(r.rank_poles) : undefined,
+          rank_race_podiums: r.rank_race_podiums ? Number(r.rank_race_podiums) : undefined,
+          rank_sprint_podiums: r.rank_sprint_podiums ? Number(r.rank_sprint_podiums) : undefined,
+          rank_total_podiums: r.rank_total_podiums ? Number(r.rank_total_podiums) : undefined,
+          rank_gps: r.rank_gps ? Number(r.rank_gps) : undefined,
+          rank_seasons: r.rank_seasons ? Number(r.rank_seasons) : undefined,
+          rank_q3_appearences: r.rank_q3_appearences ? Number(r.rank_q3_appearences) : undefined,
+          rank_q2_appearences: r.rank_q2_appearences ? Number(r.rank_q2_appearences) : undefined,
+          rank_points: r.rank_points ? Number(r.rank_points) : undefined,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+        };
+      }
     }
-
-    return null;
+  } catch (e) {
+    console.warn(`Failed to fetch constructor profile for ${teamId}:`, e);
   }
 
-  export async function getConstructorDrivers(teamId: string): Promise<ConstructorDriverSummaryItem[]> {
-    const sql = `
+  return null;
+}
+
+export async function getConstructorDrivers(teamId: string): Promise<ConstructorDriverSummaryItem[]> {
+  const sql = `
     SELECT 
       team_id,
       team_name,
@@ -1953,51 +1953,51 @@ const pool = rawPool
     ORDER BY total_points DESC, total_wins DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [teamId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            ...r,
-            seasons_count: Number(r.seasons_count) || 0,
-            first_season: Number(r.first_season),
-            last_season: Number(r.last_season),
-            gps_raced: Number(r.gps_raced) || 0,
-            competitive_gps: Number(r.competitive_gps) || 0,
-            driver_titles_with_team: Number(r.driver_titles_with_team) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            fastest_laps: Number(r.fastest_laps) || 0,
-            points_finishes: Number(r.points_finishes) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            total_points: Number(r.total_points) || 0,
-            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-            rank_in_team_points: Number(r.rank_in_team_points) || 0,
-            rank_in_team_wins: Number(r.rank_in_team_wins) || 0,
-            rank_in_team_gps: Number(r.rank_in_team_gps) || 0,
-            rank_in_team_titles: Number(r.rank_in_team_titles) || 0,
-            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [teamId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          ...r,
+          seasons_count: Number(r.seasons_count) || 0,
+          first_season: Number(r.first_season),
+          last_season: Number(r.last_season),
+          gps_raced: Number(r.gps_raced) || 0,
+          competitive_gps: Number(r.competitive_gps) || 0,
+          driver_titles_with_team: Number(r.driver_titles_with_team) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          fastest_laps: Number(r.fastest_laps) || 0,
+          points_finishes: Number(r.points_finishes) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          total_points: Number(r.total_points) || 0,
+          best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+          rank_in_team_points: Number(r.rank_in_team_points) || 0,
+          rank_in_team_wins: Number(r.rank_in_team_wins) || 0,
+          rank_in_team_gps: Number(r.rank_in_team_gps) || 0,
+          rank_in_team_titles: Number(r.rank_in_team_titles) || 0,
+          team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch constructor drivers for ${teamId}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch constructor drivers for ${teamId}:`, e);
   }
 
-  export async function getConstructorSeasons(teamId: string): Promise<ConstructorSeasonSummaryItem[]> {
-    const sql = `
+  return [];
+}
+
+export async function getConstructorSeasons(teamId: string): Promise<ConstructorSeasonSummaryItem[]> {
+  const sql = `
     SELECT 
       year,
       team_id,
@@ -2039,70 +2039,70 @@ const pool = rawPool
     ORDER BY year DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [teamId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => {
-            let parsedLineup: ConstructorSeasonDriverLineup[] = [];
-            if (r.drivers_lineup) {
-              if (typeof r.drivers_lineup === "string") {
-                try {
-                  parsedLineup = JSON.parse(r.drivers_lineup);
-                } catch {
-                  parsedLineup = [];
-                }
-              } else if (Array.isArray(r.drivers_lineup)) {
-                parsedLineup = r.drivers_lineup;
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [teamId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => {
+          let parsedLineup: ConstructorSeasonDriverLineup[] = [];
+          if (r.drivers_lineup) {
+            if (typeof r.drivers_lineup === "string") {
+              try {
+                parsedLineup = JSON.parse(r.drivers_lineup);
+              } catch {
+                parsedLineup = [];
               }
+            } else if (Array.isArray(r.drivers_lineup)) {
+              parsedLineup = r.drivers_lineup;
             }
+          }
 
-            return {
-              ...r,
-              year: Number(r.year),
-              total_gps: Number(r.total_gps) || 0,
-              competitive_gps: Number(r.competitive_gps) || 0,
-              race_wins: Number(r.race_wins) || 0,
-              sprint_wins: Number(r.sprint_wins) || 0,
-              total_wins: Number(r.total_wins) || 0,
-              race_poles: Number(r.race_poles) || 0,
-              sprint_poles: Number(r.sprint_poles) || 0,
-              poles_to_win: Number(r.poles_to_win) || 0,
-              race_podiums: Number(r.race_podiums) || 0,
-              sprint_podiums: Number(r.sprint_podiums) || 0,
-              total_podiums: Number(r.total_podiums) || 0,
-              q2_appearences: Number(r.q2_appearences) || 0,
-              q3_appearences: Number(r.q3_appearences) || 0,
-              race_points: Number(r.race_points) || 0,
-              sprint_points: Number(r.sprint_points) || 0,
-              total_points: Number(r.total_points) || 0,
-              best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
-              best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
-              total_dnfs: Number(r.total_dnfs) || 0,
-              total_one_two: Number(r.total_one_two) || 0,
-              total_double_podium: Number(r.total_double_podium) || 0,
-              total_double_points: Number(r.total_double_points) || 0,
-              total_front_row: Number(r.total_front_row) || 0,
-              fastest_laps: Number(r.fastest_laps) || 0,
-              pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
-              is_season_completed: Boolean(r.is_season_completed),
-              championship_position: Number(r.championship_position) || 0,
-              drivers_lineup: parsedLineup,
-              drivers_used_count: Number(r.drivers_used_count) || 0,
-              team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
-            };
-          });
-        }
+          return {
+            ...r,
+            year: Number(r.year),
+            total_gps: Number(r.total_gps) || 0,
+            competitive_gps: Number(r.competitive_gps) || 0,
+            race_wins: Number(r.race_wins) || 0,
+            sprint_wins: Number(r.sprint_wins) || 0,
+            total_wins: Number(r.total_wins) || 0,
+            race_poles: Number(r.race_poles) || 0,
+            sprint_poles: Number(r.sprint_poles) || 0,
+            poles_to_win: Number(r.poles_to_win) || 0,
+            race_podiums: Number(r.race_podiums) || 0,
+            sprint_podiums: Number(r.sprint_podiums) || 0,
+            total_podiums: Number(r.total_podiums) || 0,
+            q2_appearences: Number(r.q2_appearences) || 0,
+            q3_appearences: Number(r.q3_appearences) || 0,
+            race_points: Number(r.race_points) || 0,
+            sprint_points: Number(r.sprint_points) || 0,
+            total_points: Number(r.total_points) || 0,
+            best_finish_position: r.best_finish_position ? Number(r.best_finish_position) : undefined,
+            best_grid_position: r.best_grid_position ? Number(r.best_grid_position) : undefined,
+            total_dnfs: Number(r.total_dnfs) || 0,
+            total_one_two: Number(r.total_one_two) || 0,
+            total_double_podium: Number(r.total_double_podium) || 0,
+            total_double_points: Number(r.total_double_points) || 0,
+            total_front_row: Number(r.total_front_row) || 0,
+            fastest_laps: Number(r.fastest_laps) || 0,
+            pole_to_win_rate: r.pole_to_win_rate != null ? Number(r.pole_to_win_rate) : undefined,
+            is_season_completed: Boolean(r.is_season_completed),
+            championship_position: Number(r.championship_position) || 0,
+            drivers_lineup: parsedLineup,
+            drivers_used_count: Number(r.drivers_used_count) || 0,
+            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
+          };
+        });
       }
-    } catch (e) {
-      console.warn(`Failed to fetch constructor seasons for ${teamId}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch constructor seasons for ${teamId}:`, e);
   }
 
-  export async function getConstructorRaceLog(teamName: string): Promise<ConstructorRaceLogItem[]> {
-    const sql = `
+  return [];
+}
+
+export async function getConstructorRaceLog(teamName: string): Promise<ConstructorRaceLogItem[]> {
+  const sql = `
     SELECT 
       s.year,
       s.round_number,
@@ -2142,142 +2142,142 @@ const pool = rawPool
     ORDER BY s.year DESC, s.round_number DESC;
   `;
 
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [teamName]);
-        if (res.rows) {
-          return res.rows.map((r: any) => {
-            const drivers = Array.isArray(r.drivers_results) ? r.drivers_results : [];
-            const finishingPositions = drivers
-              .map((d: any) => Number(d.finishing_position))
-              .filter((pos: number) => !isNaN(pos) && pos > 0);
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [teamName]);
+      if (res.rows) {
+        return res.rows.map((r: any) => {
+          const drivers = Array.isArray(r.drivers_results) ? r.drivers_results : [];
+          const finishingPositions = drivers
+            .map((d: any) => Number(d.finishing_position))
+            .filter((pos: number) => !isNaN(pos) && pos > 0);
 
-            const isOneTwo = finishingPositions.includes(1) && finishingPositions.includes(2);
-            const isDoublePodium = finishingPositions.filter((pos: number) => pos <= 3).length >= 2;
-            const isDoublePoints = finishingPositions.filter((pos: number) => pos <= 10).length >= 2;
+          const isOneTwo = finishingPositions.includes(1) && finishingPositions.includes(2);
+          const isDoublePodium = finishingPositions.filter((pos: number) => pos <= 3).length >= 2;
+          const isDoublePoints = finishingPositions.filter((pos: number) => pos <= 10).length >= 2;
 
-            return {
-              year: Number(r.year),
-              round_number: Number(r.round_number),
-              official_event_name: r.official_event_name,
-              circuit_id: r.circuit_id || undefined,
-              circuit_name: r.circuit_name || undefined,
-              country: r.country || undefined,
-              session_name: r.session_name,
-              team_name: r.team_name,
-              team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
-              drivers_results: drivers.map((d: any) => ({
-                driver_id: d.driver_id,
-                driver_full_name: d.driver_full_name,
-                driver_headshot_url: d.driver_headshot_url || undefined,
-                driver_number: d.driver_number ? Number(d.driver_number) : undefined,
-                grid_position: d.grid_position ? Number(d.grid_position) : undefined,
-                finishing_position: d.finishing_position ? Number(d.finishing_position) : undefined,
-                points: Number(d.points) || 0,
-                status: d.status
-              })),
-              team_points: Number(r.team_points) || 0,
-              best_finish: r.best_finish ? Number(r.best_finish) : undefined,
-              podiums_count: Number(r.podiums_count) || 0,
-              wins_count: Number(r.wins_count) || 0,
-              is_one_two: isOneTwo,
-              is_double_podium: isDoublePodium,
-              is_double_points: isDoublePoints
-            };
-          });
-        }
+          return {
+            year: Number(r.year),
+            round_number: Number(r.round_number),
+            official_event_name: r.official_event_name,
+            circuit_id: r.circuit_id || undefined,
+            circuit_name: r.circuit_name || undefined,
+            country: r.country || undefined,
+            session_name: r.session_name,
+            team_name: r.team_name,
+            team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
+            drivers_results: drivers.map((d: any) => ({
+              driver_id: d.driver_id,
+              driver_full_name: d.driver_full_name,
+              driver_headshot_url: d.driver_headshot_url || undefined,
+              driver_number: d.driver_number ? Number(d.driver_number) : undefined,
+              grid_position: d.grid_position ? Number(d.grid_position) : undefined,
+              finishing_position: d.finishing_position ? Number(d.finishing_position) : undefined,
+              points: Number(d.points) || 0,
+              status: d.status
+            })),
+            team_points: Number(r.team_points) || 0,
+            best_finish: r.best_finish ? Number(r.best_finish) : undefined,
+            podiums_count: Number(r.podiums_count) || 0,
+            wins_count: Number(r.wins_count) || 0,
+            is_one_two: isOneTwo,
+            is_double_podium: isDoublePodium,
+            is_double_points: isDoublePoints
+          };
+        });
       }
-    } catch (e) {
-      console.warn(`Failed to fetch constructor race log for ${teamName}:`, e);
     }
-
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch constructor race log for ${teamName}:`, e);
   }
 
-  function mapCircuitOverviewRow(r: any): CircuitOverviewItem {
-    const sanitizeColor = (c: any) => (c ? (String(c).startsWith('#') ? String(c) : `#${c}`) : null);
+  return [];
+}
 
-    return {
-      circuit_id: r.circuit_id,
-      circuit_name: r.circuit_name,
-      country: r.country,
-      location: r.location,
-      track_type: r.track_type || null,
+function mapCircuitOverviewRow(r: any): CircuitOverviewItem {
+  const sanitizeColor = (c: any) => (c ? (String(c).startsWith('#') ? String(c) : `#${c}`) : null);
 
-      total_gps_completed: Number(r.total_gps_completed) || 0,
-      total_gps_scheduled: Number(r.total_gps_scheduled) || 0,
-      first_gp_year: r.first_gp_year != null ? Number(r.first_gp_year) : null,
-      last_gp_year: r.last_gp_year != null ? Number(r.last_gp_year) : null,
-      seasons_list: r.seasons_list || null,
-      years_held: Array.isArray(r.years_held)
-        ? r.years_held.map(Number)
-        : r.seasons_list
-          ? r.seasons_list.split(",").map((y: string) => Number(y.trim()))
-          : [],
-      total_dnfs: Number(r.total_dnfs) || 0,
-      avg_dnfs_per_race: Number(r.avg_dnfs_per_race) || 0,
+  return {
+    circuit_id: r.circuit_id,
+    circuit_name: r.circuit_name,
+    country: r.country,
+    location: r.location,
+    track_type: r.track_type || null,
 
-      most_wins_team_id: r.most_wins_team_id || null,
-      most_wins_team: r.most_wins_team || null,
-      most_wins_team_color: sanitizeColor(r.most_wins_team_color),
-      most_wins_team_count: r.most_wins_team_count != null ? Number(r.most_wins_team_count) : 0,
+    total_gps_completed: Number(r.total_gps_completed) || 0,
+    total_gps_scheduled: Number(r.total_gps_scheduled) || 0,
+    first_gp_year: r.first_gp_year != null ? Number(r.first_gp_year) : null,
+    last_gp_year: r.last_gp_year != null ? Number(r.last_gp_year) : null,
+    seasons_list: r.seasons_list || null,
+    years_held: Array.isArray(r.years_held)
+      ? r.years_held.map(Number)
+      : r.seasons_list
+        ? r.seasons_list.split(",").map((y: string) => Number(y.trim()))
+        : [],
+    total_dnfs: Number(r.total_dnfs) || 0,
+    avg_dnfs_per_race: Number(r.avg_dnfs_per_race) || 0,
 
-      most_wins_driver_id: r.most_wins_driver_id || null,
-      most_wins_driver: r.most_wins_driver || null,
-      most_wins_driver_code: r.most_wins_driver_code || null,
-      most_wins_driver_nationality: r.most_wins_driver_nationality || null,
-      most_wins_driver_headshot_url: r.most_wins_driver_headshot_url || null,
-      most_wins_count: r.most_wins_count != null ? Number(r.most_wins_count) : 0,
+    most_wins_team_id: r.most_wins_team_id || null,
+    most_wins_team: r.most_wins_team || null,
+    most_wins_team_color: sanitizeColor(r.most_wins_team_color),
+    most_wins_team_count: r.most_wins_team_count != null ? Number(r.most_wins_team_count) : 0,
 
-      most_podiums_driver_id: r.most_podiums_driver_id || null,
-      most_podiums_driver: r.most_podiums_driver || null,
-      most_podiums_driver_code: r.most_podiums_driver_code || null,
-      most_podiums_driver_nationality: r.most_podiums_driver_nationality || null,
-      most_podiums_driver_headshot_url: r.most_podiums_driver_headshot_url || null,
-      most_podiums_count: r.most_podiums_count != null ? Number(r.most_podiums_count) : 0,
+    most_wins_driver_id: r.most_wins_driver_id || null,
+    most_wins_driver: r.most_wins_driver || null,
+    most_wins_driver_code: r.most_wins_driver_code || null,
+    most_wins_driver_nationality: r.most_wins_driver_nationality || null,
+    most_wins_driver_headshot_url: r.most_wins_driver_headshot_url || null,
+    most_wins_count: r.most_wins_count != null ? Number(r.most_wins_count) : 0,
 
-      most_poles_driver_id: r.most_poles_driver_id || null,
-      most_poles_driver: r.most_poles_driver || null,
-      most_poles_driver_code: r.most_poles_driver_code || null,
-      most_poles_driver_nationality: r.most_poles_driver_nationality || null,
-      most_poles_driver_headshot_url: r.most_poles_driver_headshot_url || null,
-      most_poles_count: r.most_poles_count != null ? Number(r.most_poles_count) : 0,
+    most_podiums_driver_id: r.most_podiums_driver_id || null,
+    most_podiums_driver: r.most_podiums_driver || null,
+    most_podiums_driver_code: r.most_podiums_driver_code || null,
+    most_podiums_driver_nationality: r.most_podiums_driver_nationality || null,
+    most_podiums_driver_headshot_url: r.most_podiums_driver_headshot_url || null,
+    most_podiums_count: r.most_podiums_count != null ? Number(r.most_podiums_count) : 0,
 
-      most_sprint_wins_driver_id: r.most_sprint_wins_driver_id || null,
-      most_sprint_wins_driver: r.most_sprint_wins_driver || null,
-      most_sprint_wins_driver_code: r.most_sprint_wins_driver_code || null,
-      most_sprint_wins_driver_nationality: r.most_sprint_wins_driver_nationality || null,
-      most_sprint_wins_driver_headshot_url: r.most_sprint_wins_driver_headshot_url || null,
-      most_sprint_wins_count: r.most_sprint_wins_count != null ? Number(r.most_sprint_wins_count) : 0,
+    most_poles_driver_id: r.most_poles_driver_id || null,
+    most_poles_driver: r.most_poles_driver || null,
+    most_poles_driver_code: r.most_poles_driver_code || null,
+    most_poles_driver_nationality: r.most_poles_driver_nationality || null,
+    most_poles_driver_headshot_url: r.most_poles_driver_headshot_url || null,
+    most_poles_count: r.most_poles_count != null ? Number(r.most_poles_count) : 0,
 
-      race_lap_record_driver_id: r.race_lap_record_driver_id || null,
-      race_lap_record_driver: r.race_lap_record_driver || null,
-      race_lap_record_driver_code: r.race_lap_record_driver_code || null,
-      race_lap_record_headshot_url: r.race_lap_record_headshot_url || null,
-      race_lap_record_team: r.race_lap_record_team || null,
-      race_lap_record_team_color: sanitizeColor(r.race_lap_record_team_color),
-      race_lap_record_year: r.race_lap_record_year != null ? Number(r.race_lap_record_year) : null,
-      race_lap_record_seconds: r.race_lap_record_seconds != null ? Number(r.race_lap_record_seconds) : null,
-      race_lap_record_formatted: r.race_lap_record_formatted || null,
+    most_sprint_wins_driver_id: r.most_sprint_wins_driver_id || null,
+    most_sprint_wins_driver: r.most_sprint_wins_driver || null,
+    most_sprint_wins_driver_code: r.most_sprint_wins_driver_code || null,
+    most_sprint_wins_driver_nationality: r.most_sprint_wins_driver_nationality || null,
+    most_sprint_wins_driver_headshot_url: r.most_sprint_wins_driver_headshot_url || null,
+    most_sprint_wins_count: r.most_sprint_wins_count != null ? Number(r.most_sprint_wins_count) : 0,
 
-      quali_lap_record_driver_id: r.quali_lap_record_driver_id || null,
-      quali_lap_record_driver: r.quali_lap_record_driver || null,
-      quali_lap_record_driver_code: r.quali_lap_record_driver_code || null,
-      quali_lap_record_headshot_url: r.quali_lap_record_headshot_url || null,
-      quali_lap_record_team: r.quali_lap_record_team || null,
-      quali_lap_record_team_color: sanitizeColor(r.quali_lap_record_team_color),
-      quali_lap_record_year: r.quali_lap_record_year != null ? Number(r.quali_lap_record_year) : null,
-      quali_lap_record_seconds: r.quali_lap_record_seconds != null ? Number(r.quali_lap_record_seconds) : null,
-      quali_lap_record_formatted: r.quali_lap_record_formatted || null,
-    };
-  }
+    race_lap_record_driver_id: r.race_lap_record_driver_id || null,
+    race_lap_record_driver: r.race_lap_record_driver || null,
+    race_lap_record_driver_code: r.race_lap_record_driver_code || null,
+    race_lap_record_headshot_url: r.race_lap_record_headshot_url || null,
+    race_lap_record_team: r.race_lap_record_team || null,
+    race_lap_record_team_color: sanitizeColor(r.race_lap_record_team_color),
+    race_lap_record_year: r.race_lap_record_year != null ? Number(r.race_lap_record_year) : null,
+    race_lap_record_seconds: r.race_lap_record_seconds != null ? Number(r.race_lap_record_seconds) : null,
+    race_lap_record_formatted: r.race_lap_record_formatted || null,
 
-  async function attachCircuitTies(circuits: CircuitOverviewItem[]): Promise<CircuitOverviewItem[]> {
-    if (!pool || circuits.length === 0) return circuits;
-    try {
-      const circuitIds = circuits.map((c) => c.circuit_id);
-      const [driversRes, teamsRes] = await Promise.all([
-        pool.query(`
+    quali_lap_record_driver_id: r.quali_lap_record_driver_id || null,
+    quali_lap_record_driver: r.quali_lap_record_driver || null,
+    quali_lap_record_driver_code: r.quali_lap_record_driver_code || null,
+    quali_lap_record_headshot_url: r.quali_lap_record_headshot_url || null,
+    quali_lap_record_team: r.quali_lap_record_team || null,
+    quali_lap_record_team_color: sanitizeColor(r.quali_lap_record_team_color),
+    quali_lap_record_year: r.quali_lap_record_year != null ? Number(r.quali_lap_record_year) : null,
+    quali_lap_record_seconds: r.quali_lap_record_seconds != null ? Number(r.quali_lap_record_seconds) : null,
+    quali_lap_record_formatted: r.quali_lap_record_formatted || null,
+  };
+}
+
+async function attachCircuitTies(circuits: CircuitOverviewItem[]): Promise<CircuitOverviewItem[]> {
+  if (!pool || circuits.length === 0) return circuits;
+  try {
+    const circuitIds = circuits.map((c) => c.circuit_id);
+    const [driversRes, teamsRes] = await Promise.all([
+      pool.query(`
             SELECT
               circuit_id,
               driver_id,
@@ -2295,7 +2295,7 @@ const pool = rawPool
             FROM website.v_circuit_driver_performance
             WHERE circuit_id = ANY($1)
           `, [circuitIds]).catch(() => ({ rows: [] })),
-        pool.query(`
+      pool.query(`
             WITH team_latest_color AS (
               SELECT DISTINCT ON (circuit_id, team_name)
                 circuit_id,
@@ -2316,120 +2316,120 @@ const pool = rawPool
             WHERE s.circuit_id = ANY($1) AND s.team_name IS NOT NULL
             GROUP BY s.circuit_id, s.team_name, tlc.team_color
           `, [circuitIds]).catch(() => ({ rows: [] }))
-      ]);
+    ]);
 
-      const driversByCircuit = new Map<string, any[]>();
-      for (const row of driversRes.rows || []) {
-        const list = driversByCircuit.get(row.circuit_id) || [];
-        list.push(row);
-        driversByCircuit.set(row.circuit_id, list);
-      }
-
-      const teamsByCircuit = new Map<string, any[]>();
-      for (const row of teamsRes.rows || []) {
-        const list = teamsByCircuit.get(row.circuit_id) || [];
-        list.push(row);
-        teamsByCircuit.set(row.circuit_id, list);
-      }
-
-      return circuits.map((c) => {
-        const dRows = driversByCircuit.get(c.circuit_id) || [];
-        const tRows = teamsByCircuit.get(c.circuit_id) || [];
-
-        const getTiedDrivers = (metricFn: (r: any) => number, tieBreakFn: (r: any) => number) => {
-          const maxVal = Math.max(0, ...dRows.map(metricFn));
-          if (maxVal <= 0) return undefined;
-          return dRows
-            .filter((r) => metricFn(r) === maxVal)
-            .sort((a, b) => tieBreakFn(b) - tieBreakFn(a) || (Number(b.total_points) || 0) - (Number(a.total_points) || 0))
-            .map((r) => ({
-              driver_id: r.driver_id || null,
-              driver_full_name: String(r.driver_full_name),
-              driver_code: r.driver_abbreviation || null,
-              driver_nationality: r.driver_nationality || null,
-              driver_headshot_url: r.driver_headshot_url || null,
-              count: maxVal,
-            }));
-        };
-
-        const most_wins_drivers = getTiedDrivers(
-          (r) => Number(r.race_wins ?? r.total_wins) || 0,
-          (r) => Number(r.total_podiums) || 0
-        );
-        const most_podiums_drivers = getTiedDrivers(
-          (r) => Number(r.race_podiums ?? r.total_podiums) || 0,
-          (r) => Number(r.race_wins ?? r.total_wins) || 0
-        );
-        const most_poles_drivers = getTiedDrivers(
-          (r) => Number(r.race_poles) || 0,
-          (r) => Number(r.race_wins ?? r.total_wins) || 0
-        );
-        const most_sprint_wins_drivers = getTiedDrivers(
-          (r) => Number(r.sprint_wins) || 0,
-          (r) => Number(r.total_podiums) || 0
-        );
-
-        const maxTeamWins = Math.max(0, ...tRows.map((r) => Number(r.race_wins) || 0));
-        const most_wins_teams = maxTeamWins > 0
-          ? tRows
-            .filter((r) => (Number(r.race_wins) || 0) === maxTeamWins)
-            .sort((a, b) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0))
-            .map((r) => ({
-              team_name: String(r.team_name),
-              team_color: r.team_color
-                ? (String(r.team_color).startsWith("#") ? String(r.team_color) : `#${r.team_color}`)
-                : "#E10600",
-              count: maxTeamWins,
-            }))
-          : undefined;
-
-        return {
-          ...c,
-          most_wins_drivers,
-          most_podiums_drivers,
-          most_poles_drivers,
-          most_sprint_wins_drivers,
-          most_wins_teams,
-        };
-      });
-    } catch (err) {
-      console.warn("Failed to attach circuit ties:", err);
-      return circuits;
+    const driversByCircuit = new Map<string, any[]>();
+    for (const row of driversRes.rows || []) {
+      const list = driversByCircuit.get(row.circuit_id) || [];
+      list.push(row);
+      driversByCircuit.set(row.circuit_id, list);
     }
+
+    const teamsByCircuit = new Map<string, any[]>();
+    for (const row of teamsRes.rows || []) {
+      const list = teamsByCircuit.get(row.circuit_id) || [];
+      list.push(row);
+      teamsByCircuit.set(row.circuit_id, list);
+    }
+
+    return circuits.map((c) => {
+      const dRows = driversByCircuit.get(c.circuit_id) || [];
+      const tRows = teamsByCircuit.get(c.circuit_id) || [];
+
+      const getTiedDrivers = (metricFn: (r: any) => number, tieBreakFn: (r: any) => number) => {
+        const maxVal = Math.max(0, ...dRows.map(metricFn));
+        if (maxVal <= 0) return undefined;
+        return dRows
+          .filter((r) => metricFn(r) === maxVal)
+          .sort((a, b) => tieBreakFn(b) - tieBreakFn(a) || (Number(b.total_points) || 0) - (Number(a.total_points) || 0))
+          .map((r) => ({
+            driver_id: r.driver_id || null,
+            driver_full_name: String(r.driver_full_name),
+            driver_code: r.driver_abbreviation || null,
+            driver_nationality: r.driver_nationality || null,
+            driver_headshot_url: r.driver_headshot_url || null,
+            count: maxVal,
+          }));
+      };
+
+      const most_wins_drivers = getTiedDrivers(
+        (r) => Number(r.race_wins ?? r.total_wins) || 0,
+        (r) => Number(r.total_podiums) || 0
+      );
+      const most_podiums_drivers = getTiedDrivers(
+        (r) => Number(r.race_podiums ?? r.total_podiums) || 0,
+        (r) => Number(r.race_wins ?? r.total_wins) || 0
+      );
+      const most_poles_drivers = getTiedDrivers(
+        (r) => Number(r.race_poles) || 0,
+        (r) => Number(r.race_wins ?? r.total_wins) || 0
+      );
+      const most_sprint_wins_drivers = getTiedDrivers(
+        (r) => Number(r.sprint_wins) || 0,
+        (r) => Number(r.total_podiums) || 0
+      );
+
+      const maxTeamWins = Math.max(0, ...tRows.map((r) => Number(r.race_wins) || 0));
+      const most_wins_teams = maxTeamWins > 0
+        ? tRows
+          .filter((r) => (Number(r.race_wins) || 0) === maxTeamWins)
+          .sort((a, b) => (Number(b.total_podiums) || 0) - (Number(a.total_podiums) || 0))
+          .map((r) => ({
+            team_name: String(r.team_name),
+            team_color: r.team_color
+              ? (String(r.team_color).startsWith("#") ? String(r.team_color) : `#${r.team_color}`)
+              : "#E10600",
+            count: maxTeamWins,
+          }))
+        : undefined;
+
+      return {
+        ...c,
+        most_wins_drivers,
+        most_podiums_drivers,
+        most_poles_drivers,
+        most_sprint_wins_drivers,
+        most_wins_teams,
+      };
+    });
+  } catch (err) {
+    console.warn("Failed to attach circuit ties:", err);
+    return circuits;
+  }
+}
+
+export async function getCircuitsCatalog(): Promise<CircuitOverviewItem[]> {
+  const cacheKey = "circuitsCatalog::v2";
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.data as CircuitOverviewItem[];
   }
 
-  export async function getCircuitsCatalog(): Promise<CircuitOverviewItem[]> {
-    const cacheKey = "circuitsCatalog::v2";
-    const now = Date.now();
-    const cached = cache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      return cached.data as CircuitOverviewItem[];
-    }
-
-    const sql = `
+  const sql = `
     SELECT *
     FROM website.v_circuit_overview
     ORDER BY total_gps_completed DESC, circuit_name ASC;
   `;
-    try {
-      if (pool) {
-        const res = await pool.query(sql);
-        if (res.rows) {
-          const baseData = res.rows.map(mapCircuitOverviewRow);
-          const data = await attachCircuitTies(baseData);
-          cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
-          return data;
-          return await attachCircuitTies(baseData);
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql);
+      if (res.rows) {
+        const baseData = res.rows.map(mapCircuitOverviewRow);
+        const data = await attachCircuitTies(baseData);
+        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
+        return data;
+        return await attachCircuitTies(baseData);
       }
-    } catch (e) {
-      console.warn("Failed to fetch circuits catalog:", e);
     }
-    return [];
+  } catch (e) {
+    console.warn("Failed to fetch circuits catalog:", e);
   }
+  return [];
+}
 
-  export async function getCircuitOverview(circuitId: string): Promise<CircuitOverviewItem | null> {
-    const sql = `
+export async function getCircuitOverview(circuitId: string): Promise<CircuitOverviewItem | null> {
+  const sql = `
     SELECT *
     FROM website.v_circuit_overview
     WHERE circuit_id = $1
@@ -2446,78 +2446,78 @@ const pool = rawPool
        END
     LIMIT 1;
   `;
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [circuitId]);
-        if (res.rows && res.rows.length > 0) {
-          const mapped = mapCircuitOverviewRow(res.rows[0]);
-          const [enriched] = await attachCircuitTies([mapped]);
-          return enriched;
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [circuitId]);
+      if (res.rows && res.rows.length > 0) {
+        const mapped = mapCircuitOverviewRow(res.rows[0]);
+        const [enriched] = await attachCircuitTies([mapped]);
+        return enriched;
       }
-    } catch (e) {
-      console.warn(`Failed to fetch circuit overview for ${circuitId}:`, e);
     }
-    return null;
+  } catch (e) {
+    console.warn(`Failed to fetch circuit overview for ${circuitId}:`, e);
   }
+  return null;
+}
 
-  export async function getCircuitSeasons(circuitId: string): Promise<SeasonRaceSummary[]> {
-    const sql = `
+export async function getCircuitSeasons(circuitId: string): Promise<SeasonRaceSummary[]> {
+  const sql = `
     SELECT *
     FROM website.v_circuit_season_summary
     WHERE circuit_id = $1
     ORDER BY year DESC, round_number DESC;
   `;
-    const rows = await queryOrFallback<any[]>(sql, [circuitId], []);
-    return rows.map((r) => {
-      const raceWinnerTeamColor = r.race_winner_team_color
-        ? (r.race_winner_team_color.startsWith('#') ? r.race_winner_team_color : `#${r.race_winner_team_color}`)
-        : null;
-      const sprintWinnerTeamColor = r.sprint_winner_team_color
-        ? (r.sprint_winner_team_color.startsWith('#') ? r.sprint_winner_team_color : `#${r.sprint_winner_team_color}`)
-        : null;
-      const fastestLapTeamColor = r.fastest_lap_team_color
-        ? (r.fastest_lap_team_color.startsWith('#') ? r.fastest_lap_team_color : `#${r.fastest_lap_team_color}`)
-        : null;
+  const rows = await queryOrFallback<any[]>(sql, [circuitId], []);
+  return rows.map((r) => {
+    const raceWinnerTeamColor = r.race_winner_team_color
+      ? (r.race_winner_team_color.startsWith('#') ? r.race_winner_team_color : `#${r.race_winner_team_color}`)
+      : null;
+    const sprintWinnerTeamColor = r.sprint_winner_team_color
+      ? (r.sprint_winner_team_color.startsWith('#') ? r.sprint_winner_team_color : `#${r.sprint_winner_team_color}`)
+      : null;
+    const fastestLapTeamColor = r.fastest_lap_team_color
+      ? (r.fastest_lap_team_color.startsWith('#') ? r.fastest_lap_team_color : `#${r.fastest_lap_team_color}`)
+      : null;
 
-      return {
-        ...r,
-        year: Number(r.year),
-        round_number: Number(r.round_number),
-        total_dnfs: r.total_dnfs != null ? Number(r.total_dnfs) : 0,
-        completed_sessions_count: r.completed_sessions_count != null ? Number(r.completed_sessions_count) : 0,
+    return {
+      ...r,
+      year: Number(r.year),
+      round_number: Number(r.round_number),
+      total_dnfs: r.total_dnfs != null ? Number(r.total_dnfs) : 0,
+      completed_sessions_count: r.completed_sessions_count != null ? Number(r.completed_sessions_count) : 0,
 
-        race_winner_team_color: raceWinnerTeamColor,
-        sprint_winner_team_color: sprintWinnerTeamColor,
-        fastest_lap_team_color: fastestLapTeamColor,
+      race_winner_team_color: raceWinnerTeamColor,
+      sprint_winner_team_color: sprintWinnerTeamColor,
+      fastest_lap_team_color: fastestLapTeamColor,
 
-        race_winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
-        race_laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
-        race_total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
+      race_winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
+      race_laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
+      race_total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
 
-        sprint_winner_number: r.sprint_winner_number != null ? Number(r.sprint_winner_number) : null,
-        sprint_laps_completed: r.sprint_laps_completed != null ? Number(r.sprint_laps_completed) : null,
-        sprint_total_time_seconds: r.sprint_total_time_seconds != null ? Number(r.sprint_total_time_seconds) : null,
+      sprint_winner_number: r.sprint_winner_number != null ? Number(r.sprint_winner_number) : null,
+      sprint_laps_completed: r.sprint_laps_completed != null ? Number(r.sprint_laps_completed) : null,
+      sprint_total_time_seconds: r.sprint_total_time_seconds != null ? Number(r.sprint_total_time_seconds) : null,
 
-        fastest_lap_time_seconds: r.fastest_lap_time_seconds != null ? Number(r.fastest_lap_time_seconds) : null,
+      fastest_lap_time_seconds: r.fastest_lap_time_seconds != null ? Number(r.fastest_lap_time_seconds) : null,
 
-        driver_id: r.race_winner_driver_id || null,
-        winner_name: r.race_winner_driver || null,
-        winner_code: r.race_winner_code || null,
-        winner_headshot_url: r.race_winner_headshot_url || null,
-        winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
-        team_id: r.race_winner_team_id || null,
-        team_name: r.race_winner_team || null,
-        team_color: raceWinnerTeamColor,
-        laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
-        total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
-        time_formatted: r.race_time_formatted || null,
-      };
-    });
-  }
+      driver_id: r.race_winner_driver_id || null,
+      winner_name: r.race_winner_driver || null,
+      winner_code: r.race_winner_code || null,
+      winner_headshot_url: r.race_winner_headshot_url || null,
+      winner_number: r.race_winner_number != null ? Number(r.race_winner_number) : null,
+      team_id: r.race_winner_team_id || null,
+      team_name: r.race_winner_team || null,
+      team_color: raceWinnerTeamColor,
+      laps_completed: r.race_laps_completed != null ? Number(r.race_laps_completed) : null,
+      total_time_seconds: r.race_total_time_seconds != null ? Number(r.race_total_time_seconds) : null,
+      time_formatted: r.race_time_formatted || null,
+    };
+  });
+}
 
-  export async function getCircuitDrivers(circuitId: string): Promise<DriverCircuitPerformanceItem[]> {
-    const sql = `
+export async function getCircuitDrivers(circuitId: string): Promise<DriverCircuitPerformanceItem[]> {
+  const sql = `
     SELECT 
       circuit_id,
       circuit_id AS circuit_sk,
@@ -2553,42 +2553,42 @@ const pool = rawPool
     WHERE circuit_id = $1
     ORDER BY total_wins DESC, total_podiums DESC, race_poles DESC, total_points DESC;
   `;
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [circuitId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            ...r,
-            total_gps: Number(r.total_gps) || 0,
-            first_year: Number(r.first_year) || 0,
-            last_year: Number(r.last_year) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_fastest_laps: Number(r.total_fastest_laps) || 0,
-            total_points: Number(r.total_points) || 0,
-            race_points: Number(r.race_points) || 0,
-            sprint_points: Number(r.sprint_points) || 0,
-            best_finish_position: r.best_finish_position != null ? Number(r.best_finish_position) : undefined,
-            best_grid_position: r.best_grid_position != null ? Number(r.best_grid_position) : undefined,
-            total_dnfs: Number(r.total_dnfs) || 0,
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [circuitId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          ...r,
+          total_gps: Number(r.total_gps) || 0,
+          first_year: Number(r.first_year) || 0,
+          last_year: Number(r.last_year) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_fastest_laps: Number(r.total_fastest_laps) || 0,
+          total_points: Number(r.total_points) || 0,
+          race_points: Number(r.race_points) || 0,
+          sprint_points: Number(r.sprint_points) || 0,
+          best_finish_position: r.best_finish_position != null ? Number(r.best_finish_position) : undefined,
+          best_grid_position: r.best_grid_position != null ? Number(r.best_grid_position) : undefined,
+          total_dnfs: Number(r.total_dnfs) || 0,
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch circuit drivers for ${circuitId}:`, e);
     }
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch circuit drivers for ${circuitId}:`, e);
   }
+  return [];
+}
 
 
-  export async function getCircuitTeams(circuitId: string): Promise<CircuitTeamPerformanceItem[]> {
-    const sql = `
+export async function getCircuitTeams(circuitId: string): Promise<CircuitTeamPerformanceItem[]> {
+  const sql = `
     WITH team_latest_color AS (
       SELECT DISTINCT ON (team_name)
         team_name,
@@ -2620,31 +2620,31 @@ const pool = rawPool
     GROUP BY s.team_name, tlc.team_color
     ORDER BY total_wins DESC, total_podiums DESC, race_poles DESC, total_points DESC;
   `;
-    try {
-      if (pool) {
-        const res = await pool.query(sql, [circuitId]);
-        if (res.rows) {
-          return res.rows.map((r: any) => ({
-            circuit_id: r.circuit_id,
-            team_name: r.team_name,
-            team_color: r.team_color ? (String(r.team_color).startsWith('#') ? String(r.team_color) : `#${r.team_color}`) : '#E10600',
-            total_gps: Number(r.total_gps) || 0,
-            first_year: Number(r.first_year) || 0,
-            last_year: Number(r.last_year) || 0,
-            total_wins: Number(r.total_wins) || 0,
-            race_wins: Number(r.race_wins) || 0,
-            sprint_wins: Number(r.sprint_wins) || 0,
-            total_podiums: Number(r.total_podiums) || 0,
-            race_podiums: Number(r.race_podiums) || 0,
-            sprint_podiums: Number(r.sprint_podiums) || 0,
-            race_poles: Number(r.race_poles) || 0,
-            sprint_poles: Number(r.sprint_poles) || 0,
-            total_points: Number(r.total_points) || 0,
-          }));
-        }
+  try {
+    if (pool) {
+      const res = await pool.query(sql, [circuitId]);
+      if (res.rows) {
+        return res.rows.map((r: any) => ({
+          circuit_id: r.circuit_id,
+          team_name: r.team_name,
+          team_color: r.team_color ? (String(r.team_color).startsWith('#') ? String(r.team_color) : `#${r.team_color}`) : '#E10600',
+          total_gps: Number(r.total_gps) || 0,
+          first_year: Number(r.first_year) || 0,
+          last_year: Number(r.last_year) || 0,
+          total_wins: Number(r.total_wins) || 0,
+          race_wins: Number(r.race_wins) || 0,
+          sprint_wins: Number(r.sprint_wins) || 0,
+          total_podiums: Number(r.total_podiums) || 0,
+          race_podiums: Number(r.race_podiums) || 0,
+          sprint_podiums: Number(r.sprint_podiums) || 0,
+          race_poles: Number(r.race_poles) || 0,
+          sprint_poles: Number(r.sprint_poles) || 0,
+          total_points: Number(r.total_points) || 0,
+        }));
       }
-    } catch (e) {
-      console.warn(`Failed to fetch circuit teams for ${circuitId}:`, e);
     }
-    return [];
+  } catch (e) {
+    console.warn(`Failed to fetch circuit teams for ${circuitId}:`, e);
   }
+  return [];
+}
