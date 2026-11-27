@@ -165,16 +165,10 @@ async function queryOrFallback<T>(sql: string, params: any[], fallback: T, _ttlM
       }
     }
     if (res.rows && res.rows.length > 0) {
-      const data = res.rows as unknown as T;
-      cache.set(cacheKey, { data, expiresAt: now + ttlMs });
-      return data;
       return res.rows as unknown as T;
     }
     // Quando pool está ativo e a query retorna 0 linhas, respeitamos os dados reais do banco (vazio)
     if (Array.isArray(fallback)) {
-      const emptyData = [] as unknown as T;
-      cache.set(cacheKey, { data: emptyData, expiresAt: now + ttlMs });
-      return emptyData;
       return [] as unknown as T;
     }
     return fallback;
@@ -187,21 +181,12 @@ async function queryOrFallback<T>(sql: string, params: any[], fallback: T, _ttlM
   }
 }
 
-let cachedYears: { data: number[]; expiresAt: number } | null = null;
-
 export async function getAvailableYears(): Promise<number[]> {
-  const now = Date.now();
-  if (cachedYears && cachedYears.expiresAt > now) {
-    return cachedYears.data;
-  }
   const sql = `SELECT DISTINCT year FROM website.v_driver_standings ORDER BY year DESC`;
   try {
     if (pool) {
       const res = await pool.query(sql, [], 'live');
       if (res.rows && res.rows.length > 0) {
-        const years = res.rows.map((r: any) => parseInt(r.year));
-        cachedYears = { data: years, expiresAt: now + 30 * 1000 };
-        return years;
         return res.rows.map((r: any) => parseInt(r.year));
       }
     }
@@ -741,13 +726,6 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
   const latestCompleted = await getLatestCompletedRound(targetYear);
   const targetRound = roundNumber !== undefined ? roundNumber : (latestCompleted + 1);
 
-  const cacheKey = `upcomingRaceInfo::v2::${targetYear}::${targetRound}`;
-  const nowMs = Date.now();
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > nowMs) {
-    return cached.data as RaceWeekendInfo;
-  }
-
   try {
     if (pool) {
       // 1. Fetch round event info directly from website serving view
@@ -1213,7 +1191,6 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
           }
         };
 
-        cache.set(cacheKey, { data: result, expiresAt: nowMs + DEFAULT_TTL_MS });
         return result;
       }
     }
@@ -1225,13 +1202,6 @@ export async function getUpcomingRaceInfo(year?: number, roundNumber?: number): 
 }
 
 export async function getDriversCatalog(): Promise<DriverCatalogItem[]> {
-  const cacheKey = "driversCatalog";
-  const now = Date.now();
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.data as DriverCatalogItem[];
-  }
-
   const sql = `
     WITH latest_season AS (
       SELECT MAX(year) AS max_year FROM website.v_driver_season_summary
@@ -1303,7 +1273,6 @@ export async function getDriversCatalog(): Promise<DriverCatalogItem[]> {
           team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600',
           is_active: Boolean(r.is_active)
         }));
-        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
         return data;
       }
     }
@@ -1647,13 +1616,6 @@ export async function getDriverRaceLog(driverId: string): Promise<DriverRaceLogI
 }
 
 export async function getConstructorsCatalog(): Promise<ConstructorCatalogItem[]> {
-  const cacheKey = "constructorsCatalog";
-  const now = Date.now();
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.data as ConstructorCatalogItem[];
-  }
-
   const sql = `
     SELECT 
       team_id,
@@ -1761,7 +1723,6 @@ export async function getConstructorsCatalog(): Promise<ConstructorCatalogItem[]
           rank_points: r.rank_points ? Number(r.rank_points) : undefined,
           team_color: r.team_color ? (r.team_color.startsWith('#') ? r.team_color : `#${r.team_color}`) : '#E10600'
         }));
-        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
         return data;
       }
     }
@@ -2399,13 +2360,6 @@ async function attachCircuitTies(circuits: CircuitOverviewItem[]): Promise<Circu
 }
 
 export async function getCircuitsCatalog(): Promise<CircuitOverviewItem[]> {
-  const cacheKey = "circuitsCatalog::v2";
-  const now = Date.now();
-  const cached = cache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.data as CircuitOverviewItem[];
-  }
-
   const sql = `
     SELECT *
     FROM website.v_circuit_overview
@@ -2416,9 +2370,6 @@ export async function getCircuitsCatalog(): Promise<CircuitOverviewItem[]> {
       const res = await pool.query(sql);
       if (res.rows) {
         const baseData = res.rows.map(mapCircuitOverviewRow);
-        const data = await attachCircuitTies(baseData);
-        cache.set(cacheKey, { data, expiresAt: now + DEFAULT_TTL_MS });
-        return data;
         return await attachCircuitTies(baseData);
       }
     }
