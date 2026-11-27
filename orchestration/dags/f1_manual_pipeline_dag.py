@@ -60,6 +60,8 @@ def manual_ingestion():
         "BUCKET_NAME": os.getenv("BUCKET_NAME", "f1-lake-storage"),
         "GOOGLE_APPLICATION_CREDENTIALS": "/app/gcp-credentials.json",
         "POSTGRES_CONNECTION_URL": os.getenv("POSTGRES_CONNECTION_URL"),
+        "WEBSITE_REVALIDATE_URL": os.getenv("WEBSITE_REVALIDATE_URL", ""),
+        "REVALIDATE_SECRET": os.getenv("REVALIDATE_SECRET", ""),
         "TZ": os.getenv("TZ", "America/Sao_Paulo"),
     }
 

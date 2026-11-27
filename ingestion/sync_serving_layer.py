@@ -4,6 +4,8 @@ import io
 import os
 import sys
 import logging
+import urllib.error
+import urllib.request
 from datetime import datetime
 from dotenv import load_dotenv
 from google.cloud import bigquery
@@ -130,6 +132,58 @@ def get_incremental_plan(engine, table_name, bq_table, full_refresh=False):
             return "incremental", f"WHERE year >= {max_year}"
 
     return "full_replace", None
+
+
+def trigger_website_revalidation(timeout_seconds=15):
+    """
+    Triggers on-demand Next.js Data Cache revalidation on the website (Vercel)
+    so newly synchronized tables are served immediately without waiting for TTL expiry.
+    Best-effort: logs a warning on failure without failing the serving sync task.
+    """
+    revalidate_url = (os.getenv("WEBSITE_REVALIDATE_URL") or "").strip("'\"")
+    revalidate_secret = (os.getenv("REVALIDATE_SECRET") or "").strip("'\"")
+
+    if not revalidate_url:
+        logger.info(
+            "WEBSITE_REVALIDATE_URL is not set. Skipping website cache revalidation."
+        )
+        return
+
+    if not revalidate_secret:
+        logger.warning(
+            "WEBSITE_REVALIDATE_URL is set, but REVALIDATE_SECRET is missing. "
+            "Skipping website cache revalidation."
+        )
+        return
+
+    req = urllib.request.Request(
+        revalidate_url,
+        data=b"{}",
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {revalidate_secret}",
+            "Content-Type": "application/json",
+            "User-Agent": "f1-pipeline-serving-sync/1.0",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            body = resp.read().decode("utf-8", errors="replace")
+            logger.info(
+                f"Website cache revalidated successfully (HTTP {resp.status}): {body}"
+            )
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", errors="replace") if e.fp else ""
+        logger.warning(
+            f"Website cache revalidation returned HTTP {e.code}: {err_body}. "
+            "Serving layer data is synced; cache will refresh on TTL fallback."
+        )
+    except Exception as e:
+        logger.warning(
+            f"Website cache revalidation request failed ({e}). "
+            "Serving layer data is synced; cache will refresh on TTL fallback."
+        )
 
 
 def sync_serving_layer(full_refresh=False, selected_tables=None):
@@ -336,6 +390,9 @@ def sync_serving_layer(full_refresh=False, selected_tables=None):
         f"Serving layer synchronization completed successfully! "
         f"{total_synced}/{len(tables)} tables synced in {elapsed:.2f}s."
     )
+
+    if total_synced > 0:
+        trigger_website_revalidation()
 
 
 if __name__ == "__main__":

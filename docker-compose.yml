@@ -78,6 +78,8 @@ x-airflow-common:
     AIRFLOW_CONN_GOOGLE_CLOUD_DEFAULT: 'google-cloud-platform://?key_path=%2Fopt%2Fairflow%2Fconfig%2Fgcp-credentials.json&project=${GCP_PROJECT_ID:-}'
     F1_USERNAME: ${F1_USERNAME:-}
     F1_PASSWORD: ${F1_PASSWORD:-}
+    WEBSITE_REVALIDATE_URL: ${WEBSITE_REVALIDATE_URL:-}
+    REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
   volumes:
     - ./orchestration/dags:/opt/airflow/dags
     - ./orchestration/logs:/opt/airflow/logs
@@ -118,6 +120,8 @@ services:
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - F1_USERNAME=${F1_USERNAME:-}
       - F1_PASSWORD=${F1_PASSWORD:-}
+      - WEBSITE_REVALIDATE_URL=${WEBSITE_REVALIDATE_URL:-}
+      - REVALIDATE_SECRET=${REVALIDATE_SECRET:-}
       - TZ=America/Sao_Paulo
 
   dbt:
@@ -146,6 +150,7 @@ services:
     environment:
       - POSTGRES_CONNECTION_URL=${POSTGRES_CONNECTION_URL}
       - POSTGRES_WEB_URL=${POSTGRES_WEB_URL:-}
+      - REVALIDATE_SECRET=${REVALIDATE_SECRET:-}
       - PORT=3000
       - HOSTNAME=0.0.0.0
       - WATCHPACK_POLLING=true
